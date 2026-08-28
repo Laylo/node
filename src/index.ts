@@ -16,3 +16,10 @@ export {
 } from "./core/errors.js";
 export type { LayloAPIErrorOptions } from "./core/errors.js";
 export { VERSION } from "./version.js";
+export type {
+  FetchPage,
+  Page,
+  PageInfo,
+  PageResponse,
+} from "./core/pagination.js";
+export type { RequestOptions } from "./core/request-options.js";
