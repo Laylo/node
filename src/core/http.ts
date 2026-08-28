@@ -1,5 +1,6 @@
 import {
   LayloAPIError,
+  LayloConfigurationError,
   LayloConnectionError,
   LayloTimeoutError,
 } from "./errors.js";
@@ -8,6 +9,7 @@ import {
   backoffMs,
   DEFAULT_MAX_RETRIES,
   isRetryableStatus,
+  MAX_DELAY_MS,
   parseRetryAfter,
 } from "./retry.js";
 
@@ -87,17 +89,36 @@ const parseBody = async (response: Response): Promise<unknown> => {
 
 // Replaying a write the server may already have committed can duplicate it,
 // and the API has no idempotency header to guard against that. So a POST or
-// PATCH is only retried when the request never got a response at all.
+// PATCH is only retried when the server never processed it: the request got
+// no response at all, or was turned away with a 429.
 const isIdempotent = (method: HttpMethod) =>
   method !== "POST" && method !== "PATCH";
 
 const describe = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
+const parseUrl = (url: string, request: HttpRequest): void => {
+  try {
+    new URL(url);
+  } catch {
+    throw new LayloConfigurationError(
+      `Cannot build a valid URL for ${request.method} ${request.path} from "${url}"`,
+    );
+  }
+};
+
 interface Attempt {
   response: Response;
   body: unknown;
 }
+
+interface Failure {
+  error: LayloConnectionError;
+  /** Whether the server can be assumed not to have processed the request. */
+  unsent: boolean;
+}
+
+const TIMED_OUT = Symbol("laylo.node.timeout");
 
 /**
  * The single path every SDK call takes to the network. Owns headers, query
@@ -135,39 +156,37 @@ export class HttpClient {
       request.path,
       request.query ? buildQuery(request.query) : undefined,
     );
+    parseUrl(url, request);
     const headers = this.buildHeaders(request);
     const body =
       request.body === undefined ? undefined : JSON.stringify(request.body);
     const maxRetries = request.retry === false ? 0 : this.options.maxRetries;
+    const idempotent = isIdempotent(request.method);
 
     for (let attempt = 0; ; attempt += 1) {
       const outcome = await this.send(url, request, headers, body);
       const canRetry = attempt < maxRetries;
 
-      if (outcome instanceof LayloConnectionError) {
-        if (canRetry) {
+      if ("error" in outcome) {
+        if (canRetry && (idempotent || outcome.unsent)) {
           await this.wait(backoffMs(attempt), request.signal);
           continue;
         }
-        throw outcome;
+        throw outcome.error;
       }
 
       const { response } = outcome;
       if (response.ok) {
         return { data: outcome.body as T, response };
       }
+      const retryAfter = parseRetryAfter(response.headers.get("retry-after"));
       if (
         canRetry &&
-        isIdempotent(request.method) &&
-        isRetryableStatus(response.status)
+        isRetryableStatus(response.status) &&
+        (idempotent || response.status === 429) &&
+        (retryAfter === undefined || retryAfter * 1000 <= MAX_DELAY_MS)
       ) {
-        await this.wait(
-          backoffMs(
-            attempt,
-            parseRetryAfter(response.headers.get("retry-after")),
-          ),
-          request.signal,
-        );
+        await this.wait(backoffMs(attempt, retryAfter), request.signal);
         continue;
       }
       throw LayloAPIError.fromResponse(response, outcome.body);
@@ -219,32 +238,30 @@ export class HttpClient {
 
   // One attempt: the fetch and the body read together share the timeout, so
   // a server that sends headers and then stalls still times out. Resolves
-  // with a LayloConnectionError, rather than throwing, when the network
-  // failed so the retry loop can decide what to do. Timeouts and caller
-  // aborts are thrown straight through: neither is retried.
+  // with a Failure, rather than throwing, when the network failed so the
+  // retry loop can decide what to do. Timeouts and caller aborts are thrown
+  // straight through: neither is retried.
+  //
+  // The per-attempt controller is wired to the caller's signal by hand rather
+  // than with AbortSignal.any(): Node keeps every composite signal alive for
+  // as long as its sources, which leaks on a long-lived caller signal.
   private async send(
     url: string,
     request: HttpRequest,
     headers: Headers,
     body: string | undefined,
-  ): Promise<Attempt | LayloConnectionError> {
-    const timeout = new AbortController();
+  ): Promise<Attempt | Failure> {
+    const controller = new AbortController();
     const timeoutMs = request.timeoutMs ?? this.options.timeoutMs;
-    const timer = setTimeout(() => timeout.abort(), timeoutMs);
-    const signal = request.signal
-      ? AbortSignal.any([timeout.signal, request.signal])
-      : timeout.signal;
+    const timer = setTimeout(() => controller.abort(TIMED_OUT), timeoutMs);
+    const onAbort = () => controller.abort(request.signal?.reason);
+    request.signal?.addEventListener("abort", onAbort, { once: true });
+    if (request.signal?.aborted) {
+      onAbort();
+    }
 
-    try {
-      const response = await this.options.fetch(url, {
-        method: request.method,
-        headers,
-        signal,
-        ...(body === undefined ? {} : { body }),
-      });
-      return { response, body: await parseBody(response) };
-    } catch (error) {
-      if (timeout.signal.aborted) {
+    const fail = (error: unknown, unsent: boolean): Failure | never => {
+      if (controller.signal.reason === TIMED_OUT) {
         throw new LayloTimeoutError(
           `Request to ${request.method} ${request.path} timed out after ${timeoutMs}ms`,
           { cause: error },
@@ -253,12 +270,36 @@ export class HttpClient {
       if (request.signal?.aborted) {
         throw request.signal.reason;
       }
-      return new LayloConnectionError(
-        `Request to ${request.method} ${request.path} failed: ${describe(error)}`,
-        { cause: error },
-      );
+      return {
+        error: new LayloConnectionError(
+          `Request to ${request.method} ${request.path} failed: ${describe(error)}`,
+          { cause: error },
+        ),
+        unsent,
+      };
+    };
+
+    try {
+      let response: Response;
+      try {
+        response = await this.options.fetch(url, {
+          method: request.method,
+          headers,
+          signal: controller.signal,
+          ...(body === undefined ? {} : { body }),
+        });
+      } catch (error) {
+        return fail(error, true);
+      }
+      try {
+        return { response, body: await parseBody(response) };
+      } catch (error) {
+        // Headers arrived, so the server may well have acted on the request.
+        return fail(error, false);
+      }
     } finally {
       clearTimeout(timer);
+      request.signal?.removeEventListener("abort", onAbort);
     }
   }
 }

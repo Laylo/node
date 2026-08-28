@@ -2,7 +2,8 @@
 export const DEFAULT_MAX_RETRIES = 2;
 
 const BASE_DELAY_MS = 500;
-const MAX_DELAY_MS = 8_000;
+/** Longest the SDK will wait between attempts. */
+export const MAX_DELAY_MS = 8_000;
 
 const RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 
@@ -41,9 +42,9 @@ export const parseRetryAfter = (
 
 /**
  * How long to wait before the given retry. Exponential backoff with full
- * jitter, or the delay the server asked for via `Retry-After`. Either way the
- * wait is capped at eight seconds; a longer `Retry-After` is left for the
- * caller to handle via `RateLimitError.retryAfter`.
+ * jitter, or the delay the server asked for via `Retry-After`, capped at
+ * `MAX_DELAY_MS`. The transport does not retry at all when `Retry-After`
+ * exceeds the cap; that is left for the caller via `RateLimitError.retryAfter`.
  * @param attempt Zero-based index of the attempt that just failed.
  * @param retryAfterSeconds Server-requested delay, when present.
  * @param random Source of jitter in `[0, 1)`; injectable for tests.

@@ -1,8 +1,25 @@
 import { parseRetryAfter } from "./retry.js";
 
+const KIND = Symbol.for("laylo.node.errorKind");
 const KINDS = Symbol.for("laylo.node.errorKinds");
 
 const MAX_BODY_IN_MESSAGE = 200;
+
+// Each SDK error class carries a stable identifier that survives minification
+// and cannot be inherited: a consumer subclass has no kind of its own, so it
+// only ever matches by prototype.
+const kindOf = (ctor: unknown): string | undefined =>
+  typeof ctor === "function" && Object.hasOwn(ctor, KIND)
+    ? ((ctor as unknown as Record<symbol, unknown>)[KIND] as string)
+    : undefined;
+
+const brand = <C extends abstract new (...args: never[]) => unknown>(
+  ctor: C,
+  kind: string,
+): C => {
+  Object.defineProperty(ctor, KIND, { value: kind, enumerable: false });
+  return ctor;
+};
 
 const hasKind = (value: unknown, kind: string): boolean =>
   typeof value === "object" &&
@@ -23,16 +40,19 @@ export class LayloError extends Error {
    */
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
-    this.name = new.target.name;
+    this.name = kindOf(new.target) ?? new.target.name;
 
     // A consumer may load the ESM build and a dependency the CJS build. Those
     // are two copies of every class, so a plain prototype check would fail
-    // across them. Record the class chain by name and let instanceof match on
+    // across them. Record the chain of SDK kinds and let instanceof match on
     // it as a fallback.
     const kinds: string[] = [];
     let ctor: unknown = new.target;
     while (typeof ctor === "function" && ctor !== Error) {
-      kinds.push((ctor as { name: string }).name);
+      const kind = kindOf(ctor);
+      if (kind !== undefined) {
+        kinds.push(kind);
+      }
       ctor = Object.getPrototypeOf(ctor);
     }
     Object.defineProperty(this, KINDS, { value: kinds, enumerable: false });
@@ -43,12 +63,14 @@ export class LayloError extends Error {
    * @returns Whether `value` is an instance of this class, from either build.
    */
   static [Symbol.hasInstance](value: unknown): boolean {
-    return (
-      Function.prototype[Symbol.hasInstance].call(this, value) === true ||
-      hasKind(value, this.name)
-    );
+    if (Function.prototype[Symbol.hasInstance].call(this, value) === true) {
+      return true;
+    }
+    const kind = kindOf(this);
+    return kind !== undefined && hasKind(value, kind);
   }
 }
+brand(LayloError, "LayloError");
 
 /**
  * Fields carried by every error the API responds with.
@@ -209,12 +231,14 @@ export class LayloAPIError extends LayloError {
     }
   }
 }
+brand(LayloAPIError, "LayloAPIError");
 
 /**
  * 400 — the request was malformed or failed validation. Check `details`.
  * @see https://developers.laylo.com/errors
  */
 export class BadRequestError extends LayloAPIError {}
+brand(BadRequestError, "BadRequestError");
 
 /**
  * 401 — the credentials are missing, expired, or invalid.
@@ -232,34 +256,40 @@ export class AuthenticationError extends LayloAPIError {
     this.apiKeyStatus = options.apiKeyStatus;
   }
 }
+brand(AuthenticationError, "AuthenticationError");
 
 /**
  * 403 — authenticated, but not allowed to perform this operation.
  * @see https://developers.laylo.com/errors
  */
 export class PermissionError extends LayloAPIError {}
+brand(PermissionError, "PermissionError");
 
 /**
  * 404 — the resource does not exist or is not visible to this account.
  * @see https://developers.laylo.com/errors
  */
 export class NotFoundError extends LayloAPIError {}
+brand(NotFoundError, "NotFoundError");
 
 /**
  * 405 — the HTTP method is not supported on this route.
  * @see https://developers.laylo.com/errors
  */
 export class MethodNotAllowedError extends LayloAPIError {}
+brand(MethodNotAllowedError, "MethodNotAllowedError");
 
 /**
  * 409 — the request conflicts with the current state of the resource.
  * @see https://developers.laylo.com/errors
  */
 export class ConflictError extends LayloAPIError {}
+brand(ConflictError, "ConflictError");
 
 /**
- * 429 — too many requests. The SDK retries these automatically; if you still
- * see one, wait `retryAfter` seconds before trying again.
+ * 429 — too many requests. The SDK retries these automatically unless the API
+ * asks for a wait longer than it is willing to hold a request; if you see one,
+ * wait `retryAfter` seconds before trying again.
  * @see https://developers.laylo.com/errors
  */
 export class RateLimitError extends LayloAPIError {
@@ -274,19 +304,23 @@ export class RateLimitError extends LayloAPIError {
     this.retryAfter = options.retryAfter;
   }
 }
+brand(RateLimitError, "RateLimitError");
 
 /**
  * 501 — the endpoint exists but is not available yet.
  * @see https://developers.laylo.com/errors
  */
 export class NotImplementedError extends LayloAPIError {}
+brand(NotImplementedError, "NotImplementedError");
 
 /**
  * 5xx — something went wrong on Laylo's side. The SDK retries these
- * automatically before giving up.
+ * automatically for GET, PUT, and DELETE before giving up; a POST or PATCH is
+ * not replayed since the server may already have applied it.
  * @see https://developers.laylo.com/errors
  */
 export class ServerError extends LayloAPIError {}
+brand(ServerError, "ServerError");
 
 /**
  * The request never got a response: DNS failure, connection refused, TLS
@@ -295,12 +329,14 @@ export class ServerError extends LayloAPIError {}
  * @see https://developers.laylo.com/errors
  */
 export class LayloConnectionError extends LayloError {}
+brand(LayloConnectionError, "LayloConnectionError");
 
 /**
  * The request exceeded the configured timeout and was aborted by the SDK.
  * @see https://developers.laylo.com/errors
  */
 export class LayloTimeoutError extends LayloError {}
+brand(LayloTimeoutError, "LayloTimeoutError");
 
 /**
  * The client was misconfigured — for example a missing API key or a parameter
@@ -308,3 +344,4 @@ export class LayloTimeoutError extends LayloError {}
  * @see https://developers.laylo.com/errors
  */
 export class LayloConfigurationError extends LayloError {}
+brand(LayloConfigurationError, "LayloConfigurationError");

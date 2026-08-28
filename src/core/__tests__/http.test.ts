@@ -501,9 +501,90 @@ describe("HttpClient", () => {
       expect(fetch).toHaveBeenCalledTimes(2);
     });
 
+    it("retries a POST or PATCH after a 429, which the server never processed", async () => {
+      for (const method of ["POST", "PATCH"] as const) {
+        const { fetch } = fakeFetch([json(429, {}), json(200, { ok: true })]);
+        const result = client(fetch).request({
+          method,
+          path: "/v1/x",
+          body: { a: 1 },
+        });
+
+        await vi.runAllTimersAsync();
+        await expect(result).resolves.toMatchObject({ data: { ok: true } });
+        expect(fetch).toHaveBeenCalledTimes(2);
+      }
+    });
+
+    it("does not replay a POST whose body failed to read after headers arrived", async () => {
+      const broken = () =>
+        Promise.resolve(
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.error(new Error("socket reset"));
+              },
+            }),
+            { status: 201 },
+          ),
+        );
+      const { fetch } = fakeFetch([broken, json(201, {})]);
+      const result = client(fetch)
+        .request({ method: "POST", path: "/v1/x", body: { a: 1 } })
+        .catch((e: unknown) => e);
+
+      await vi.runAllTimersAsync();
+      expect(await result).toBeInstanceOf(LayloConnectionError);
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("gives up immediately when Retry-After exceeds the backoff cap", async () => {
+      const { fetch } = fakeFetch([
+        json(429, {}, { "retry-after": "3600" }),
+        json(200, {}),
+      ]);
+      const result = client(fetch)
+        .request({ method: "GET", path: "/v1/x" })
+        .catch((e: unknown) => e);
+
+      await vi.runAllTimersAsync();
+      const error = await result;
+      expect(error).toBeInstanceOf(RateLimitError);
+      expect((error as RateLimitError).retryAfter).toBe(3600);
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("rejects an unbuildable URL without fetching or retrying", async () => {
+      const { fetch } = fakeFetch([]);
+      await expect(
+        client(fetch, { baseUrl: "not a url" }).request({
+          method: "GET",
+          path: "/v1/x",
+        }),
+      ).rejects.toBeInstanceOf(LayloConfigurationError);
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it("detaches from the caller's signal after each attempt", async () => {
+      const { fetch } = fakeFetch([json(503, {}), json(200, {})]);
+      const controller = new AbortController();
+      const add = vi.spyOn(controller.signal, "addEventListener");
+      const remove = vi.spyOn(controller.signal, "removeEventListener");
+      const result = client(fetch).request({
+        method: "GET",
+        path: "/v1/x",
+        signal: controller.signal,
+      });
+
+      await vi.runAllTimersAsync();
+      await expect(result).resolves.toMatchObject({ data: {} });
+      expect(add.mock.calls.length).toBeGreaterThanOrEqual(2);
+      expect(remove).toHaveBeenCalledTimes(add.mock.calls.length);
+    });
+
     it("cuts the backoff wait short when the caller aborts", async () => {
       const { fetch } = fakeFetch([
-        json(429, {}, { "retry-after": "59" }),
+        json(429, {}, { "retry-after": "5" }),
         json(200, {}),
       ]);
       const controller = new AbortController();

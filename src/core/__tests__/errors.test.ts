@@ -61,6 +61,34 @@ describe("LayloError", () => {
     expect(foreign instanceof RateLimitError).toBe(false);
   });
 
+  it("does not let a consumer subclass borrow an SDK class's identity", () => {
+    class NotFoundError extends LayloAPIError {}
+    const consumer = new NotFoundError({
+      status: 404,
+      code: "NOT_FOUND",
+      message: "nope",
+      headers: new Headers(),
+      raw: undefined,
+    });
+    const sdk = LayloAPIError.fromResponse(
+      new Response("{}", { status: 404 }),
+      {},
+    );
+
+    expect(consumer instanceof LayloAPIError).toBe(true);
+    expect(consumer instanceof NotFoundError).toBe(true);
+    expect(sdk instanceof NotFoundError).toBe(false);
+  });
+
+  it("still matches its SDK ancestors when the constructor is renamed", () => {
+    const Minified = class extends LayloTimeoutError {};
+    Object.defineProperty(Minified, "name", { value: "a" });
+    const error = new Minified("t");
+
+    expect(error instanceof LayloTimeoutError).toBe(true);
+    expect(error instanceof LayloError).toBe(true);
+  });
+
   it("rejects values that are not errors", () => {
     const values: unknown[] = [null, "nope", {}];
     for (const value of values) {
