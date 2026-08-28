@@ -97,6 +97,40 @@ describe("HttpClient", () => {
       expect("body" in call.init).toBe(false);
     });
 
+    it("lets caller headers override defaults regardless of case", async () => {
+      const { fetch, calls } = fakeFetch([json(200, {})]);
+      await client(fetch).request({
+        method: "GET",
+        path: "/v1/export",
+        headers: { accept: "text/csv", "user-agent": "custom/1" },
+      });
+
+      const headers = headersOf(calls[0]!);
+      expect(headers.get("accept")).toBe("text/csv");
+      expect(headers.get("user-agent")).toBe("custom/1");
+    });
+
+    it("accepts a fetch whose Response is not the global class", async () => {
+      class ForeignResponse {
+        status = 200;
+        ok = true;
+        headers = new Headers();
+        text() {
+          return Promise.resolve('{"ok":true}');
+        }
+      }
+      const fetch = vi.fn(() =>
+        Promise.resolve(new ForeignResponse() as unknown as Response),
+      ) as unknown as typeof globalThis.fetch;
+      const { data } = await client(fetch).request({
+        method: "GET",
+        path: "/v1/x",
+      });
+
+      expect(data).toEqual({ ok: true });
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
     it("falls back to the global fetch", async () => {
       const spy = vi
         .spyOn(globalThis, "fetch")
@@ -249,6 +283,43 @@ describe("HttpClient", () => {
       expect(fetch).toHaveBeenCalledTimes(1);
     });
 
+    it("times out a body that never finishes", async () => {
+      const fetch = vi.fn((_input: string, init?: RequestInit) => {
+        const body = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('{"partial":'));
+            init?.signal?.addEventListener("abort", () => {
+              controller.error(init.signal?.reason as Error);
+            });
+          },
+        });
+        return Promise.resolve(new Response(body, { status: 200 }));
+      }) as unknown as typeof globalThis.fetch;
+      const result = client(fetch, { timeoutMs: 1_000 })
+        .request({ method: "GET", path: "/v1/slow-body" })
+        .catch((e: unknown) => e);
+
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(await result).toBeInstanceOf(LayloTimeoutError);
+    });
+
+    it("treats a body read failure as a connection error", async () => {
+      const broken = () => {
+        const body = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.error(new TypeError("terminated"));
+          },
+        });
+        return Promise.resolve(new Response(body, { status: 200 }));
+      };
+      const { fetch } = fakeFetch([broken, json(200, { ok: true })]);
+      const result = client(fetch).request({ method: "GET", path: "/v1/x" });
+
+      await vi.runAllTimersAsync();
+      await expect(result).resolves.toMatchObject({ data: { ok: true } });
+      expect(fetch).toHaveBeenCalledTimes(2);
+    });
+
     it("uses the per-request timeout when given", async () => {
       const fetch = hangingFetch();
       const result = client(fetch, { timeoutMs: 60_000 })
@@ -292,7 +363,7 @@ describe("HttpClient", () => {
         json(200, { ok: true }),
       ]);
       const result = client(fetch).request({
-        method: "POST",
+        method: "PUT",
         path: "/v1/x",
         body: {},
       });
@@ -399,6 +470,66 @@ describe("HttpClient", () => {
 
       await vi.runAllTimersAsync();
       await expect(result).resolves.toMatchObject({ data: { ok: true } });
+    });
+
+    it("does not replay a POST or PATCH after a retryable status", async () => {
+      for (const method of ["POST", "PATCH"] as const) {
+        const { fetch } = fakeFetch([json(503, {}), json(200, {})]);
+        const result = client(fetch)
+          .request({ method, path: "/v1/x", body: { a: 1 } })
+          .catch((e: unknown) => e);
+
+        await vi.runAllTimersAsync();
+        expect(await result).toBeInstanceOf(ServerError);
+        expect(fetch).toHaveBeenCalledTimes(1);
+      }
+    });
+
+    it("still retries a POST that never got a response", async () => {
+      const { fetch } = fakeFetch([
+        new TypeError("fetch failed"),
+        json(200, { ok: true }),
+      ]);
+      const result = client(fetch).request({
+        method: "POST",
+        path: "/v1/x",
+        body: { a: 1 },
+      });
+
+      await vi.runAllTimersAsync();
+      await expect(result).resolves.toMatchObject({ data: { ok: true } });
+      expect(fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("cuts the backoff wait short when the caller aborts", async () => {
+      const { fetch } = fakeFetch([
+        json(429, {}, { "retry-after": "59" }),
+        json(200, {}),
+      ]);
+      const controller = new AbortController();
+      const result = client(fetch)
+        .request({ method: "GET", path: "/v1/x", signal: controller.signal })
+        .catch((e: unknown) => e);
+
+      await vi.advanceTimersByTimeAsync(100);
+      controller.abort();
+      const error = await result;
+
+      expect((error as Error).name).toBe("AbortError");
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("surfaces the caller's abort even when fetch reported something else", async () => {
+      const { fetch } = fakeFetch([new TypeError("fetch failed")]);
+      const controller = new AbortController();
+      const result = client(fetch)
+        .request({ method: "GET", path: "/v1/x", signal: controller.signal })
+        .catch((e: unknown) => e);
+      controller.abort();
+
+      await vi.runAllTimersAsync();
+      expect(((await result) as Error).name).toBe("AbortError");
+      expect(fetch).toHaveBeenCalledTimes(1);
     });
 
     it("respects maxRetries and retry: false", async () => {

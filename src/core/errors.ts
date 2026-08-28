@@ -71,21 +71,30 @@ export interface LayloAPIErrorOptions {
   raw: unknown;
 }
 
-const envelope = (
-  body: unknown,
-):
-  | {
-      code?: unknown;
-      message?: unknown;
-      details?: unknown;
-      apiKeyStatus?: unknown;
-    }
-  | undefined => {
-  if (typeof body !== "object" || body === null || !("error" in body)) {
+interface Envelope {
+  code?: unknown;
+  message?: unknown;
+  details?: unknown;
+  apiKeyStatus?: unknown;
+}
+
+// The API always answers with `{ error: { code, message, ... } }`, but the
+// gateway in front of it speaks for itself with `{ message }`, and other
+// proxies may send `{ error: "text" }`. Read whichever shape arrived.
+const envelope = (body: unknown): Envelope | undefined => {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return undefined;
   }
-  const error = body.error;
-  return typeof error === "object" && error !== null ? error : undefined;
+  if ("error" in body) {
+    const error = body.error;
+    if (typeof error === "object" && error !== null) {
+      return error;
+    }
+    if (typeof error === "string") {
+      return { message: error };
+    }
+  }
+  return body;
 };
 
 const messageFor = (status: number, body: unknown, code: unknown): string => {

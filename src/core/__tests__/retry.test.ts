@@ -63,8 +63,10 @@ describe("backoffMs", () => {
     expect(backoffMs(2, undefined, () => 0.5)).toBe(2250);
   });
 
-  it("caps at eight seconds", () => {
+  it("caps at eight seconds, Retry-After included", () => {
     expect(backoffMs(10, undefined, () => 0.99)).toBe(8000);
+    expect(backoffMs(0, 3600)).toBe(8000);
+    expect(backoffMs(0, 3_000_000)).toBe(8000);
   });
 
   it("uses Math.random by default", () => {

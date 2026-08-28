@@ -41,8 +41,9 @@ export const parseRetryAfter = (
 
 /**
  * How long to wait before the given retry. Exponential backoff with full
- * jitter, capped at eight seconds, unless the server asked for a specific
- * delay via `Retry-After`.
+ * jitter, or the delay the server asked for via `Retry-After`. Either way the
+ * wait is capped at eight seconds; a longer `Retry-After` is left for the
+ * caller to handle via `RateLimitError.retryAfter`.
  * @param attempt Zero-based index of the attempt that just failed.
  * @param retryAfterSeconds Server-requested delay, when present.
  * @param random Source of jitter in `[0, 1)`; injectable for tests.
@@ -54,7 +55,7 @@ export const backoffMs = (
   random: () => number = Math.random,
 ): number => {
   if (retryAfterSeconds !== undefined) {
-    return retryAfterSeconds * 1000;
+    return Math.min(retryAfterSeconds * 1000, MAX_DELAY_MS);
   }
   const exponential = 2 ** attempt * BASE_DELAY_MS;
   return Math.min(exponential + random() * BASE_DELAY_MS, MAX_DELAY_MS);

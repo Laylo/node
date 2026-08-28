@@ -161,15 +161,43 @@ describe("LayloAPIError.fromResponse", () => {
       LayloAPIError.fromResponse(response(500, {}), { error: null }).message,
     ).toBe("Request failed with status 500");
     expect(
-      LayloAPIError.fromResponse(response(500, {}), { error: "nope" }).message,
-    ).toBe("Request failed with status 500");
-    expect(
       LayloAPIError.fromResponse(response(500, {}), { unrelated: true })
         .message,
     ).toBe("Request failed with status 500");
     expect(LayloAPIError.fromResponse(response(500, {}), [1]).message).toBe(
       "Request failed with status 500",
     );
+  });
+
+  it("reads gateway-style bodies that skip the error envelope", () => {
+    const gateway = { message: "Missing Authentication Token" };
+    const fromGateway = LayloAPIError.fromResponse(
+      response(403, gateway),
+      gateway,
+    );
+    expect(fromGateway).toBeInstanceOf(PermissionError);
+    expect(fromGateway.code).toBe("UNKNOWN");
+    expect(fromGateway.message).toBe("Missing Authentication Token");
+
+    const withCode = { code: "THROTTLED", message: "Too Many Requests" };
+    const throttled = LayloAPIError.fromResponse(
+      response(429, withCode),
+      withCode,
+    );
+    expect(throttled.code).toBe("THROTTLED");
+    expect(throttled.message).toBe("Too Many Requests");
+
+    const stringError = { error: "nope" };
+    expect(
+      LayloAPIError.fromResponse(response(500, stringError), stringError)
+        .message,
+    ).toBe("nope");
+
+    const numericError = { error: 42 };
+    expect(
+      LayloAPIError.fromResponse(response(500, numericError), numericError)
+        .message,
+    ).toBe("Request failed with status 500");
   });
 
   it("includes the code in the message when the envelope has no message", () => {
