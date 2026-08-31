@@ -1,5 +1,6 @@
 import { LayloConfigurationError, LayloError } from "./errors.js";
 import type { RequestOptions } from "./request-options.js";
+import type { CursorPageInfo } from "../types.js";
 
 /** Smallest `limit` the API accepts on a paginated request. */
 export const MIN_PAGE_LIMIT = 1;
@@ -8,14 +9,11 @@ export const MAX_PAGE_LIMIT = 200;
 
 /**
  * The `page_info` object the API returns alongside every paginated collection.
+ * An alias of the spec-derived {@link CursorPageInfo}, so it cannot drift from
+ * the published contract.
  * @see https://developers.laylo.com/records/cursor-page-info
  */
-export interface PageInfo {
-  /** Whether another page exists after this one. */
-  has_more: boolean;
-  /** Cursor to pass as `cursor` to fetch the next page, or `null` on the last page. */
-  next_cursor: string | null;
-}
+export type PageInfo = CursorPageInfo;
 
 /**
  * Wire shape of a paginated response: the collection under `data`, keyed by

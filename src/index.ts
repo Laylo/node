@@ -23,3 +23,28 @@ export type {
   PageResponse,
 } from "./core/pagination.js";
 export type { RequestOptions } from "./core/request-options.js";
+export type {
+  Contact,
+  Conversion,
+  ConversionAction,
+  ConversionEvent,
+  ConversionFan,
+  ConversionSubject,
+  CreateConversionDefinitionRequest,
+  CreateConversionDefinitionResponse,
+  CursorPageInfo,
+  Drop,
+  Fan,
+  FanConversion,
+  ListConversionEventsParams,
+  ListConversionsParams,
+  Location,
+  RetrieveConversionDefinitionParams,
+  SegmentConfiguration,
+  SegmentCountResponse,
+  TokenResponse,
+  TrackConversionRequest,
+  TrackConversionResponse,
+  TrackedConversion,
+  VerifyKeyResponse,
+} from "./types.js";
