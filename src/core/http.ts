@@ -1,4 +1,5 @@
 import {
+  AuthenticationError,
   LayloAPIError,
   LayloConfigurationError,
   LayloConnectionError,
@@ -32,10 +33,18 @@ export interface HttpClientOptions {
   source?: string;
 }
 
+/** Supplies and refreshes the access token sent as the bearer. */
+export interface BearerTokenProvider {
+  /** Returns a valid access token, minting one if needed. */
+  getToken(signal?: AbortSignal): Promise<string>;
+  /** Drops the cached token after the API reports it expired. */
+  invalidate(): void;
+}
+
 /** Credentials to attach to a single request. */
 export interface RequestAuth {
-  /** Access token sent as `Authorization: Bearer …`. */
-  bearer?: string;
+  /** Access token sent as `Authorization: Bearer …`, or a provider of one. */
+  bearer?: string | BearerTokenProvider;
   /** API key sent as `X-Api-Key`. */
   apiKey?: string;
 }
@@ -146,18 +155,46 @@ export class HttpClient {
 
   /**
    * Performs a request, retrying transient failures, and returns the parsed
-   * body along with the raw response.
+   * body along with the raw response. When the bearer comes from a provider
+   * and the API reports it expired, the token is re-minted and the request
+   * replayed once.
    * @param request The request to make.
    * @returns The parsed body and the underlying response.
    */
   async request<T>(request: HttpRequest): Promise<HttpResponse<T>> {
+    const bearer = request.auth?.bearer;
+    if (typeof bearer !== "object") {
+      return this.perform(request, bearer);
+    }
+
+    try {
+      return await this.perform(request, await bearer.getToken(request.signal));
+    } catch (error) {
+      // Only the bearer expiring is worth a fresh mint; a 401 about the
+      // customer key ("Invalid Customer API Key", "Customer account not
+      // found") means the X-Api-Key is wrong and a new token cannot help.
+      if (
+        !(error instanceof AuthenticationError) ||
+        !error.message.startsWith("Access token expired")
+      ) {
+        throw error;
+      }
+      bearer.invalidate();
+      return this.perform(request, await bearer.getToken(request.signal));
+    }
+  }
+
+  private async perform<T>(
+    request: HttpRequest,
+    bearer: string | undefined,
+  ): Promise<HttpResponse<T>> {
     const url = joinUrl(
       this.options.baseUrl,
       request.path,
       request.query ? buildQuery(request.query) : undefined,
     );
     parseUrl(url, request);
-    const headers = this.buildHeaders(request);
+    const headers = this.buildHeaders(request, bearer);
     const body =
       request.body === undefined ? undefined : JSON.stringify(request.body);
     const maxRetries = request.retry === false ? 0 : this.options.maxRetries;
@@ -193,7 +230,10 @@ export class HttpClient {
     }
   }
 
-  private buildHeaders(request: HttpRequest): Headers {
+  private buildHeaders(
+    request: HttpRequest,
+    bearer: string | undefined,
+  ): Headers {
     const headers = new Headers({
       Accept: "application/json",
       "User-Agent": this.options.userAgent,
@@ -207,8 +247,8 @@ export class HttpClient {
     if (this.options.source !== undefined) {
       headers.set("X-Laylo-Source", this.options.source);
     }
-    if (request.auth?.bearer !== undefined) {
-      headers.set("Authorization", `Bearer ${request.auth.bearer}`);
+    if (bearer !== undefined) {
+      headers.set("Authorization", `Bearer ${bearer}`);
     }
     if (request.auth?.apiKey !== undefined) {
       headers.set("X-Api-Key", request.auth.apiKey);

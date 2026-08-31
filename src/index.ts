@@ -15,6 +15,7 @@ export {
   ServerError,
 } from "./core/errors.js";
 export type { LayloAPIErrorOptions } from "./core/errors.js";
+export type { TokenResponse } from "./core/auth.js";
 export { VERSION } from "./version.js";
 export type {
   FetchPage,
