@@ -6,7 +6,7 @@ The official Node.js SDK for the [Laylo public API](https://developers.laylo.com
 
 ## Requirements
 
-- Node.js 20.3 or later
+- Node.js 20 or later
 
 ## License
 
