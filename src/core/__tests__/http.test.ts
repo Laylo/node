@@ -631,4 +631,50 @@ describe("HttpClient", () => {
       expect(f2).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("bearer providers", () => {
+    const stubProvider = () => ({
+      getToken: vi.fn(() => Promise.resolve("provider-token-1")),
+      invalidate: vi.fn(),
+    });
+
+    it("bounds the wait for a token by the request's own timeout", async () => {
+      const provider = {
+        getToken: vi.fn(() => new Promise<string>(() => {})),
+        invalidate: vi.fn(),
+      };
+      const { fetch } = fakeFetch([]);
+
+      const failure: unknown = await client(fetch)
+        .request({
+          method: "GET",
+          path: "/v1/drops",
+          timeoutMs: 20,
+          auth: { bearer: provider, apiKey: "customer-key-1" },
+        })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(LayloTimeoutError);
+      expect((failure as Error).message).toContain("GET /v1/drops");
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it("reports a bad base URL against the caller's request, before any mint", async () => {
+      const provider = stubProvider();
+      const { fetch } = fakeFetch([]);
+
+      const failure: unknown = await client(fetch, { baseUrl: "not a url" })
+        .request({
+          method: "GET",
+          path: "/v1/drops",
+          auth: { bearer: provider, apiKey: "customer-key-1" },
+        })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(LayloConfigurationError);
+      expect((failure as Error).message).toContain("GET /v1/drops");
+      expect(provider.getToken).not.toHaveBeenCalled();
+      expect(fetch).not.toHaveBeenCalled();
+    });
+  });
 });

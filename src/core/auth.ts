@@ -75,6 +75,14 @@ export class TokenProvider {
         'clientId must have the form "<userId>.<accessKey>" — copy it from your integrator credentials. See https://developers.laylo.com/authentication',
       );
     }
+    if (
+      typeof options.clientSecret !== "string" ||
+      options.clientSecret.length === 0
+    ) {
+      throw new LayloConfigurationError(
+        "clientSecret is missing — copy it from your integrator credentials. See https://developers.laylo.com/authentication",
+      );
+    }
 
     this.clientId = options.clientId;
     this.clientSecret = options.clientSecret;

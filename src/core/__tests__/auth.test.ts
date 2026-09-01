@@ -23,8 +23,14 @@ const tokenJson = (accessToken: string, expiresIn = 3600) =>
     expires_in: expiresIn,
   });
 
-const unauthorized = (message: string) =>
-  json(401, { error: { code: "UNAUTHORIZED", message } });
+const unauthorized = (message: string, apiKeyStatus?: string) =>
+  json(401, {
+    error: {
+      code: "UNAUTHORIZED",
+      message,
+      ...(apiKeyStatus === undefined ? {} : { apiKeyStatus }),
+    },
+  });
 
 type FakeResponse = Response | ((init: RequestInit) => Promise<Response>);
 
@@ -95,6 +101,26 @@ describe("TokenProvider", () => {
           http,
         }),
     ).toThrow(LayloConfigurationError);
+  });
+
+  it("rejects a missing or empty clientSecret before any request", () => {
+    const { http } = setup([]);
+    expect(
+      () =>
+        new TokenProvider({
+          clientId: "user-1.access-key-1",
+          clientSecret: undefined as unknown as string,
+          http,
+        }),
+    ).toThrow(LayloConfigurationError);
+    expect(
+      () =>
+        new TokenProvider({
+          clientId: "user-1.access-key-1",
+          clientSecret: "",
+          http,
+        }),
+    ).toThrow(/developers\.laylo\.com\/authentication/);
   });
 
   it("mints on first call and serves the cached token within the TTL", async () => {
@@ -322,6 +348,25 @@ describe("HttpClient bearer provider", () => {
     });
   });
 
+  it("re-mints and replays once on a bearer 401 it does not recognize", async () => {
+    // A server-side secret rotation rejects the cached token with a message
+    // that is not "Access token expired…"; one fresh mint must recover it.
+    const { calls, http, provider } = setup([
+      tokenJson("token-1"),
+      unauthorized("Invalid integration token."),
+      tokenJson("token-2"),
+      json(200, { ok: true }),
+    ]);
+
+    const { data } = await http.request(dataRequest(provider));
+
+    expect(data).toEqual({ ok: true });
+    expect(calls).toHaveLength(4);
+    expect(headersOf(calls[3] as Call).get("authorization")).toBe(
+      "Bearer token-2",
+    );
+  });
+
   it("propagates a second expired-token 401 instead of looping", async () => {
     const { calls, http, provider } = setup([
       tokenJson("token-1"),
@@ -336,28 +381,32 @@ describe("HttpClient bearer provider", () => {
     expect(calls).toHaveLength(4);
   });
 
-  it("does not re-mint when the 401 is about the customer key", async () => {
+  it("does not re-mint when the 401 marks the customer key invalid", async () => {
     const { calls, http, provider } = setup([
       tokenJson("token-1"),
-      unauthorized("Invalid Customer API Key"),
+      unauthorized("Invalid Customer API Key", "invalid"),
     ]);
 
     await expect(http.request(dataRequest(provider))).rejects.toBeInstanceOf(
       AuthenticationError,
     );
     expect(calls).toHaveLength(2);
+  });
 
-    const {
-      calls: notFoundCalls,
-      http: http2,
-      provider: provider2,
-    } = setup([
+  it("spends one futile re-mint on an unmarked customer-key 401", async () => {
+    // "Customer account not found" carries no apiKeyStatus marker, so it is
+    // indistinguishable from a stale bearer — the accepted cost of surviving
+    // reworded bearer 401s is a single bounded replay here.
+    const { calls, http, provider } = setup([
       tokenJson("token-1"),
       unauthorized("Customer account not found"),
+      tokenJson("token-2"),
+      unauthorized("Customer account not found"),
     ]);
-    await expect(http2.request(dataRequest(provider2))).rejects.toBeInstanceOf(
+
+    await expect(http.request(dataRequest(provider))).rejects.toBeInstanceOf(
       AuthenticationError,
     );
-    expect(notFoundCalls).toHaveLength(2);
+    expect(calls).toHaveLength(4);
   });
 });

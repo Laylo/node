@@ -37,7 +37,7 @@ export interface HttpClientOptions {
 export interface BearerTokenProvider {
   /** Returns a valid access token, minting one if needed. */
   getToken(signal?: AbortSignal): Promise<string>;
-  /** Drops the given token from the cache after the API reports it expired. */
+  /** Drops the given token from the cache after the API rejects it. */
   invalidate(staleToken?: string): void;
 }
 
@@ -62,7 +62,11 @@ export interface HttpRequest {
   signal?: AbortSignal;
   /** Overrides the client-wide timeout for this request. */
   timeoutMs?: number;
-  /** Set to `false` to disable retries for this request. */
+  /**
+   * Set to `false` to disable retries for this request's own attempts. The
+   * one-shot replay after a rejected bearer still happens, and a token mint
+   * keeps its own schedule.
+   */
   retry?: boolean;
 }
 
@@ -156,44 +160,81 @@ export class HttpClient {
   /**
    * Performs a request, retrying transient failures, and returns the parsed
    * body along with the raw response. When the bearer comes from a provider
-   * and the API reports it expired, the token is re-minted and the request
-   * replayed once.
+   * and the API rejects it with a 401 that does not blame the customer key,
+   * the token is re-minted and the request replayed once.
    * @param request The request to make.
    * @returns The parsed body and the underlying response.
    */
   async request<T>(request: HttpRequest): Promise<HttpResponse<T>> {
     const bearer = request.auth?.bearer;
+    // The null check is runtime defense for untyped callers, not dead code.
     if (bearer === null || typeof bearer !== "object") {
       return this.perform(request, bearer ?? undefined);
     }
 
-    const token = await bearer.getToken(request.signal);
+    // Checked before the token mint so a malformed base URL is reported
+    // against the call the user made, not against the token endpoint.
+    parseUrl(this.urlFor(request), request);
+
+    const token = await this.getTokenWithin(bearer, request);
     try {
       return await this.perform(request, token);
     } catch (error) {
-      // Only the bearer expiring is worth a fresh mint; a 401 about the
-      // customer key ("Invalid Customer API Key", "Customer account not
-      // found") means the X-Api-Key is wrong and a new token cannot help.
+      // Any 401 can mean the bearer went stale (expiry, a server-side secret
+      // rotation) except one that blames the customer key, where a fresh
+      // token cannot help. Bearer 401s carry no machine-readable marker —
+      // only the customer-key rejection does — so replaying on everything
+      // else costs at most one futile mint.
       if (
         !(error instanceof AuthenticationError) ||
-        !error.message.startsWith("Access token expired")
+        error.apiKeyStatus === "invalid"
       ) {
         throw error;
       }
       bearer.invalidate(token);
-      return this.perform(request, await bearer.getToken(request.signal));
+      return this.perform(request, await this.getTokenWithin(bearer, request));
     }
+  }
+
+  // Bounds this caller's wait for a token by their own timeout; a mint shared
+  // with other callers keeps going for them when this wait is cut short.
+  private async getTokenWithin(
+    bearer: BearerTokenProvider,
+    request: HttpRequest,
+  ): Promise<string> {
+    const timeoutMs = request.timeoutMs ?? this.options.timeoutMs;
+    const minted = bearer.getToken(request.signal);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        minted.catch(() => undefined);
+        reject(
+          new LayloTimeoutError(
+            `Request to ${request.method} ${request.path} timed out after ${timeoutMs}ms waiting for an access token`,
+          ),
+        );
+      }, timeoutMs);
+    });
+    try {
+      return await Promise.race([minted, timedOut]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private urlFor(request: HttpRequest): string {
+    return joinUrl(
+      this.options.baseUrl,
+      request.path,
+      request.query ? buildQuery(request.query) : undefined,
+    );
   }
 
   private async perform<T>(
     request: HttpRequest,
     bearer: string | undefined,
   ): Promise<HttpResponse<T>> {
-    const url = joinUrl(
-      this.options.baseUrl,
-      request.path,
-      request.query ? buildQuery(request.query) : undefined,
-    );
+    const url = this.urlFor(request);
     parseUrl(url, request);
     const headers = this.buildHeaders(request, bearer);
     const body =
