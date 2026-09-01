@@ -1,3 +1,24 @@
+import { Laylo } from "./client.js";
+
+export { Laylo } from "./client.js";
+export type { ClientOptions } from "./client.js";
+export {
+  DEFAULT_BASE_URL,
+  DEFAULT_MAX_RETRIES,
+  DEFAULT_TIMEOUT_MS,
+} from "./client.js";
+export type { Auth } from "./resources/auth.js";
+export type {
+  ConversionDefinitions,
+  ConversionEvents,
+  Conversions,
+  ListConversionsInput,
+  TrackConversionEventInput,
+} from "./resources/conversions.js";
+export type { Drops } from "./resources/drops.js";
+export type { FanSegments, Fans } from "./resources/fans.js";
+export type { Keys } from "./resources/keys.js";
+export type { Messages, ScheduledMessages } from "./resources/messages.js";
 export {
   AuthenticationError,
   BadRequestError,
@@ -51,3 +72,5 @@ export type {
   UnsubscriptionCheckResponse,
   VerifyKeyResponse,
 } from "./types.js";
+
+export default Laylo;
