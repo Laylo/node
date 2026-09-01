@@ -40,6 +40,7 @@ export type {
   ListConversionsParams,
   Location,
   RetrieveConversionDefinitionParams,
+  RetrieveConversionDefinitionResponse,
   SegmentConfiguration,
   SegmentCountResponse,
   TokenResponse,

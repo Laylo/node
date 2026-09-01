@@ -19,6 +19,10 @@ export interface RequestOptions {
   signal?: AbortSignal;
   /** Overrides the client-wide timeout, in milliseconds, for this call. */
   timeoutMs?: number;
-  /** Set to `false` to disable automatic retries for this call. */
+  /**
+   * Set to `false` to disable automatic retries for this call's own attempts.
+   * A shared token mint keeps its own schedule, and a rejected bearer is
+   * still replayed once.
+   */
   retry?: boolean;
 }

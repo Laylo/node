@@ -1,4 +1,5 @@
 import {
+  AuthenticationError,
   LayloAPIError,
   LayloConfigurationError,
   LayloConnectionError,
@@ -32,10 +33,18 @@ export interface HttpClientOptions {
   source?: string;
 }
 
+/** Supplies and refreshes the access token sent as the bearer. */
+export interface BearerTokenProvider {
+  /** Returns a valid access token, minting one if needed. */
+  getToken(signal?: AbortSignal): Promise<string>;
+  /** Drops the given token from the cache after the API rejects it. */
+  invalidate(staleToken?: string): void;
+}
+
 /** Credentials to attach to a single request. */
 export interface RequestAuth {
-  /** Access token sent as `Authorization: Bearer …`. */
-  bearer?: string;
+  /** Access token sent as `Authorization: Bearer …`, or a provider of one. */
+  bearer?: string | BearerTokenProvider;
   /** API key sent as `X-Api-Key`. */
   apiKey?: string;
 }
@@ -45,16 +54,20 @@ export interface HttpRequest {
   method: HttpMethod;
   /** Path starting with `/v1/`. */
   path: string;
-  query?: Record<string, unknown>;
+  query?: Record<string, unknown> | undefined;
   body?: unknown;
   headers?: Record<string, string>;
   auth?: RequestAuth;
   /** Caller-owned signal; aborting it rejects with the caller's `AbortError`. */
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
   /** Overrides the client-wide timeout for this request. */
-  timeoutMs?: number;
-  /** Set to `false` to disable retries for this request. */
-  retry?: boolean;
+  timeoutMs?: number | undefined;
+  /**
+   * Set to `false` to disable retries for this request's own attempts. The
+   * one-shot replay after a rejected bearer still happens, and a token mint
+   * keeps its own schedule.
+   */
+  retry?: boolean | undefined;
 }
 
 /** A successful API response. */
@@ -146,18 +159,84 @@ export class HttpClient {
 
   /**
    * Performs a request, retrying transient failures, and returns the parsed
-   * body along with the raw response.
+   * body along with the raw response. When the bearer comes from a provider
+   * and the API rejects it with a 401 that does not blame the customer key,
+   * the token is re-minted and the request replayed once.
    * @param request The request to make.
    * @returns The parsed body and the underlying response.
    */
   async request<T>(request: HttpRequest): Promise<HttpResponse<T>> {
-    const url = joinUrl(
+    const bearer = request.auth?.bearer;
+    // The null check is runtime defense for untyped callers, not dead code.
+    if (bearer === null || typeof bearer !== "object") {
+      return this.perform(request, bearer ?? undefined);
+    }
+
+    // Checked before the token mint so a malformed base URL is reported
+    // against the call the user made, not against the token endpoint.
+    parseUrl(this.urlFor(request), request);
+
+    const token = await this.getTokenWithin(bearer, request);
+    try {
+      return await this.perform(request, token);
+    } catch (error) {
+      // Any 401 can mean the bearer went stale (expiry, a server-side secret
+      // rotation) except one that blames the customer key, where a fresh
+      // token cannot help. Bearer 401s carry no machine-readable marker —
+      // only the customer-key rejection does — so replaying on everything
+      // else costs at most one futile mint.
+      if (
+        !(error instanceof AuthenticationError) ||
+        error.apiKeyStatus === "invalid"
+      ) {
+        throw error;
+      }
+      bearer.invalidate(token);
+      return this.perform(request, await this.getTokenWithin(bearer, request));
+    }
+  }
+
+  // Bounds this caller's wait for a token by their own timeout; a mint shared
+  // with other callers keeps going for them when this wait is cut short.
+  private async getTokenWithin(
+    bearer: BearerTokenProvider,
+    request: HttpRequest,
+  ): Promise<string> {
+    const timeoutMs = request.timeoutMs ?? this.options.timeoutMs;
+    const minted = bearer.getToken(request.signal);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        minted.catch(() => undefined);
+        reject(
+          new LayloTimeoutError(
+            `Request to ${request.method} ${request.path} timed out after ${timeoutMs}ms waiting for an access token`,
+          ),
+        );
+      }, timeoutMs);
+    });
+    try {
+      return await Promise.race([minted, timedOut]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private urlFor(request: HttpRequest): string {
+    return joinUrl(
       this.options.baseUrl,
       request.path,
       request.query ? buildQuery(request.query) : undefined,
     );
+  }
+
+  private async perform<T>(
+    request: HttpRequest,
+    bearer: string | undefined,
+  ): Promise<HttpResponse<T>> {
+    const url = this.urlFor(request);
     parseUrl(url, request);
-    const headers = this.buildHeaders(request);
+    const headers = this.buildHeaders(request, bearer);
     const body =
       request.body === undefined ? undefined : JSON.stringify(request.body);
     const maxRetries = request.retry === false ? 0 : this.options.maxRetries;
@@ -193,7 +272,10 @@ export class HttpClient {
     }
   }
 
-  private buildHeaders(request: HttpRequest): Headers {
+  private buildHeaders(
+    request: HttpRequest,
+    bearer: string | undefined,
+  ): Headers {
     const headers = new Headers({
       Accept: "application/json",
       "User-Agent": this.options.userAgent,
@@ -207,8 +289,8 @@ export class HttpClient {
     if (this.options.source !== undefined) {
       headers.set("X-Laylo-Source", this.options.source);
     }
-    if (request.auth?.bearer !== undefined) {
-      headers.set("Authorization", `Bearer ${request.auth.bearer}`);
+    if (bearer !== undefined) {
+      headers.set("Authorization", `Bearer ${bearer}`);
     }
     if (request.auth?.apiKey !== undefined) {
       headers.set("X-Api-Key", request.auth.apiKey);
