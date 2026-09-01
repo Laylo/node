@@ -1,20 +1,24 @@
 import { LayloConfigurationError } from "../core/errors.js";
 import type { RequestOptions } from "../core/request-options.js";
-import type { Contact, SegmentConfiguration } from "../types.js";
+import type {
+  Contact,
+  SegmentConfiguration,
+  SegmentCountResponse,
+  SubscriptionCheckResponse,
+  UnsubscriptionCheckResponse,
+} from "../types.js";
 import { APIResource, type ResourceContext } from "./base.js";
 
 // Enforced for JS callers; TS callers already get this from the Contact union.
 const assertExactlyOneChannel = (contact: Contact) => {
-  const { email, phone } = contact as { email?: unknown; phone?: unknown };
+  const { email, phone } = contact ?? {};
   const hasEmail = email !== undefined && email !== null;
   const hasPhone = phone !== undefined && phone !== null;
-  if (hasEmail !== hasPhone) {
-    return;
+  if (hasEmail === hasPhone) {
+    throw new LayloConfigurationError(
+      "A contact must carry exactly one of email or phone — pass { email } or { phone }, not both and not neither.",
+    );
   }
-
-  throw new LayloConfigurationError(
-    "A contact must carry exactly one of email or phone — pass { email } or { phone }, not both and not neither.",
-  );
 };
 
 /**
@@ -23,16 +27,16 @@ const assertExactlyOneChannel = (contact: Contact) => {
  */
 export class FanSegments extends APIResource {
   /**
-   * Counts the fans matching a segment configuration. A fan is included when
-   * they match any entry of each include filter (`dropIds`, `conversionIds`,
-   * `locations`) and no entry of any `excluded*` filter, scoped to fans
-   * reachable by `signUpType`.
+   * Counts the fans matching a segment configuration, scoped to fans reachable
+   * by `signUpType`. Each include filter (`dropIds`, `conversionIds`,
+   * `locations`) includes fans matching any of its entries, and each
+   * `excluded*` filter removes fans matching any of its entries.
    * @param configuration The audience filters defining the segment.
    * @param options Per-call overrides.
    * @returns How many fans match the segment.
    * @example
    * ```ts
-   * // SMS fans who RSVP'd to drop A but not drop B
+   * // SMS fans who purchased drop A but not drop B
    * const numberOfFans = await laylo.fans.segments.count({
    *   signUpType: "sms",
    *   dropIds: ["drop_A"],
@@ -45,8 +49,13 @@ export class FanSegments extends APIResource {
     configuration: SegmentConfiguration,
     options?: RequestOptions,
   ): Promise<number> {
-    const { numberOfFans } = await this.request<{ numberOfFans: number }>(
-      { method: "POST", path: "/v1/fans/segments/search", body: configuration },
+    const { numberOfFans } = await this.request<SegmentCountResponse>(
+      {
+        method: "POST",
+        path: "/v1/fans/segments/search",
+        body: configuration,
+        idempotent: true,
+      },
       options,
     );
     return numberOfFans;
@@ -89,8 +98,13 @@ export class Fans extends APIResource {
     options?: RequestOptions,
   ): Promise<boolean> {
     assertExactlyOneChannel(contact);
-    const { isSubscribed } = await this.request<{ isSubscribed: boolean }>(
-      { method: "POST", path: "/v1/fans/subscribed", body: contact },
+    const { isSubscribed } = await this.request<SubscriptionCheckResponse>(
+      {
+        method: "POST",
+        path: "/v1/fans/subscribed",
+        body: contact,
+        idempotent: true,
+      },
       options,
     );
     return isSubscribed;
@@ -115,8 +129,13 @@ export class Fans extends APIResource {
     options?: RequestOptions,
   ): Promise<boolean> {
     assertExactlyOneChannel(contact);
-    const { isUnsubscribed } = await this.request<{ isUnsubscribed: boolean }>(
-      { method: "POST", path: "/v1/fans/unsubscribed", body: contact },
+    const { isUnsubscribed } = await this.request<UnsubscriptionCheckResponse>(
+      {
+        method: "POST",
+        path: "/v1/fans/unsubscribed",
+        body: contact,
+        idempotent: true,
+      },
       options,
     );
     return isUnsubscribed;

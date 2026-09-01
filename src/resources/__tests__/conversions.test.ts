@@ -8,10 +8,7 @@ import type {
   TrackConversionResponse,
 } from "../../types.js";
 import { Conversions } from "../conversions.js";
-import { fakeContext, headersOf, json, type Call } from "./harness.js";
-
-const bodyOf = (call: Call | undefined): Record<string, unknown> =>
-  JSON.parse(call?.init.body as string) as Record<string, unknown>;
+import { bodyOf, fakeContext, headersOf, json } from "./harness.js";
 
 const conversion = (overrides: Partial<Conversion> = {}): Conversion => ({
   action: "TICKET_PURCHASE",

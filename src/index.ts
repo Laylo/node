@@ -43,9 +43,11 @@ export type {
   RetrieveConversionDefinitionResponse,
   SegmentConfiguration,
   SegmentCountResponse,
+  SubscriptionCheckResponse,
   TokenResponse,
   TrackConversionRequest,
   TrackConversionResponse,
   TrackedConversion,
+  UnsubscriptionCheckResponse,
   VerifyKeyResponse,
 } from "./types.js";

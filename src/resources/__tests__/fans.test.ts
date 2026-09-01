@@ -1,9 +1,9 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
 import { LayloConfigurationError } from "../../core/errors.js";
 import type { Contact, SegmentConfiguration } from "../../types.js";
 import { Fans } from "../fans.js";
-import { fakeContext, headersOf, json } from "./harness.js";
+import { bodyOf, fakeContext, headersOf, json } from "./harness.js";
 
 describe("Fans", () => {
   describe("segments.count", () => {
@@ -27,7 +27,7 @@ describe("Fans", () => {
         "Bearer integrator-token",
       );
       expect(call && headersOf(call).get("x-api-key")).toBe("customer-key-1");
-      expect(JSON.parse(call?.init.body as string)).toEqual({
+      expect(bodyOf(call)).toEqual({
         signUpType: "sms",
       });
     });
@@ -54,7 +54,7 @@ describe("Fans", () => {
       await new Fans(context).segments.count(configuration);
 
       const [call] = apiCalls();
-      expect(JSON.parse(call?.init.body as string)).toEqual(configuration);
+      expect(bodyOf(call)).toEqual(configuration);
     });
 
     it("resolves to a number", () => {
@@ -81,7 +81,7 @@ describe("Fans", () => {
       const [call] = apiCalls();
       expect(call?.url).toBe("https://api.example.test/api/v1/fans/subscribed");
       expect(call?.init.method).toBe("POST");
-      expect(JSON.parse(call?.init.body as string)).toEqual({
+      expect(bodyOf(call)).toEqual({
         email: "fan@example.invalid",
       });
     });
@@ -98,7 +98,7 @@ describe("Fans", () => {
 
       expect(isSubscribed).toBe(false);
       const [call] = apiCalls();
-      expect(JSON.parse(call?.init.body as string)).toEqual({
+      expect(bodyOf(call)).toEqual({
         phone: "+12025550100",
       });
     });
@@ -109,6 +109,25 @@ describe("Fans", () => {
       expectTypeOf(
         new Fans(context).isSubscribed({ email: "fan@example.invalid" }),
       ).resolves.toEqualTypeOf<boolean>();
+    });
+
+    it("retries a 503 and returns the second response's value", async () => {
+      vi.useFakeTimers();
+      try {
+        const { context } = fakeContext(
+          [json(503, {}), json(200, { isSubscribed: true })],
+          { apiKey: "customer-key-1" },
+        );
+        const result = new Fans(context).isSubscribed({
+          phone: "+12025550100",
+        });
+
+        await vi.runAllTimersAsync();
+
+        await expect(result).resolves.toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
@@ -129,7 +148,7 @@ describe("Fans", () => {
         "https://api.example.test/api/v1/fans/unsubscribed",
       );
       expect(call?.init.method).toBe("POST");
-      expect(JSON.parse(call?.init.body as string)).toEqual({
+      expect(bodyOf(call)).toEqual({
         phone: "+12025550100",
       });
     });
@@ -165,18 +184,42 @@ describe("Fans", () => {
       expect(calls).toHaveLength(0);
     });
 
-    it("rejects both-fields contacts at compile time", () => {
-      const neverCalled = (fans: Fans) => {
-        // @ts-expect-error — a contact is exactly one of email or phone
-        void fans.isSubscribed({
-          email: "fan@example.invalid",
-          phone: "+12025550100",
-        });
-        // @ts-expect-error — an empty object is not a contact
-        void fans.isUnsubscribed({});
-      };
+    it("accepts an email contact with phone explicitly null", async () => {
+      const { context, apiCalls } = fakeContext(
+        [json(200, { isSubscribed: true })],
+        { apiKey: "customer-key-1" },
+      );
+      const contact = { email: "fan@example.invalid", phone: null };
 
-      expect(neverCalled).toBeTypeOf("function");
+      await new Fans(context).isSubscribed(contact);
+
+      const [call] = apiCalls();
+      expect(bodyOf(call)).toEqual(contact);
+    });
+
+    it("accepts a phone contact with email explicitly null", async () => {
+      const { context, apiCalls } = fakeContext(
+        [json(200, { isUnsubscribed: true })],
+        { apiKey: "customer-key-1" },
+      );
+      const contact = { phone: "+12025550100", email: null };
+
+      await new Fans(context).isUnsubscribed(contact);
+
+      const [call] = apiCalls();
+      expect(bodyOf(call)).toEqual(contact);
+    });
+
+    it("rejects undefined and null contacts before any request", async () => {
+      const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
+
+      await expect(
+        new Fans(context).isSubscribed(undefined as unknown as Contact),
+      ).rejects.toThrow(LayloConfigurationError);
+      await expect(
+        new Fans(context).isSubscribed(null as unknown as Contact),
+      ).rejects.toThrow(LayloConfigurationError);
+      expect(calls).toHaveLength(0);
     });
   });
 });

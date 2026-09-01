@@ -192,3 +192,19 @@ export type CreateConversionDefinitionResponse = SuccessJson<
 export type SegmentCountResponse = SuccessJson<
   operations["fans.segments.search"]
 >;
+
+/**
+ * Response reporting whether a contact currently subscribes to the customer.
+ * @see https://developers.laylo.com/api-reference/fans/fans.subscribed.check
+ */
+export type SubscriptionCheckResponse = SuccessJson<
+  operations["fans.subscribed.check"]
+>;
+
+/**
+ * Response reporting whether a contact unsubscribed from the customer.
+ * @see https://developers.laylo.com/api-reference/fans/fans.unsubscribed.check
+ */
+export type UnsubscriptionCheckResponse = SuccessJson<
+  operations["fans.unsubscribed.check"]
+>;
