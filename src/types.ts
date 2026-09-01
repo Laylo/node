@@ -150,6 +150,14 @@ export type RetrieveConversionDefinitionParams =
   operations["conversions.definition.get"]["parameters"]["query"];
 
 /**
+ * Response wrapping the requested conversion definition.
+ * @see https://developers.laylo.com/api-reference/conversions/conversions.definition.get
+ */
+export type RetrieveConversionDefinitionResponse = SuccessJson<
+  operations["conversions.definition.get"]
+>;
+
+/**
  * Response confirming the presented API key is valid.
  * @see https://developers.laylo.com/api-reference/users/keys.verify
  */

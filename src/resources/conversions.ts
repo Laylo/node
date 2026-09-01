@@ -1,3 +1,4 @@
+import { LayloConfigurationError } from "../core/errors.js";
 import {
   createPage,
   validateLimit,
@@ -14,6 +15,7 @@ import type {
   ListConversionEventsParams,
   ListConversionsParams,
   RetrieveConversionDefinitionParams,
+  RetrieveConversionDefinitionResponse,
   TrackConversionRequest,
   TrackConversionResponse,
 } from "../types.js";
@@ -32,7 +34,7 @@ export type ListConversionsInput = Omit<ListConversionsParams, "action"> & {
 /**
  * A conversion event to track. Identical to the API's request body except
  * `timestamp` also accepts a `Date`, which is sent as its ISO 8601 string.
- * @see https://developers.laylo.com/api-reference/conversions/conversions.events.track
+ * @see https://developers.laylo.com/api-reference/conversions/conversions.track
  */
 export type TrackConversionEventInput = Omit<
   TrackConversionRequest,
@@ -64,16 +66,21 @@ export class ConversionDefinitions extends APIResource {
    *   relatedProductId: "drop_123",
    * });
    * ```
-   * @see https://developers.laylo.com/api-reference/conversions/conversions.definitions.create
+   * @see https://developers.laylo.com/api-reference/conversions/conversions.definition.create
    */
   async create(
     definition: CreateConversionDefinitionRequest,
     options?: RequestOptions,
   ): Promise<Conversion> {
-    const { conversion } = await this.request<CreateConversionDefinitionResponse>(
-      { method: "POST", path: "/v1/conversions/definitions", body: definition },
-      options,
-    );
+    const { conversion } =
+      await this.request<CreateConversionDefinitionResponse>(
+        {
+          method: "POST",
+          path: "/v1/conversions/definitions",
+          body: definition,
+        },
+        options,
+      );
     return conversion;
   }
 
@@ -89,20 +96,21 @@ export class ConversionDefinitions extends APIResource {
    *   name: "VIP ticket",
    * });
    * ```
-   * @see https://developers.laylo.com/api-reference/conversions/conversions.definitions.get
+   * @see https://developers.laylo.com/api-reference/conversions/conversions.definition.get
    */
   async retrieve(
     params: RetrieveConversionDefinitionParams,
     options?: RequestOptions,
   ): Promise<Conversion> {
-    const { conversion } = await this.request<{ conversion: Conversion }>(
-      {
-        method: "GET",
-        path: "/v1/conversions/definitions",
-        query: { action: params.action, name: params.name },
-      },
-      options,
-    );
+    const { conversion } =
+      await this.request<RetrieveConversionDefinitionResponse>(
+        {
+          method: "GET",
+          path: "/v1/conversions/definitions",
+          query: { action: params.action, name: params.name },
+        },
+        options,
+      );
     return conversion;
   }
 }
@@ -136,7 +144,7 @@ export class ConversionEvents extends APIResource {
     params: ListConversionEventsParams,
     options?: RequestOptions,
   ): Promise<Page<FanConversion>> {
-    validateLimit(params.limit);
+    validateLimit(params?.limit);
 
     const fetchEvents = (
       cursor: string | undefined,
@@ -147,10 +155,10 @@ export class ConversionEvents extends APIResource {
           method: "GET",
           path: "/v1/conversions/events",
           query: {
-            action: params.action,
-            name: params.name,
-            limit: params.limit,
-            cursor: cursor ?? params.cursor,
+            action: params?.action,
+            name: params?.name,
+            limit: params?.limit,
+            cursor: cursor ?? params?.cursor,
           },
         },
         callOptions,
@@ -188,12 +196,21 @@ export class ConversionEvents extends APIResource {
    *   // queue the event for a retry
    * }
    * ```
-   * @see https://developers.laylo.com/api-reference/conversions/conversions.events.track
+   * @see https://developers.laylo.com/api-reference/conversions/conversions.track
    */
-  track(
+  async track(
     event: TrackConversionEventInput,
     options?: RequestOptions,
   ): Promise<TrackConversionResponse> {
+    if (
+      event.timestamp instanceof Date &&
+      Number.isNaN(event.timestamp.getTime())
+    ) {
+      throw new LayloConfigurationError(
+        "timestamp is an invalid Date; pass a valid Date or an ISO 8601 string",
+      );
+    }
+
     const timestamp =
       event.timestamp instanceof Date
         ? event.timestamp.toISOString()
@@ -244,10 +261,16 @@ export class Conversions extends APIResource {
    * ```
    * @see https://developers.laylo.com/api-reference/conversions/conversions.list
    */
-  list(
+  async list(
     params?: ListConversionsInput,
     options?: RequestOptions,
   ): Promise<Conversion[]> {
+    if (Array.isArray(params?.action) && params.action.length === 0) {
+      throw new LayloConfigurationError(
+        "action must contain at least one value; omit it to list every conversion",
+      );
+    }
+
     return this.request<Conversion[]>(
       {
         method: "GET",

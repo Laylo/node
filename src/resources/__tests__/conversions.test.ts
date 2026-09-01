@@ -51,6 +51,7 @@ describe("Conversions", () => {
       const conversions = await new Conversions(context).list();
 
       expect(conversions).toEqual([conversion()]);
+      expectTypeOf(conversions).toEqualTypeOf<Conversion[]>();
       const [call] = apiCalls();
       expect(call?.url).toBe("https://api.example.test/api/v1/conversions");
       expect(call?.init.method).toBe("GET");
@@ -89,12 +90,17 @@ describe("Conversions", () => {
       );
     });
 
-    it("returns the typed conversion array", () => {
-      const { context } = fakeContext([], { apiKey: "customer-key-1" });
+    it("rejects an empty action array before any request", async () => {
+      const { context, apiCalls } = fakeContext([], {
+        apiKey: "customer-key-1",
+      });
 
-      expectTypeOf(new Conversions(context).list()).resolves.toEqualTypeOf<
-        Conversion[]
-      >();
+      const failure: unknown = await new Conversions(context)
+        .list({ action: [] })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(LayloConfigurationError);
+      expect(apiCalls()).toHaveLength(0);
     });
   });
 
@@ -170,7 +176,12 @@ describe("Conversions", () => {
   describe("events.list", () => {
     it("issues GET /v1/conversions/events and wraps the conversions collection in a Page", async () => {
       const { context, apiCalls } = fakeContext(
-        [eventsPage(["fan_1", "fan_2"], { has_more: false, next_cursor: null })],
+        [
+          eventsPage(["fan_1", "fan_2"], {
+            has_more: false,
+            next_cursor: null,
+          }),
+        ],
         { apiKey: "customer-key-1" },
       );
 
@@ -180,7 +191,10 @@ describe("Conversions", () => {
         limit: 2,
       });
 
-      expect(page.data).toEqual([fanConversion("fan_1"), fanConversion("fan_2")]);
+      expect(page.data).toEqual([
+        fanConversion("fan_1"),
+        fanConversion("fan_2"),
+      ]);
       expect(page.hasMore).toBe(false);
       expectTypeOf(page).toEqualTypeOf<Page<FanConversion>>();
       const [call] = apiCalls();
@@ -280,9 +294,26 @@ describe("Conversions", () => {
       });
 
       const [call] = apiCalls();
-      expect(bodyOf(call).timestamp).toBe(
-        "2026-08-25T12:30:00.000Z",
-      );
+      expect(bodyOf(call).timestamp).toBe("2026-08-25T12:30:00.000Z");
+    });
+
+    it("rejects an invalid Date timestamp before any request", async () => {
+      const { context, apiCalls } = fakeContext([], {
+        apiKey: "customer-key-1",
+      });
+
+      const failure: unknown = await new Conversions(context).events
+        .track({
+          action: "TICKET_PURCHASE",
+          name: "VIP ticket",
+          timestamp: new Date("not a date"),
+          metadata: { uniqueId: "order_123" },
+          user: { email: "fan@example.invalid" },
+        })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(LayloConfigurationError);
+      expect(apiCalls()).toHaveLength(0);
     });
 
     it("returns a failure status without throwing", async () => {
