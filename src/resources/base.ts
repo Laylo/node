@@ -13,7 +13,7 @@ export interface ResourceContext {
    * Customer API key used when a call does not carry its own: the
    * `forCustomer` scope's key, else the one the client was constructed with.
    */
-  apiKey?: string;
+  apiKey?: string | undefined;
 }
 
 /** One endpoint call as a resource method describes it. */
@@ -63,14 +63,12 @@ export abstract class APIResource {
     const { data } = await this.context.http.request<T>({
       method: endpoint.method,
       path: endpoint.path,
-      ...(endpoint.query === undefined ? {} : { query: endpoint.query }),
-      ...(endpoint.body === undefined ? {} : { body: endpoint.body }),
+      query: endpoint.query,
+      body: endpoint.body,
       auth: { bearer: this.context.tokens, apiKey },
-      ...(options.signal === undefined ? {} : { signal: options.signal }),
-      ...(options.timeoutMs === undefined
-        ? {}
-        : { timeoutMs: options.timeoutMs }),
-      ...(options.retry === undefined ? {} : { retry: options.retry }),
+      signal: options.signal,
+      timeoutMs: options.timeoutMs,
+      retry: options.retry,
     });
     return data;
   }

@@ -16,7 +16,9 @@ export class ScheduledMessages extends APIResource {
    * @example
    * ```ts
    * const scheduled = await laylo.messages.scheduled.list();
-   * const sendTimes = scheduled.map((drop) => new Date(drop.endDate ?? 0));
+   * for (const drop of scheduled) {
+   *   console.log(drop.title, drop.endDate === null ? null : new Date(drop.endDate));
+   * }
    * ```
    * @see https://developers.laylo.com/api-reference/messages/messages.scheduled.list
    */

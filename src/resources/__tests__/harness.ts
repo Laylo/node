@@ -58,11 +58,7 @@ export const fakeContext = (
     clientSecret: "shh-integrator-secret",
     http,
   });
-  const context: ResourceContext = {
-    http,
-    tokens,
-    ...(options.apiKey === undefined ? {} : { apiKey: options.apiKey }),
-  };
+  const context: ResourceContext = { http, tokens, apiKey: options.apiKey };
   return { context, calls, apiCalls: () => calls.slice(1) };
 };
 

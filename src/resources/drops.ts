@@ -15,7 +15,9 @@ export class Drops extends APIResource {
    * @example
    * ```ts
    * const drops = await laylo.drops.list();
-   * const nextDropDay = drops.find((drop) => drop.endDate !== null)?.endDate;
+   * for (const drop of drops) {
+   *   console.log(drop.title, new Date(drop.createdAt));
+   * }
    * ```
    * @see https://developers.laylo.com/api-reference/drops/drops.list
    */
