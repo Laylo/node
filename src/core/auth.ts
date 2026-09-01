@@ -29,6 +29,32 @@ export interface TokenProviderOptions {
 
 const DEFAULT_REFRESH_SKEW_MS = 60_000;
 
+// A mint is shared by every caller waiting on it, so an abort must eject only
+// that caller: the request itself keeps going and still caches its token.
+const rejectOnAbort = <T>(
+  shared: Promise<T>,
+  signal: AbortSignal | undefined,
+): Promise<T> => {
+  if (signal === undefined) {
+    return shared;
+  }
+
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(signal.reason as Error);
+    signal.addEventListener("abort", onAbort, { once: true });
+    shared.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (error: Error) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+  });
+};
+
 interface CachedToken {
   accessToken: string;
   refreshAt: number;
@@ -68,7 +94,8 @@ export class TokenProvider {
   /**
    * Returns a valid access token, minting one only when the cached token is
    * missing or about to expire. Concurrent callers share a single mint.
-   * @param signal Aborts the mint request when signalled.
+   * @param signal Stops this caller's wait when signalled; a mint shared with
+   * other callers carries on without them.
    * @returns The access token to send as `Authorization: Bearer …`.
    */
   async getToken(signal?: AbortSignal): Promise<string> {
@@ -89,7 +116,8 @@ export class TokenProvider {
   /**
    * Mints a fresh token and returns the full response, for integrators who
    * want to call the API directly instead of through the SDK.
-   * @param signal Aborts the mint request when signalled.
+   * @param signal Stops this caller's wait when signalled; a mint shared with
+   * other callers carries on without them.
    * @returns The token endpoint's response.
    * @see https://developers.laylo.com/api-reference/auth/auth.token.create
    */
@@ -98,22 +126,24 @@ export class TokenProvider {
   }
 
   private mint(signal?: AbortSignal): Promise<TokenResponse> {
+    if (signal?.aborted) {
+      return Promise.reject(signal.reason as Error);
+    }
     if (this.inFlightMint === undefined) {
-      this.inFlightMint = this.requestToken(signal).finally(() => {
+      this.inFlightMint = this.requestToken().finally(() => {
         this.inFlightMint = undefined;
       });
     }
 
-    return this.inFlightMint;
+    return rejectOnAbort(this.inFlightMint, signal);
   }
 
-  private async requestToken(signal?: AbortSignal): Promise<TokenResponse> {
+  private async requestToken(): Promise<TokenResponse> {
     const mintedAt = this.clock();
     const { data } = await this.http.request<TokenResponse>({
       method: "POST",
       path: "/v1/auth/token",
       body: { client_id: this.clientId, client_secret: this.clientSecret },
-      ...(signal === undefined ? {} : { signal }),
     });
 
     // The skew is capped at half the lifetime so a short-lived token (the

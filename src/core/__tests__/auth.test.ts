@@ -26,13 +26,18 @@ const tokenJson = (accessToken: string, expiresIn = 3600) =>
 const unauthorized = (message: string) =>
   json(401, { error: { code: "UNAUTHORIZED", message } });
 
-const fakeFetch = (responses: Response[]) => {
+type FakeResponse = Response | ((init: RequestInit) => Promise<Response>);
+
+const fakeFetch = (responses: FakeResponse[]) => {
   const calls: Call[] = [];
   const fetch = vi.fn((input: string, init?: RequestInit) => {
     calls.push({ url: input, init: init ?? {} });
     const next = responses.shift();
     if (next === undefined) {
       return Promise.reject(new Error("fake fetch ran out of responses"));
+    }
+    if (typeof next === "function") {
+      return next(init ?? {});
     }
     return Promise.resolve(next);
   }) as unknown as typeof globalThis.fetch;
@@ -41,7 +46,7 @@ const fakeFetch = (responses: Response[]) => {
 
 const headersOf = (call: Call) => new Headers(call.init.headers);
 
-const setup = (responses: Response[]) => {
+const setup = (responses: FakeResponse[]) => {
   const { fetch, calls } = fakeFetch(responses);
   const http = new HttpClient({
     baseUrl: "https://api.example.test/api",
@@ -146,6 +151,30 @@ describe("TokenProvider", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("keeps the shared mint alive when one caller aborts", async () => {
+    let releaseMint!: () => void;
+    const gate = new Promise<void>((resolve) => (releaseMint = resolve));
+    const { calls, provider } = setup([
+      (init) =>
+        new Promise<Response>((resolve, reject) => {
+          init.signal?.addEventListener("abort", () =>
+            reject(init.signal?.reason as Error),
+          );
+          void gate.then(() => resolve(tokenJson("token-1")));
+        }),
+    ]);
+
+    const controller = new AbortController();
+    const abortedCall = provider.getToken(controller.signal);
+    const sharedCall = provider.getToken();
+    controller.abort(new Error("caller gave up"));
+
+    await expect(abortedCall).rejects.toThrow("caller gave up");
+    releaseMint();
+    await expect(sharedCall).resolves.toBe("token-1");
+    expect(calls).toHaveLength(1);
+  });
+
   it("rejects invalid credentials without caching the failure", async () => {
     const { calls, provider } = setup([
       unauthorized("Invalid client credentials."),
@@ -223,6 +252,22 @@ describe("HttpClient bearer provider", () => {
       "Bearer token-1",
     );
     expect(headersOf(calls[1] as Call).get("x-api-key")).toBe("customer-key");
+  });
+
+  it("treats a null bearer as no bearer", async () => {
+    const { calls, http } = setup([json(200, { ok: true })]);
+
+    await http.request({
+      method: "GET",
+      path: "/v1/drops",
+      auth: {
+        bearer: null as unknown as string,
+        apiKey: "customer-key",
+      },
+    });
+
+    expect(headersOf(calls[0] as Call).has("authorization")).toBe(false);
+    expect(headersOf(calls[0] as Call).get("x-api-key")).toBe("customer-key");
   });
 
   it("re-mints and replays once when the access token expired", async () => {

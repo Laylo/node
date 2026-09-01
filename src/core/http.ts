@@ -163,8 +163,8 @@ export class HttpClient {
    */
   async request<T>(request: HttpRequest): Promise<HttpResponse<T>> {
     const bearer = request.auth?.bearer;
-    if (typeof bearer !== "object") {
-      return this.perform(request, bearer);
+    if (bearer === null || typeof bearer !== "object") {
+      return this.perform(request, bearer ?? undefined);
     }
 
     try {
