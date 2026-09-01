@@ -54,20 +54,20 @@ export interface HttpRequest {
   method: HttpMethod;
   /** Path starting with `/v1/`. */
   path: string;
-  query?: Record<string, unknown>;
+  query?: Record<string, unknown> | undefined;
   body?: unknown;
   headers?: Record<string, string>;
   auth?: RequestAuth;
   /** Caller-owned signal; aborting it rejects with the caller's `AbortError`. */
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
   /** Overrides the client-wide timeout for this request. */
-  timeoutMs?: number;
+  timeoutMs?: number | undefined;
   /**
    * Set to `false` to disable retries for this request's own attempts. The
    * one-shot replay after a rejected bearer still happens, and a token mint
    * keeps its own schedule.
    */
-  retry?: boolean;
+  retry?: boolean | undefined;
 }
 
 /** A successful API response. */
