@@ -37,8 +37,8 @@ export interface HttpClientOptions {
 export interface BearerTokenProvider {
   /** Returns a valid access token, minting one if needed. */
   getToken(signal?: AbortSignal): Promise<string>;
-  /** Drops the cached token after the API reports it expired. */
-  invalidate(): void;
+  /** Drops the given token from the cache after the API reports it expired. */
+  invalidate(staleToken?: string): void;
 }
 
 /** Credentials to attach to a single request. */
@@ -167,8 +167,9 @@ export class HttpClient {
       return this.perform(request, bearer ?? undefined);
     }
 
+    const token = await bearer.getToken(request.signal);
     try {
-      return await this.perform(request, await bearer.getToken(request.signal));
+      return await this.perform(request, token);
     } catch (error) {
       // Only the bearer expiring is worth a fresh mint; a 401 about the
       // customer key ("Invalid Customer API Key", "Customer account not
@@ -179,7 +180,7 @@ export class HttpClient {
       ) {
         throw error;
       }
-      bearer.invalidate();
+      bearer.invalidate(token);
       return this.perform(request, await bearer.getToken(request.signal));
     }
   }

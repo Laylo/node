@@ -85,6 +85,18 @@ describe("TokenProvider", () => {
     ).toThrow(/developers\.laylo\.com\/authentication/);
   });
 
+  it("rejects a missing clientId with a configuration error", () => {
+    const { http } = setup([]);
+    expect(
+      () =>
+        new TokenProvider({
+          clientId: undefined as unknown as string,
+          clientSecret: CLIENT_SECRET,
+          http,
+        }),
+    ).toThrow(LayloConfigurationError);
+  });
+
   it("mints on first call and serves the cached token within the TTL", async () => {
     const { calls, provider, setNow } = setup([tokenJson("token-1")]);
 
@@ -187,6 +199,26 @@ describe("TokenProvider", () => {
     await expect(provider.getToken()).resolves.toBe("token-2");
 
     expect(calls).toHaveLength(2);
+  });
+
+  it("ignores invalidate for a token it no longer holds", async () => {
+    const { calls, provider } = setup([tokenJson("token-1")]);
+    await provider.getToken();
+
+    provider.invalidate("token-0");
+
+    await expect(provider.getToken()).resolves.toBe("token-1");
+    expect(calls).toHaveLength(1);
+  });
+
+  it("keeps the client secret and token out of JSON serialization", async () => {
+    const { provider } = setup([tokenJson("token-1")]);
+    await provider.getToken();
+
+    const serialized = JSON.stringify(provider);
+
+    expect(serialized).not.toContain(CLIENT_SECRET);
+    expect(serialized).not.toContain("token-1");
   });
 
   it("keeps the client secret and token out of inspect output", async () => {

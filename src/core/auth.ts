@@ -67,7 +67,10 @@ export class TokenProvider {
    * @param options Credentials, transport, and cache tuning.
    */
   constructor(options: TokenProviderOptions) {
-    if (!options.clientId.includes(".")) {
+    if (
+      typeof options.clientId !== "string" ||
+      !options.clientId.includes(".")
+    ) {
       throw new LayloConfigurationError(
         'clientId must have the form "<userId>.<accessKey>" — copy it from your integrator credentials. See https://developers.laylo.com/authentication',
       );
@@ -97,8 +100,16 @@ export class TokenProvider {
     return access_token;
   }
 
-  /** Drops the cached token so the next call mints a fresh one. */
-  invalidate(): void {
+  /**
+   * Drops the cached token so the next call mints a fresh one.
+   * @param staleToken When given, only drops the cache while it still holds
+   * this token, so a concurrent caller's fresh token survives.
+   */
+  invalidate(staleToken?: string): void {
+    if (staleToken !== undefined && this.cached?.accessToken !== staleToken) {
+      return;
+    }
+
     this.cached = undefined;
   }
 
@@ -145,6 +156,15 @@ export class TokenProvider {
       refreshAt: mintedAt + ttlMs - skewMs,
     };
     return data;
+  }
+
+  /**
+   * @returns Only the client id — `private` fields are enumerable at runtime,
+   * so without this a structured logger serializing the provider would emit
+   * the secret and the cached token.
+   */
+  toJSON(): { clientId: string } {
+    return { clientId: this.clientId };
   }
 
   /**
