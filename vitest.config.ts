@@ -12,10 +12,14 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/__tests__/**/*.test.ts"],
+    typecheck: {
+      enabled: true,
+      include: ["src/**/__tests__/**/*.test-d.ts"],
+    },
     coverage: {
       provider: "v8",
       include: ["src/**"],
-      exclude: ["src/**/__tests__/**"],
+      exclude: ["src/**/__tests__/**", "src/generated/**", "src/types.ts"],
     },
   },
 });

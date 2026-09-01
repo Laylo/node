@@ -1,0 +1,25 @@
+name: Spec drift
+
+# Regenerates the committed types from the published spec and diffs. Scheduled
+# rather than per-PR so a spec change fails loudly here without gating
+# unrelated work.
+on:
+  schedule:
+    - cron: "0 15 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Spec drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci
+      - run: npm run generate:check
