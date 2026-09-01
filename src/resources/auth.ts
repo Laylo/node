@@ -1,5 +1,6 @@
-import type { TokenProvider, TokenResponse } from "../core/auth.js";
+import type { TokenProvider } from "../core/auth.js";
 import type { RequestOptions } from "../core/request-options.js";
+import type { TokenResponse } from "../types.js";
 
 /**
  * Access-token operations, exposed as `laylo.auth`. The SDK mints and

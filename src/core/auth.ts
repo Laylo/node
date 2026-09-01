@@ -1,17 +1,6 @@
+import type { TokenResponse } from "../types.js";
 import { LayloConfigurationError } from "./errors.js";
 import type { HttpClient } from "./http.js";
-
-/**
- * Body returned by `POST /v1/auth/token`.
- * @see https://developers.laylo.com/api-reference/auth/auth.token.create
- */
-export interface TokenResponse {
-  /** Short-lived JWT to send as `Authorization: Bearer …`. */
-  access_token: string;
-  token_type: "Bearer";
-  /** Seconds until the token expires. */
-  expires_in: number;
-}
 
 /** Settings for the token provider. */
 export interface TokenProviderOptions {
