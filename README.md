@@ -48,8 +48,9 @@ store it.
 
 ### Errors
 
-Every failed call throws a subclass of `LayloError` carrying the status and the
-API's error code, so you can branch on the kind of failure:
+Every error the SDK throws is a subclass of `LayloError`. Failed API responses
+throw a `LayloAPIError` carrying the status and the API's error code, so you can
+branch on the kind of failure:
 
 ```ts
 import { AuthenticationError, RateLimitError } from "@laylo/node";

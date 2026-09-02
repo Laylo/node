@@ -14,8 +14,6 @@ const options: ClientOptions = {
 
 const laylo: Laylo = new Laylo(options);
 
-// One process serving several Laylo accounts either scopes a client per
-// customer or passes the key call by call.
 const scoped: Named = laylo.forCustomer("example-customer-api-key");
 const perCall: RequestOptions = { apiKey: "another-customer-api-key" };
 

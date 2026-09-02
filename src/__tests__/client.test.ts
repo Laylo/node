@@ -19,9 +19,12 @@ import { Fans } from "../resources/fans.js";
 import { Keys } from "../resources/keys.js";
 import { Messages } from "../resources/messages.js";
 import type { VerifyKeyResponse } from "../types.js";
-import { headersOf, json } from "../resources/__tests__/harness.js";
-
-type Call = { url: string; init: RequestInit };
+import {
+  bodyOf,
+  headersOf,
+  json,
+  type Call,
+} from "../resources/__tests__/harness.js";
 
 const token = () =>
   json(200, {
@@ -30,8 +33,6 @@ const token = () =>
     expires_in: 3600,
   });
 
-// Every response the client needs is minted or verified on demand, so the
-// queue is a standing supply rather than a fixed script.
 const fakeFetch = () => {
   const calls: Call[] = [];
   const fetch = vi.fn((input: string, init?: RequestInit) => {
@@ -49,11 +50,6 @@ const fakeFetch = () => {
 
 const isMint = (call: Call) => call.url.endsWith("/v1/auth/token");
 
-const bodyOf = (call: Call | undefined) =>
-  JSON.parse(
-    typeof call?.init.body === "string" ? call.init.body : "null",
-  ) as unknown;
-
 const credentials = {
   clientId: "user-1.access-key-1",
   clientSecret: "shh-integrator-secret",
@@ -65,8 +61,6 @@ const clientWith = (options: Record<string, unknown> = {}) => {
   return { laylo, calls, apiCalls };
 };
 
-// The suite asserts on env fallback, so it starts from a machine with none of
-// the variables set whatever the developer's shell has.
 beforeEach(() => {
   vi.stubEnv("LAYLO_CLIENT_ID", undefined);
   vi.stubEnv("LAYLO_CLIENT_SECRET", undefined);
@@ -147,17 +141,27 @@ describe("credentials", () => {
       LayloConfigurationError,
     );
   });
+
+  it("treats an empty LAYLO_API_KEY as unset", () => {
+    vi.stubEnv("LAYLO_API_KEY", "");
+
+    expect(new Laylo(credentials).toJSON().apiKey).toBeUndefined();
+  });
 });
 
 describe("transport options", () => {
-  it.each(["/api", "events.laylo.com", "ftp://events.laylo.com", "not a url"])(
-    "rejects the baseUrl %s",
-    (baseUrl) => {
-      expect(() => new Laylo({ ...credentials, baseUrl })).toThrow(
-        LayloConfigurationError,
-      );
-    },
-  );
+  it.each([
+    "/api",
+    "events.laylo.com",
+    "ftp://events.laylo.com",
+    "not a url",
+    "https://events.laylo.com/api?env=staging",
+    "https://events.laylo.com/api#v1",
+  ])("rejects the baseUrl %s", (baseUrl) => {
+    expect(() => new Laylo({ ...credentials, baseUrl })).toThrow(
+      LayloConfigurationError,
+    );
+  });
 
   it("accepts a local baseUrl", () => {
     const laylo = new Laylo({
@@ -171,6 +175,12 @@ describe("transport options", () => {
   it.each([-1, 0, 1.5, Number.NaN])("rejects the timeoutMs %s", (timeoutMs) => {
     expect(() => new Laylo({ ...credentials, timeoutMs })).toThrow(
       LayloConfigurationError,
+    );
+  });
+
+  it("names the rejected value, even NaN", () => {
+    expect(() => new Laylo({ ...credentials, timeoutMs: Number.NaN })).toThrow(
+      "received NaN",
     );
   });
 

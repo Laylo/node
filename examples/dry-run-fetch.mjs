@@ -14,14 +14,12 @@ const CANNED = {
 
 const describeHeaders = (headers) =>
   [...new Headers(headers)]
-    .map(([name, value]) => `${name}: ${REDACTED.has(name) ? "***" : value}`)
+    .map(
+      ([name, value]) =>
+        `${name}: ${REDACTED.has(name) ? "[redacted]" : value}`,
+    )
     .join(", ");
 
-/**
- * Builds a `fetch` that never leaves the process: it prints every request the
- * SDK makes, with credentials masked, and answers from a canned table.
- * @returns A `fetch` implementation to pass as the client's `fetch` option.
- */
 export const createDryRunFetch = () => (url, init) => {
   const { pathname } = new URL(url);
   console.log(`${init.method} ${url} [${describeHeaders(init.headers)}]`);

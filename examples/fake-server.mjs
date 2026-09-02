@@ -66,12 +66,6 @@ const verifyKey = (request, response) => {
   send(response, 200, VERIFIED);
 };
 
-/**
- * Starts a stand-in for the Laylo API on an ephemeral port, answering the two
- * endpoints these examples exercise and 404ing everything else.
- * @returns The base URL to construct a client with, and a `close` that shuts
- * the server down.
- */
 export const startFakeServer = () =>
   new Promise((resolve, reject) => {
     const server = createServer((request, response) => {

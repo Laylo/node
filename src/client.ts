@@ -27,44 +27,42 @@ export interface ClientOptions {
    * Integrator client id in the form `<userId>.<accessKey>`; defaults to
    * `process.env.LAYLO_CLIENT_ID`.
    */
-  clientId?: string;
+  clientId?: string | undefined;
   /**
    * Integrator client secret; defaults to `process.env.LAYLO_CLIENT_SECRET`.
    */
-  clientSecret?: string;
+  clientSecret?: string | undefined;
   /**
    * Customer API key used by calls that do not carry their own; defaults to
    * `process.env.LAYLO_API_KEY`. Leave it unset when one process serves
    * several customers and scope each with `forCustomer`.
    */
-  apiKey?: string;
+  apiKey?: string | undefined;
   /**
    * Identifies your integration in the `X-Laylo-Source` header; no default.
    */
-  source?: string;
+  source?: string | undefined;
   /** Origin and path prefix for every request; defaults to `DEFAULT_BASE_URL`. */
-  baseUrl?: string;
+  baseUrl?: string | undefined;
   /**
    * Per-request timeout in milliseconds, a positive integer; defaults to
    * `DEFAULT_TIMEOUT_MS`.
    */
-  timeoutMs?: number;
+  timeoutMs?: number | undefined;
   /**
    * Retries after the first attempt, a non-negative integer where `0` disables
    * retrying; defaults to `DEFAULT_MAX_RETRIES`.
    */
-  maxRetries?: number;
+  maxRetries?: number | undefined;
   /**
    * `fetch` implementation to call the API with; defaults to the global one.
    * Supply your own to route requests through a proxy or a custom agent.
    */
-  fetch?: typeof globalThis.fetch;
+  fetch?: typeof globalThis.fetch | undefined;
 }
 
-// A forCustomer view is another Laylo bound to a different customer key, and
-// it has to reuse the parent's transport and token cache rather than mint
-// again. The parent passes them through the constructor under a symbol the
-// package does not export, so the public signature stays `ClientOptions`.
+// Unexported so forCustomer views can share the parent's transport and token
+// cache without widening the public `ClientOptions`.
 const SHARED = Symbol("laylo.node.shared");
 
 interface SharedCore {
@@ -106,6 +104,11 @@ const validBaseUrl = (baseUrl: string): string => {
       `baseUrl must use http or https, received ${JSON.stringify(baseUrl)}`,
     );
   }
+  if (parsed.search !== "" || parsed.hash !== "") {
+    throw new LayloConfigurationError(
+      `baseUrl must not carry a query string or fragment, received ${JSON.stringify(baseUrl)}`,
+    );
+  }
   return baseUrl;
 };
 
@@ -116,10 +119,16 @@ const wholeNumber = (
 ): number => {
   if (!Number.isInteger(value) || value < min) {
     throw new LayloConfigurationError(
-      `${option} must be ${min === 1 ? "a positive" : "a non-negative"} integer, received ${JSON.stringify(value)}`,
+      `${option} must be ${min === 1 ? "a positive" : "a non-negative"} integer, received ${String(value)}`,
     );
   }
   return value;
+};
+
+// An empty LAYLO_API_KEY= line in a .env means "not set", not "the empty key".
+const envOrUnset = (name: string): string | undefined => {
+  const value = process.env[name];
+  return value === undefined || value === "" ? undefined : value;
 };
 
 const customerKey = (apiKey: string): string => {
@@ -191,7 +200,7 @@ export class Laylo {
       "clientSecret",
       "LAYLO_CLIENT_SECRET",
     );
-    const apiKey = options.apiKey ?? process.env.LAYLO_API_KEY;
+    const apiKey = options.apiKey ?? envOrUnset("LAYLO_API_KEY");
     const baseUrl = validBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
     const timeoutMs = wholeNumber(
       options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
