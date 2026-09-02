@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { checkReadmeSnippets } from "./check-readme.js";
+
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const examplesDir = join(rootDir, "examples");
 const tscBin = createRequire(import.meta.url).resolve("typescript/bin/tsc");
@@ -95,6 +97,8 @@ try {
       examplesDir,
     );
   }
+
+  checkReadmeSnippets(rootDir, examplesDir, fail);
 
   console.log("\nverify:pack passed — the packed tarball runs and typechecks.");
 } finally {

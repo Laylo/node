@@ -30,3 +30,26 @@ jobs:
       - run: npm run build
       - run: npm run check:package
       - run: npm run verify:pack
+
+  changeset:
+    name: Changeset
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+      - run: npm ci
+      - env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch --quiet origin "$BASE_REF"
+          if git diff --name-only "origin/$BASE_REF...HEAD" | grep -q '^src/'; then
+            npx changeset status --since="origin/$BASE_REF"
+          else
+            echo "No src/ changes; changeset not required."
+          fi

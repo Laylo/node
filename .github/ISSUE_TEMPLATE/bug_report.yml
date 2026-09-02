@@ -1,0 +1,37 @@
+name: Bug report
+description: Report a problem with the SDK
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never paste API keys, client secrets, or other credentials into this issue.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: A minimal code sample that reproduces the issue.
+      render: ts
+    validations:
+      required: true
+  - type: input
+    id: sdk-version
+    attributes:
+      label: SDK version
+      placeholder: e.g. 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node version
+      placeholder: e.g. 20.11.0
+    validations:
+      required: true

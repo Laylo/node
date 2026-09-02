@@ -1,8 +1,8 @@
 const assert = require("node:assert/strict");
-const { Laylo, VERSION } = require("@laylo/node");
+const { Laylo, VERSION } = require("@laylo.com/node");
 
 assert.equal(
-  require("@laylo/node"),
+  require("@laylo.com/node"),
   Laylo,
   "requiring the package must give back the Laylo class itself",
 );
@@ -15,7 +15,9 @@ const CREDENTIALS = {
 
 const confirm = (verified) => {
   assert.equal(verified.apiKeyStatus, "valid");
-  console.log(`cjs example ok — @laylo/node ${VERSION}: ${verified.message}`);
+  console.log(
+    `cjs example ok — @laylo.com/node ${VERSION}: ${verified.message}`,
+  );
 };
 
 const main = async () => {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import Laylo, { Laylo as NamedLaylo, VERSION } from "@laylo/node";
+import Laylo, { Laylo as NamedLaylo, VERSION } from "@laylo.com/node";
 import { createDryRunFetch } from "../dry-run-fetch.mjs";
 import { startFakeServer } from "../fake-server.mjs";
 
@@ -17,7 +17,9 @@ const CREDENTIALS = {
 
 const confirm = (verified) => {
   assert.equal(verified.apiKeyStatus, "valid");
-  console.log(`esm example ok — @laylo/node ${VERSION}: ${verified.message}`);
+  console.log(
+    `esm example ok — @laylo.com/node ${VERSION}: ${verified.message}`,
+  );
 };
 
 if (process.argv.includes("--dry-run")) {

@@ -4,7 +4,7 @@ import Laylo, {
   VERSION,
   type ClientOptions,
   type RequestOptions,
-} from "@laylo/node";
+} from "@laylo.com/node";
 
 const options: ClientOptions = {
   clientId: process.env.LAYLO_CLIENT_ID,
@@ -20,7 +20,7 @@ const perCall: RequestOptions = { apiKey: "another-customer-api-key" };
 const describeKeys = async (): Promise<void> => {
   const verified: Awaited<ReturnType<Laylo["keys"]["verify"]>> =
     await scoped.keys.verify();
-  console.log(`@laylo/node ${VERSION}: ${verified.apiKeyStatus}`);
+  console.log(`@laylo.com/node ${VERSION}: ${verified.apiKeyStatus}`);
 
   try {
     await laylo.keys.verify(perCall);
