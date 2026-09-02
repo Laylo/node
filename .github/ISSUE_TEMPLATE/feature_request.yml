@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest something for the SDK
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never paste API keys, client secrets, or other credentials into this issue.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What would you like the SDK to do?
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: What are you trying to build, and how would this help?
+    validations:
+      required: true
+  - type: input
+    id: sdk-version
+    attributes:
+      label: SDK version
+      placeholder: e.g. 1.2.0
+    validations:
+      required: false
+  - type: input
+    id: node-version
+    attributes:
+      label: Node version
+      placeholder: e.g. 20.11.0
+    validations:
+      required: false

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Contact us
+    url: mailto:contact@laylo.com
+    about: Questions, integration help, or anything else not covered by the templates above
+  - name: Documentation
+    url: https://developers.laylo.com
+    about: API reference and guides
