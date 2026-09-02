@@ -39,7 +39,7 @@ console.log(drops.map((drop) => drop.title));
 The SDK uses two kinds of credentials:
 
 - **Integrator credentials** — a `clientId` and `clientSecret` issued to
-  your integration. Request these from [contact@laylo.com](mailto:contact@laylo.com).
+  your integration. Request these from your account manager.
   The SDK uses them to mint and refresh a bearer access token for you; you
   never handle the token directly.
 - **Customer API key** — the `apiKey` of the Laylo account you're acting on
@@ -489,7 +489,6 @@ const { Laylo } = require("@laylo.com/node");
 ## Support
 
 - Docs: [developers.laylo.com](https://developers.laylo.com)
-- Email: [contact@laylo.com](mailto:contact@laylo.com)
 
 ## License
 
