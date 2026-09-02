@@ -27,9 +27,10 @@ npm ci
 
 `npm run generate` pulls `https://developers.laylo.com/openapi.json` and
 writes the result to `src/generated/openapi.ts`. Don't edit that file by
-hand — it's regenerated wholesale. `npm run generate:check` fails CI when
-the committed output doesn't match what regenerating would produce, so run
-`npm run generate` and commit the diff whenever the spec changes.
+hand — it's regenerated wholesale. A scheduled workflow runs
+`npm run generate:check` on weekdays and fails when the committed output no
+longer matches the published spec, so run `npm run generate` and commit the
+diff whenever the spec changes.
 
 Friendly, hand-written aliases for the generated types live in
 `src/types.ts`. Add one there when a generated name is awkward to use in
