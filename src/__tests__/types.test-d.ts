@@ -19,10 +19,12 @@ import type {
   RetrieveConversionDefinitionParams,
   SegmentConfiguration,
   SegmentCountResponse,
+  SubscriptionCheckResponse,
   TokenResponse,
   TrackConversionRequest,
   TrackConversionResponse,
   TrackedConversion,
+  UnsubscriptionCheckResponse,
   VerifyKeyResponse,
 } from "../types.js";
 
@@ -47,6 +49,7 @@ describe("record aliases", () => {
       email: string;
       phone: string;
     }>().not.toMatchTypeOf<Contact>();
+    expectTypeOf<Record<never, never>>().not.toMatchTypeOf<Contact>();
   });
 
   test("CursorPageInfo carries the pagination flags", () => {
@@ -102,5 +105,14 @@ describe("response aliases", () => {
     expectTypeOf<
       SegmentCountResponse["numberOfFans"]
     >().toEqualTypeOf<number>();
+  });
+
+  test("subscription check responses", () => {
+    expectTypeOf<SubscriptionCheckResponse>().toEqualTypeOf<{
+      isSubscribed: boolean;
+    }>();
+    expectTypeOf<UnsubscriptionCheckResponse>().toEqualTypeOf<{
+      isUnsubscribed: boolean;
+    }>();
   });
 });

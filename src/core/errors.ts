@@ -314,9 +314,10 @@ export class NotImplementedError extends LayloAPIError {}
 brand(NotImplementedError, "NotImplementedError");
 
 /**
- * 5xx — something went wrong on Laylo's side. The SDK retries these
- * automatically for GET, PUT, and DELETE before giving up; a POST or PATCH is
- * not replayed since the server may already have applied it.
+ * 5xx — something went wrong on Laylo's side. Retried automatically for
+ * idempotent requests (GET, PUT, DELETE, or a POST/PATCH marked
+ * `idempotent`) before giving up; other writes are not replayed since the
+ * server may already have applied them.
  * @see https://developers.laylo.com/errors
  */
 export class ServerError extends LayloAPIError {}
