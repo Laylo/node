@@ -94,8 +94,9 @@ await handleRequest("customer-api-key");
 
 ## Resources
 
-Every method's last argument is an optional
-[`RequestOptions`](#retries--timeouts) for per-call overrides.
+Every resource method's last argument is an optional
+[`RequestOptions`](#retries--timeouts) for per-call overrides (`auth.createToken`
+is the one exception — it only accepts `signal`).
 
 ### `keys`
 
@@ -147,7 +148,8 @@ Every method's last argument is an optional
 ### `conversions`
 
 - [`conversions.list(params?, options?)`](https://developers.laylo.com/api-reference/conversions/conversions.list) —
-  lists the customer's conversion definitions, optionally filtered by action.
+  lists the customer's conversion definitions, optionally filtered by
+  `action` and/or `relatedProductId`.
 
   ```ts
   import Laylo from "@laylo.com/node";
@@ -412,10 +414,18 @@ try {
 
 ## Retries & timeouts
 
-Transient failures — network errors, `408`/`429`/`5xx` responses — are
-retried automatically with exponential backoff, up to `DEFAULT_MAX_RETRIES`
-(2) times. Each request has a `DEFAULT_TIMEOUT_MS` (30,000ms) timeout.
-Override either on the client or per call:
+A response with status `408`, `429`, `500`, `502`, `503`, or `504` is retried
+automatically with exponential backoff, up to `DEFAULT_MAX_RETRIES` (2)
+times. A `429` is retried regardless of method; the other statuses are only
+retried for idempotent requests — reads, and writes the SDK itself marks
+idempotent, such as `fans.isSubscribed` and `fans.segments.count`. A
+non-idempotent write like `conversions.events.track` is not replayed on a
+`5xx`, since the server may already have applied it. Each request also has a
+`DEFAULT_TIMEOUT_MS` (30,000ms) timeout.
+
+`maxRetries` and the default `timeoutMs` are set once, on the client. Per
+call, you can override the timeout, disable retries for just that call with
+`retry: false`, or abort it with an `AbortSignal`:
 
 ```ts
 import Laylo from "@laylo.com/node";
@@ -429,7 +439,11 @@ const laylo = new Laylo({
 });
 
 const controller = new AbortController();
-await laylo.drops.list({ timeoutMs: 5_000, signal: controller.signal });
+await laylo.drops.list({
+  timeoutMs: 5_000,
+  retry: false,
+  signal: controller.signal,
+});
 ```
 
 ## TypeScript
@@ -474,8 +488,8 @@ const { Laylo } = require("@laylo.com/node");
 
 ## Support
 
-Docs: [developers.laylo.com](https://developers.laylo.com)
-Email: [contact@laylo.com](mailto:contact@laylo.com)
+- Docs: [developers.laylo.com](https://developers.laylo.com)
+- Email: [contact@laylo.com](mailto:contact@laylo.com)
 
 ## License
 
