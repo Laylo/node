@@ -27,6 +27,10 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
       - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
       - run: npm run build
       - run: npm run check:package
       - run: npm run verify:pack
@@ -35,9 +39,10 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - uses: changesets/action@v1
         with:
+          version: npm run version:packages
           publish: npm run release
           createGithubReleases: true
-          title: "Release @laylo.com/node"
+          title: "Version Packages"
           commit: "Version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

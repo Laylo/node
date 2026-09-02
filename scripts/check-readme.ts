@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 const tscBin = createRequire(import.meta.url).resolve("typescript/bin/tsc");
 
-const TS_FENCE = "```ts";
+const TS_FENCES = ["```ts", "```typescript"];
 const CLOSING_FENCE = "```";
 
 interface Snippet {
@@ -26,7 +26,7 @@ const extractTsBlocks = (
 
   lines.forEach((line, lineIndex) => {
     if (open === undefined) {
-      if (line.trim() === TS_FENCE) {
+      if (TS_FENCES.includes(line.trim())) {
         open = { line: lineIndex + 1, code: [] };
       }
       return;
@@ -152,14 +152,26 @@ export const checkReadmeSnippets = (
     }
 
     if (status !== 0) {
-      const failed = /snippet-(\d+)\.ts/.exec(output);
-      if (failed?.[1] !== undefined) {
-        const index = Number(failed[1]);
-        const snippet = snippets.find((candidate) => candidate.index === index);
-        fail(
-          `README.md \`ts\` block #${String(index)}${
+      const indexes = [
+        ...new Set(
+          [...output.matchAll(/snippet-(\d+)\.ts/g)].map((match) =>
+            Number(match[1]),
+          ),
+        ),
+      ].sort((a, b) => a - b);
+      if (indexes.length > 0) {
+        const described = indexes.map((index) => {
+          const snippet = snippets.find(
+            (candidate) => candidate.index === index,
+          );
+          return `#${String(index)}${
             snippet === undefined ? "" : ` (line ${String(snippet.line)})`
-          } failed to typecheck under ${resolution} resolution`,
+          }`;
+        });
+        fail(
+          `README.md \`ts\` block${indexes.length > 1 ? "s" : ""} ${described.join(
+            ", ",
+          )} failed to typecheck under ${resolution} resolution`,
         );
       }
       fail(

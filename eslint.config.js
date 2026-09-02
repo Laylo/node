@@ -12,6 +12,7 @@ export default tseslint.config(
       "dist/",
       "coverage/",
       "node_modules/",
+      ".claude/",
       "src/generated/",
       // Typechecked by its own two tsconfigs, against the packed tarball.
       "examples/ts/",
