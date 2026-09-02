@@ -1,10 +1,10 @@
 declare const __SDK_VERSION__: string;
 
 /**
- * The version of `@laylo/node` in use, matching the published `package.json`.
+ * The version of `@laylo.com/node` in use, matching the published `package.json`.
  * @example
  * ```ts
- * import { VERSION } from "@laylo/node";
+ * import { VERSION } from "@laylo.com/node";
  * console.log(`Laylo SDK v${VERSION}`);
  * ```
  * @see https://developers.laylo.com

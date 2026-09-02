@@ -11,6 +11,6 @@ installs that tarball into `examples/`, and runs the ESM, CommonJS, and
 TypeScript consumers against it — the last two typechecked under both `node16`
 and `bundler` module resolution against our shipped declarations. Everything
 else in CI tests the source tree; this is the only check that someone doing
-`npm install @laylo/node` gets a package whose exports map, dual builds, and
+`npm install @laylo.com/node` gets a package whose exports map, dual builds, and
 `.d.ts` files actually resolve. Run it before publishing, and whenever you
 touch `package.json`, `tsup.config.ts`, or the shape of the public exports.

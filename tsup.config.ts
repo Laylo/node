@@ -17,7 +17,7 @@ export default defineConfig({
   define: {
     __SDK_VERSION__: JSON.stringify(version),
   },
-  // require("@laylo/node") hands back the class itself; named exports ride
+  // require("@laylo.com/node") hands back the class itself; named exports ride
   // along as its properties.
   footer: ({ format }) =>
     format === "cjs"

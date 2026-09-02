@@ -1,5 +1,5 @@
 {
-  "name": "@laylo/node",
+  "name": "@laylo.com/node",
   "version": "0.1.0",
   "description": "Official Laylo Node.js SDK for the Laylo public API",
   "license": "MIT",

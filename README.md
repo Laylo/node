@@ -1,11 +1,11 @@
-# @laylo/node
+# @laylo.com/node
 
 The official Node.js SDK for the [Laylo public API](https://developers.laylo.com).
 
 ## Installation
 
 ```sh
-npm install @laylo/node
+npm install @laylo.com/node
 ```
 
 ## Usage
@@ -17,7 +17,7 @@ environment when you do not pass them, and mints and refreshes access tokens
 for you.
 
 ```ts
-import Laylo from "@laylo/node";
+import Laylo from "@laylo.com/node";
 
 const laylo = new Laylo();
 
@@ -28,7 +28,7 @@ console.log(verified.message);
 CommonJS works the same way:
 
 ```js
-const { Laylo } = require("@laylo/node");
+const { Laylo } = require("@laylo.com/node");
 ```
 
 ### Serving several customers
@@ -53,7 +53,7 @@ throw a `LayloAPIError` carrying the status and the API's error code, so you can
 branch on the kind of failure:
 
 ```ts
-import { AuthenticationError, RateLimitError } from "@laylo/node";
+import { AuthenticationError, RateLimitError } from "@laylo.com/node";
 ```
 
 Transient failures and rate limits are retried for you before they surface.
