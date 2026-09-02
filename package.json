@@ -1,6 +1,6 @@
 {
   "name": "@laylo.com/node",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Official Laylo Node.js SDK for the Laylo public API",
   "license": "MIT",
   "type": "module",
@@ -61,10 +61,13 @@
     "verify:pack": "npm run build && tsx scripts/verify-pack.ts",
     "generate": "tsx scripts/generate-types.ts",
     "generate:check": "tsx scripts/generate-types.ts --check",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "changeset": "changeset",
+    "release": "changeset publish"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
+    "@changesets/cli": "^3.0.1",
     "@eslint/js": "^9.17.0",
     "@types/node": "^20.17.10",
     "@vitest/coverage-v8": "^2.1.8",
