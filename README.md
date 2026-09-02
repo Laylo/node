@@ -53,8 +53,6 @@ constructor: `LAYLO_CLIENT_ID`, `LAYLO_CLIENT_SECRET`, and `LAYLO_API_KEY`.
 ```ts
 import Laylo from "@laylo.com/node";
 
-// Reads LAYLO_CLIENT_ID, LAYLO_CLIENT_SECRET, and LAYLO_API_KEY from the
-// environment.
 const laylo = new Laylo();
 
 await laylo.keys.verify();
@@ -120,8 +118,9 @@ is the one exception — it only accepts `signal`).
       error.apiKeyStatus === "invalid"
     ) {
       console.log("reject the key");
+    } else {
+      throw error;
     }
-    throw error;
   }
   ```
 
