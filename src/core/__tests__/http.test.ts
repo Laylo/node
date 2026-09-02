@@ -485,6 +485,20 @@ describe("HttpClient", () => {
       }
     });
 
+    it("retries a POST marked idempotent after a 503 and succeeds", async () => {
+      const { fetch } = fakeFetch([json(503, {}), json(200, { ok: true })]);
+      const result = client(fetch).request({
+        method: "POST",
+        path: "/v1/x",
+        body: { a: 1 },
+        idempotent: true,
+      });
+
+      await vi.runAllTimersAsync();
+      await expect(result).resolves.toMatchObject({ data: { ok: true } });
+      expect(fetch).toHaveBeenCalledTimes(2);
+    });
+
     it("still retries a POST that never got a response", async () => {
       const { fetch } = fakeFetch([
         new TypeError("fetch failed"),

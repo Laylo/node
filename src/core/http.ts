@@ -68,6 +68,11 @@ export interface HttpRequest {
    * keeps its own schedule.
    */
   retry?: boolean | undefined;
+  /**
+   * Marks a POST or PATCH as safe to replay so transient failures are
+   * retried like a GET. Only for reads that happen to use a write verb.
+   */
+  idempotent?: boolean | undefined;
 }
 
 /** A successful API response. */
@@ -240,7 +245,7 @@ export class HttpClient {
     const body =
       request.body === undefined ? undefined : JSON.stringify(request.body);
     const maxRetries = request.retry === false ? 0 : this.options.maxRetries;
-    const idempotent = isIdempotent(request.method);
+    const idempotent = request.idempotent ?? isIdempotent(request.method);
 
     for (let attempt = 0; ; attempt += 1) {
       const outcome = await this.send(url, request, headers, body);

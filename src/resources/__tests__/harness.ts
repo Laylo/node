@@ -63,3 +63,6 @@ export const fakeContext = (
 };
 
 export const headersOf = (call: Call) => new Headers(call.init.headers);
+
+export const bodyOf = (call: Call | undefined): Record<string, unknown> =>
+  JSON.parse(call?.init.body as string) as Record<string, unknown>;
