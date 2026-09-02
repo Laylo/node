@@ -8,7 +8,14 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist/", "coverage/", "node_modules/", "src/generated/"],
+    ignores: [
+      "dist/",
+      "coverage/",
+      "node_modules/",
+      "src/generated/",
+      // Typechecked by its own two tsconfigs, against the packed tarball.
+      "examples/ts/",
+    ],
   },
   {
     languageOptions: {
@@ -55,6 +62,10 @@ export default tseslint.config(
   {
     files: ["**/*.js", "**/*.mjs", "**/*.cjs"],
     ...tseslint.configs.disableTypeChecked,
+  },
+  {
+    files: ["examples/**/*.cjs"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
   },
   prettier,
 );

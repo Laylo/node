@@ -1,6 +1,6 @@
 {
   "name": "@laylo/node",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Official Laylo Node.js SDK for the Laylo public API",
   "license": "MIT",
   "type": "module",
@@ -58,6 +58,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:package": "publint && attw --pack",
+    "verify:pack": "npm run build && tsx scripts/verify-pack.ts",
     "generate": "tsx scripts/generate-types.ts",
     "generate:check": "tsx scripts/generate-types.ts --check",
     "prepublishOnly": "npm run build"
