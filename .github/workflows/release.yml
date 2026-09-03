@@ -36,12 +36,14 @@ jobs:
       - run: npm run check:package
       - run: npm run verify:pack
       - run: npm publish --dry-run --provenance
-      - uses: changesets/action@v2
+      # v2 of the action requires Changesets CLI v3, which needs Node 22.
+      # v1 supports trusted publishing as long as NPM_TOKEN is not set.
+      - uses: changesets/action@v1
         with:
-          version-script: npm run version:packages
-          publish-script: npm run release
-          create-github-releases: true
-          pr-title: "Version Packages"
-          commit-message: "Version packages"
+          version: npm run version:packages
+          publish: npm run release
+          createGithubReleases: true
+          title: "Version Packages"
+          commit: "Version packages"
         env:
           NPM_CONFIG_PROVENANCE: true
