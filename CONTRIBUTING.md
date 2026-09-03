@@ -2,7 +2,7 @@
 
 ## Setup
 
-Requires Node 20+.
+Requires Node 22+ for development (the Changesets release tooling needs it). The SDK itself supports Node 20+.
 
 ```sh
 npm ci
