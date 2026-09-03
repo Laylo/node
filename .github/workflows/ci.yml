@@ -22,7 +22,9 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci
+      # Dev tooling (Changesets v3) requires Node 22. The SDK itself still
+      # supports Node 20, so install without the engine check on that leg.
+      - run: npm ci --engine-strict=false
       - run: npm run lint
       - run: npm run format:check
       - run: npm run typecheck
@@ -41,7 +43,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 22.x
           cache: npm
       - run: npm ci
       - env:
