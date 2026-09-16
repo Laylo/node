@@ -54,7 +54,9 @@ Enterprise accounts have a third option for naming the customer. If the
 account you're acting on sits under your integration's own Laylo account, pass
 its user id as `creatorId` instead of collecting an API key from it. It's sent
 as the `X-Creator-Id` header, and falls back to `LAYLO_CREATOR_ID`. Set one of
-`apiKey` or `creatorId`, not both. See
+`apiKey` or `creatorId`, not both — including in the environment, where having
+`LAYLO_API_KEY` and `LAYLO_CREATOR_ID` both set fails at construction rather
+than picking one. See
 [Acting on accounts under your own](#acting-on-accounts-under-your-own).
 
 ```ts
@@ -135,7 +137,9 @@ is the one exception — it only accepts `signal`).
 
 - [`keys.verify(options?)`](https://developers.laylo.com/api-reference/users/keys.verify) —
   checks that a customer API key is valid; the way to validate a key a
-  customer just gave you before you store it.
+  customer just gave you before you store it. For a customer named by
+  `creatorId` there is no key to check, so it confirms the account is on your
+  roster and resolves with `apiKeyStatus: "not_provided"`.
 
   ```ts
   import Laylo, { AuthenticationError } from "@laylo.com/node";

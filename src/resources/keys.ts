@@ -18,9 +18,13 @@ export class Keys extends APIResource {
    * `apiKeyStatus: "not_provided"`. An id outside your roster throws
    * `PermissionError`.
    * @param options Per-call overrides; pass `apiKey` here to check a key other
-   * than the client's.
+   * than the client's. Omitting it falls back to the client's customer, which
+   * for a `creatorId` client resolves without checking any key — read
+   * `apiKeyStatus` rather than treating a resolved promise as a valid key.
    * @returns Confirmation that the customer resolved, and whether a key was
-   * checked.
+   * checked. This `apiKeyStatus` is a different field from the one on
+   * `AuthenticationError`: a rejected key throws, so `"invalid"` never
+   * arrives here.
    * @example
    * ```ts
    * try {

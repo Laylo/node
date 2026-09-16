@@ -240,6 +240,38 @@ describe("nextPage", () => {
     expect(calls[0]?.options).toEqual({ creatorId: "usr_1", timeoutMs: 1_000 });
     expect(calls[0]?.options).not.toHaveProperty("apiKey");
   });
+
+  it("leaves an override naming both customers for the resolver to refuse", async () => {
+    const { fetchNext, calls } = source({ c1: response("events", [2], null) });
+    const page = createPage(
+      response("events", [1], "c1"),
+      "events",
+      fetchNext,
+      { creatorId: "usr_1" },
+    );
+
+    await page.nextPage({ apiKey: "key-b", creatorId: "usr_2" });
+
+    expect(calls[0]?.options).toMatchObject({
+      apiKey: "key-b",
+      creatorId: "usr_2",
+    });
+  });
+
+  it("refuses a customer override set to undefined instead of switching customer", async () => {
+    const { fetchNext } = source({ c1: response("events", [2], null) });
+    const page = createPage(
+      response("events", [1], "c1"),
+      "events",
+      fetchNext,
+      { apiKey: "key-a" },
+    );
+
+    await expect(
+      // Only a JavaScript caller can get here; the option type forbids it.
+      page.nextPage({ apiKey: undefined } as unknown as RequestOptions),
+    ).rejects.toThrow(LayloConfigurationError);
+  });
 });
 
 describe("toArray", () => {

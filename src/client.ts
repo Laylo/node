@@ -150,10 +150,14 @@ const customerFromOptionsOrEnv = (
   if (options.apiKey !== undefined || options.creatorId !== undefined) {
     return customerFrom(options);
   }
-  return customerFrom({
-    apiKey: envOrUnset("LAYLO_API_KEY"),
-    creatorId: envOrUnset("LAYLO_CREATOR_ID"),
-  });
+  const apiKey = envOrUnset("LAYLO_API_KEY");
+  const creatorId = envOrUnset("LAYLO_CREATOR_ID");
+  if (apiKey !== undefined && creatorId !== undefined) {
+    throw new LayloConfigurationError(
+      "Set either LAYLO_API_KEY or LAYLO_CREATOR_ID to name the customer, not both",
+    );
+  }
+  return customerFrom({ apiKey, creatorId });
 };
 
 // Enough of the key to tell two apart in a log without disclosing either.

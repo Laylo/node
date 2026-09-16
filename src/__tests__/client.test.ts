@@ -203,6 +203,15 @@ describe("credentials", () => {
     expect(() => new Laylo(credentials)).toThrow(LayloConfigurationError);
   });
 
+  it("names the environment variables, not the options, when the environment clashes", () => {
+    vi.stubEnv("LAYLO_API_KEY", "env-api-key");
+    vi.stubEnv("LAYLO_CREATOR_ID", "env-user");
+
+    expect(() => new Laylo(credentials)).toThrow(
+      /LAYLO_API_KEY or LAYLO_CREATOR_ID/,
+    );
+  });
+
   it("rejects an empty creatorId", () => {
     expect(() => new Laylo({ ...credentials, creatorId: "" })).toThrow(
       LayloConfigurationError,

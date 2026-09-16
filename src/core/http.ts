@@ -194,7 +194,10 @@ export class HttpClient {
       // rotation) except one that blames the customer key, where a fresh
       // token cannot help. Bearer 401s carry no machine-readable marker —
       // only the customer-key rejection does — so replaying on everything
-      // else costs at most one futile mint.
+      // else costs at most one futile mint. A creator id the API cannot
+      // resolve is permanent but arrives unmarked, so it pays that cost on
+      // every call, and the re-mint is shared with the client's other
+      // customers.
       if (
         !(error instanceof AuthenticationError) ||
         error.apiKeyStatus === "invalid"

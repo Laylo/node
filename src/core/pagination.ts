@@ -150,17 +150,32 @@ const collectionOf = <T, K extends string>(
   return items;
 };
 
-// `apiKey` and `creatorId` are mutually exclusive, so an override naming one
-// customer drops the other rather than merging into an object carrying both,
-// which the customer resolver rejects.
+// An override naming one customer drops the page's other field, which would
+// otherwise merge into an object carrying both. Naming both is left to the
+// resolver to refuse, and naming one as undefined is refused here: letting it
+// through would quietly fetch the rest of the collection as the client's
+// default customer.
 const layerRequestOptions = (
   options: RequestOptions | undefined,
   overrides: RequestOptions,
 ): RequestOptions => {
   const merged: RequestOptions = { ...options, ...overrides };
-  if (overrides.apiKey !== undefined) {
+  const namesApiKey = "apiKey" in overrides;
+  const namesCreatorId = "creatorId" in overrides;
+  if (!namesApiKey && !namesCreatorId) {
+    return merged;
+  }
+  if (
+    (namesApiKey && overrides.apiKey === undefined) ||
+    (namesCreatorId && overrides.creatorId === undefined)
+  ) {
+    throw new LayloConfigurationError(
+      "Omit apiKey and creatorId to keep the page's customer; setting one to undefined does not clear it",
+    );
+  }
+  if (namesApiKey && !namesCreatorId) {
     delete merged.creatorId;
-  } else if (overrides.creatorId !== undefined) {
+  } else if (namesCreatorId && !namesApiKey) {
     delete merged.apiKey;
   }
   return merged;

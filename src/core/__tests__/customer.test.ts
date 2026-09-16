@@ -4,6 +4,18 @@ import { customerFrom } from "../customer.js";
 import { LayloConfigurationError } from "../errors.js";
 
 describe("customerFrom", () => {
+  it.each(["creatorId", "apiKey"] as const)(
+    "rejects a %s carrying a control character",
+    (field) => {
+      expect(() => customerFrom({ [field]: "usr_1\n" })).toThrow(
+        LayloConfigurationError,
+      );
+      expect(() => customerFrom({ [field]: "usr_1\n" })).toThrow(
+        /control characters/,
+      );
+    },
+  );
+
   it("names a customer by API key", () => {
     expect(customerFrom({ apiKey: "key-1" })).toEqual({ apiKey: "key-1" });
   });

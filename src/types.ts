@@ -158,7 +158,8 @@ export type RetrieveConversionDefinitionResponse = SuccessJson<
 >;
 
 /**
- * Response confirming the presented API key is valid.
+ * Response confirming the customer resolved: `apiKeyStatus` is `"valid"` when
+ * a key was checked, or `"not_provided"` for a customer named by `creatorId`.
  * @see https://developers.laylo.com/api-reference/users/keys.verify
  */
 export type VerifyKeyResponse = SuccessJson<operations["keys.verify"]>;

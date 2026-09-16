@@ -23,9 +23,30 @@ export interface CustomerFields {
   creatorId?: string | undefined;
 }
 
-const nonEmpty = (value: unknown, description: string): string => {
+const hasControlCharacter = (value: string): boolean => {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code < 0x20 || code === 0x7f) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const customerValue = (
+  value: unknown,
+  field: string,
+  description: string,
+): string => {
   if (typeof value !== "string" || value.length === 0) {
     throw new LayloConfigurationError(description);
+  }
+  // Sent verbatim as a header value, where fetch would otherwise reject a
+  // control character with a TypeError rather than a LayloError.
+  if (hasControlCharacter(value)) {
+    throw new LayloConfigurationError(
+      `${field} must not contain control characters`,
+    );
   }
   return value;
 };
@@ -46,13 +67,18 @@ export const customerFrom = (fields: CustomerFields): Customer | undefined => {
   }
   if (apiKey !== undefined) {
     return {
-      apiKey: nonEmpty(apiKey, "apiKey must be a non-empty customer API key"),
+      apiKey: customerValue(
+        apiKey,
+        "apiKey",
+        "apiKey must be a non-empty customer API key",
+      ),
     };
   }
   if (creatorId !== undefined) {
     return {
-      creatorId: nonEmpty(
+      creatorId: customerValue(
         creatorId,
+        "creatorId",
         "creatorId must be a non-empty Laylo user id",
       ),
     };
