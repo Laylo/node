@@ -1,4 +1,5 @@
 import type { TokenProvider } from "../core/auth.js";
+import { customerFrom, type Customer } from "../core/customer.js";
 import { LayloConfigurationError } from "../core/errors.js";
 import type { HttpClient, HttpMethod } from "../core/http.js";
 import type { RequestOptions } from "../core/request-options.js";
@@ -10,10 +11,10 @@ export interface ResourceContext {
   /** Mints and refreshes the access token sent as the bearer. */
   tokens: TokenProvider;
   /**
-   * Customer API key used when a call does not carry its own: the
-   * `forCustomer` scope's key, else the one the client was constructed with.
+   * Customer used when a call does not name its own: the `forCustomer`
+   * scope's, else the one the client was constructed with.
    */
-  apiKey?: string | undefined;
+  customer?: Customer | undefined;
 }
 
 /** One endpoint call as a resource method describes it. */
@@ -32,7 +33,7 @@ export interface EndpointRequest {
 
 /**
  * Base class every resource extends. Owns what all endpoints share: resolving
- * the customer key for a call and attaching credentials before handing the
+ * the customer for a call and attaching credentials before handing the
  * request to the transport.
  */
 export abstract class APIResource {
@@ -40,16 +41,16 @@ export abstract class APIResource {
 
   /**
    * @param context The client's shared transport, token provider, and default
-   * customer key.
+   * customer.
    */
   constructor(context: ResourceContext) {
     this.context = context;
   }
 
   /**
-   * Performs one endpoint call: resolves the customer key (per-request over
-   * the context's), attaches the bearer from the token provider, and returns
-   * the parsed body.
+   * Performs one endpoint call: resolves the customer (per-request over the
+   * context's), attaches the bearer from the token provider, and returns the
+   * parsed body.
    * @param endpoint The endpoint to call.
    * @param options Per-call overrides from the method's trailing argument.
    * @returns The parsed response body.
@@ -58,10 +59,10 @@ export abstract class APIResource {
     endpoint: EndpointRequest,
     options: RequestOptions = {},
   ): Promise<T> {
-    const apiKey = options.apiKey ?? this.context.apiKey;
-    if (apiKey === undefined) {
+    const customer = customerFrom(options) ?? this.context.customer;
+    if (customer === undefined) {
       throw new LayloConfigurationError(
-        `${endpoint.method} ${endpoint.path} needs a customer API key — pass apiKey in this call's options, scope a client with forCustomer(apiKey), or set apiKey when constructing the client.`,
+        `${endpoint.method} ${endpoint.path} needs a customer — pass apiKey or creatorId in this call's options, scope a client with forCustomer(…), or set apiKey or creatorId when constructing the client.`,
       );
     }
 
@@ -71,7 +72,7 @@ export abstract class APIResource {
       query: endpoint.query,
       body: endpoint.body,
       idempotent: endpoint.idempotent,
-      auth: { bearer: this.context.tokens, apiKey },
+      auth: { bearer: this.context.tokens, ...customer },
       signal: options.signal,
       timeoutMs: options.timeoutMs,
       retry: options.retry,

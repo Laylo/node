@@ -478,7 +478,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -502,7 +502,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -598,7 +598,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -748,7 +748,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -796,11 +796,9 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this caller address is exceeded. */
             429: {
                 headers: {
-                    /** @description Seconds until the current rate-limit window resets. */
-                    "Retry-After"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -903,7 +901,7 @@ export interface operations {
                     }[];
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -927,7 +925,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -999,7 +997,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -1133,7 +1131,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1157,7 +1155,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1229,7 +1227,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -1381,7 +1379,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1405,7 +1403,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1477,7 +1475,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -1706,7 +1704,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -1730,7 +1728,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1802,7 +1800,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -2049,7 +2047,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2073,7 +2071,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2145,7 +2143,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -2281,7 +2279,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2305,7 +2303,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2401,7 +2399,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -2508,7 +2506,7 @@ export interface operations {
                     }[];
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2532,7 +2530,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2604,7 +2602,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -2796,7 +2794,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -2820,7 +2818,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2916,7 +2914,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -3077,7 +3075,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3101,7 +3099,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3197,7 +3195,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -3393,7 +3391,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3417,7 +3415,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3513,7 +3511,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -3633,7 +3631,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3657,7 +3655,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3753,7 +3751,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -3941,7 +3939,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -3965,7 +3963,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4061,7 +4059,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -4247,7 +4245,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4271,7 +4269,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4367,7 +4365,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -4503,7 +4501,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4527,7 +4525,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4623,7 +4621,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -4781,7 +4779,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -4805,7 +4803,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4901,7 +4899,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -5034,7 +5032,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5058,7 +5056,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5154,7 +5152,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -5307,7 +5305,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5331,7 +5329,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5427,7 +5425,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -5606,7 +5604,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5630,7 +5628,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -5726,7 +5724,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -5925,7 +5923,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -5949,7 +5947,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -6045,7 +6043,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -6197,7 +6195,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6221,7 +6219,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -6293,7 +6291,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -6439,7 +6437,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6463,7 +6461,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -6535,7 +6533,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -6663,7 +6661,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6687,7 +6685,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -6759,7 +6757,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -6924,7 +6922,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -6948,7 +6946,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -7044,7 +7042,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -7174,7 +7172,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -7198,7 +7196,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -7294,7 +7292,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -7422,7 +7420,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -7446,7 +7444,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -7518,7 +7516,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -7582,7 +7580,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The customer API key is valid for the authenticated integrator. */
+            /** @description The credentials are valid for the authenticated integrator. apiKeyStatus is "valid" when the customer was named by API key, and "not_provided" when the customer was named by X-Creator-Id, which carries no key to verify. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -7595,13 +7593,13 @@ export interface operations {
                      *     }
                      */
                     "application/json": {
-                        /** @constant */
-                        apiKeyStatus: "valid";
+                        /** @enum {string} */
+                        apiKeyStatus: "valid" | "not_provided";
                         message: string;
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -7625,7 +7623,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -7697,7 +7695,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -7817,7 +7815,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -7841,7 +7839,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -7937,7 +7935,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -8044,7 +8042,7 @@ export interface operations {
                     }[];
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8068,7 +8066,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -8140,7 +8138,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */
@@ -8264,7 +8262,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The integrator credential or customer API key is invalid. */
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -8288,7 +8286,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The customer account behind the API key has no paid Laylo plan. */
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -8384,7 +8382,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The per-integrator rate limit for this operation is exceeded. */
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
             429: {
                 headers: {
                     /** @description Seconds until the current rate-limit window resets. */

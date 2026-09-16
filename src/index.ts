@@ -2,6 +2,7 @@ import { Laylo } from "./client.js";
 
 export { Laylo } from "./client.js";
 export type { ClientOptions } from "./client.js";
+export type { Customer } from "./core/customer.js";
 export {
   DEFAULT_BASE_URL,
   DEFAULT_MAX_RETRIES,

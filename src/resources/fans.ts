@@ -72,7 +72,7 @@ export class Fans extends APIResource {
 
   /**
    * @param context The client's shared transport, token provider, and default
-   * customer key.
+   * customer.
    */
   constructor(context: ResourceContext) {
     super(context);

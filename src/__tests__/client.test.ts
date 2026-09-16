@@ -65,6 +65,7 @@ beforeEach(() => {
   vi.stubEnv("LAYLO_CLIENT_ID", undefined);
   vi.stubEnv("LAYLO_CLIENT_SECRET", undefined);
   vi.stubEnv("LAYLO_API_KEY", undefined);
+  vi.stubEnv("LAYLO_CREATOR_ID", undefined);
 });
 
 afterEach(() => {
@@ -146,6 +147,66 @@ describe("credentials", () => {
     vi.stubEnv("LAYLO_API_KEY", "");
 
     expect(new Laylo(credentials).toJSON().apiKey).toBeUndefined();
+  });
+
+  it("reads LAYLO_CREATOR_ID when no key is configured", async () => {
+    vi.stubEnv("LAYLO_CREATOR_ID", "env-user");
+    const { fetch, apiCalls } = fakeFetch();
+
+    await new Laylo({ ...credentials, fetch }).keys.verify();
+
+    const headers = headersOf(apiCalls()[0]!);
+    expect(headers.get("X-Creator-Id")).toBe("env-user");
+    expect(headers.has("X-Api-Key")).toBe(false);
+  });
+
+  it("lets an explicit creatorId win over LAYLO_API_KEY in the environment", async () => {
+    vi.stubEnv("LAYLO_API_KEY", "env-api-key");
+    const { fetch, apiCalls } = fakeFetch();
+
+    await new Laylo({
+      ...credentials,
+      creatorId: "explicit-user",
+      fetch,
+    }).keys.verify();
+
+    const headers = headersOf(apiCalls()[0]!);
+    expect(headers.get("X-Creator-Id")).toBe("explicit-user");
+    expect(headers.has("X-Api-Key")).toBe(false);
+  });
+
+  it("lets an explicit apiKey win over LAYLO_CREATOR_ID in the environment", async () => {
+    vi.stubEnv("LAYLO_CREATOR_ID", "env-user");
+    const { fetch, apiCalls } = fakeFetch();
+
+    await new Laylo({
+      ...credentials,
+      apiKey: "explicit-key",
+      fetch,
+    }).keys.verify();
+
+    const headers = headersOf(apiCalls()[0]!);
+    expect(headers.get("X-Api-Key")).toBe("explicit-key");
+    expect(headers.has("X-Creator-Id")).toBe(false);
+  });
+
+  it("rejects apiKey and creatorId together", () => {
+    expect(
+      () => new Laylo({ ...credentials, apiKey: "key", creatorId: "user" }),
+    ).toThrow(LayloConfigurationError);
+  });
+
+  it("rejects LAYLO_API_KEY and LAYLO_CREATOR_ID set together", () => {
+    vi.stubEnv("LAYLO_API_KEY", "env-api-key");
+    vi.stubEnv("LAYLO_CREATOR_ID", "env-user");
+
+    expect(() => new Laylo(credentials)).toThrow(LayloConfigurationError);
+  });
+
+  it("rejects an empty creatorId", () => {
+    expect(() => new Laylo({ ...credentials, creatorId: "" })).toThrow(
+      LayloConfigurationError,
+    );
   });
 });
 
@@ -279,6 +340,70 @@ describe("api key precedence", () => {
   });
 });
 
+describe("creator id precedence", () => {
+  it("scopes a view to a roster account by id", async () => {
+    const { laylo, apiCalls } = clientWith({ apiKey: "constructor-key" });
+
+    await laylo.forCustomer({ creatorId: "roster-user" }).drops.list();
+
+    const headers = headersOf(apiCalls()[0]!);
+    expect(headers.get("X-Creator-Id")).toBe("roster-user");
+    expect(headers.has("X-Api-Key")).toBe(false);
+  });
+
+  it("accepts an object form for the key as well", async () => {
+    const { laylo, apiCalls } = clientWith();
+
+    await laylo.forCustomer({ apiKey: "view-key" }).keys.verify();
+
+    expect(headersOf(apiCalls()[0]!).get("X-Api-Key")).toBe("view-key");
+  });
+
+  it("uses the constructor's creatorId when a call names no customer", async () => {
+    const { laylo, apiCalls } = clientWith({ creatorId: "constructor-user" });
+
+    await laylo.keys.verify();
+
+    expect(headersOf(apiCalls()[0]!).get("X-Creator-Id")).toBe(
+      "constructor-user",
+    );
+  });
+
+  it("lets a per-call apiKey replace a creator-id scope", async () => {
+    const { laylo, apiCalls } = clientWith({ creatorId: "constructor-user" });
+
+    await laylo
+      .forCustomer({ creatorId: "view-user" })
+      .keys.verify({ apiKey: "call-key" });
+
+    const headers = headersOf(apiCalls()[0]!);
+    expect(headers.get("X-Api-Key")).toBe("call-key");
+    expect(headers.has("X-Creator-Id")).toBe(false);
+  });
+
+  it("lets a per-call creatorId replace a key scope", async () => {
+    const { laylo, apiCalls } = clientWith({ apiKey: "constructor-key" });
+
+    await laylo.forCustomer("view-key").drops.list({ creatorId: "call-user" });
+
+    const headers = headersOf(apiCalls()[0]!);
+    expect(headers.get("X-Creator-Id")).toBe("call-user");
+    expect(headers.has("X-Api-Key")).toBe(false);
+  });
+
+  it.each([
+    ["an empty object", {}],
+    ["both identifiers", { apiKey: "key", creatorId: "user" }],
+    ["an empty creatorId", { creatorId: "" }],
+  ])("rejects a scope with %s", (_label, customer) => {
+    const { laylo } = clientWith();
+
+    expect(() => laylo.forCustomer(customer as { apiKey: string })).toThrow(
+      LayloConfigurationError,
+    );
+  });
+});
+
 describe("forCustomer views", () => {
   it("share one access token across views", async () => {
     const { laylo, calls } = clientWith();
@@ -350,5 +475,16 @@ describe("redaction", () => {
     const { laylo } = clientWith({ apiKey: "abc123" });
 
     expect(inspect(laylo)).toContain('apiKey: "[redacted]"');
+  });
+
+  it("shows a creator id in full, since it is not a credential", () => {
+    const { laylo } = clientWith({ creatorId: "roster-user" });
+
+    expect(inspect(laylo)).toContain('creatorId: "roster-user"');
+    expect(inspect(laylo)).toContain("apiKey: undefined");
+    expect(JSON.parse(JSON.stringify(laylo))).toMatchObject({
+      creatorId: "roster-user",
+      clientSecret: "[redacted]",
+    });
   });
 });

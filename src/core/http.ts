@@ -45,8 +45,13 @@ export interface BearerTokenProvider {
 export interface RequestAuth {
   /** Access token sent as `Authorization: Bearer …`, or a provider of one. */
   bearer?: string | BearerTokenProvider;
-  /** API key sent as `X-Api-Key`. */
-  apiKey?: string;
+  /** Customer API key sent as `X-Api-Key`. */
+  apiKey?: string | undefined;
+  /**
+   * Laylo user id of a customer on the integrator's roster, sent as
+   * `X-Creator-Id`. Names the customer without an API key.
+   */
+  creatorId?: string | undefined;
 }
 
 /** Everything needed to make one API call. */
@@ -299,6 +304,9 @@ export class HttpClient {
     }
     if (request.auth?.apiKey !== undefined) {
       headers.set("X-Api-Key", request.auth.apiKey);
+    }
+    if (request.auth?.creatorId !== undefined) {
+      headers.set("X-Creator-Id", request.auth.creatorId);
     }
     return headers;
   }

@@ -96,7 +96,9 @@ describe("response aliases", () => {
   test("token and key verification responses", () => {
     expectTypeOf<TokenResponse["access_token"]>().toEqualTypeOf<string>();
     expectTypeOf<TokenResponse["expires_in"]>().toEqualTypeOf<number>();
-    expectTypeOf<VerifyKeyResponse["apiKeyStatus"]>().toEqualTypeOf<"valid">();
+    expectTypeOf<VerifyKeyResponse["apiKeyStatus"]>().toEqualTypeOf<
+      "valid" | "not_provided"
+    >();
   });
 
   test("conversion tracking and segment counting responses", () => {

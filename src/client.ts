@@ -1,4 +1,5 @@
 import { TokenProvider } from "./core/auth.js";
+import { customerFrom, type Customer } from "./core/customer.js";
 import { LayloConfigurationError } from "./core/errors.js";
 import { HttpClient } from "./core/http.js";
 import { DEFAULT_MAX_RETRIES } from "./core/retry.js";
@@ -33,11 +34,20 @@ export interface ClientOptions {
    */
   clientSecret?: string | undefined;
   /**
-   * Customer API key used by calls that do not carry their own; defaults to
-   * `process.env.LAYLO_API_KEY`. Leave it unset when one process serves
-   * several customers and scope each with `forCustomer`.
+   * Customer API key used by calls that do not name their own customer;
+   * defaults to `process.env.LAYLO_API_KEY`. Leave it and `creatorId` unset
+   * when one process serves several customers and scope each with
+   * `forCustomer`.
    */
   apiKey?: string | undefined;
+  /**
+   * Laylo user id of an account on your roster, used in place of an API key by
+   * calls that do not name their own customer; defaults to
+   * `process.env.LAYLO_CREATOR_ID`. Only accounts that sit under your
+   * integration's own Laylo account can be named this way. Set either this or
+   * `apiKey`, not both.
+   */
+  creatorId?: string | undefined;
   /**
    * Identifies your integration in the `X-Laylo-Source` header; no default.
    */
@@ -131,13 +141,19 @@ const envOrUnset = (name: string): string | undefined => {
   return value === undefined || value === "" ? undefined : value;
 };
 
-const customerKey = (apiKey: string): string => {
-  if (typeof apiKey !== "string" || apiKey.length === 0) {
-    throw new LayloConfigurationError(
-      "apiKey must be a non-empty customer API key",
-    );
+// Naming either half of the customer in code turns the environment off for
+// both, so an explicit creatorId is not overridden by a LAYLO_API_KEY that
+// happens to be set — or refused for clashing with it.
+const customerFromOptionsOrEnv = (
+  options: ClientOptions,
+): Customer | undefined => {
+  if (options.apiKey !== undefined || options.creatorId !== undefined) {
+    return customerFrom(options);
   }
-  return apiKey;
+  return customerFrom({
+    apiKey: envOrUnset("LAYLO_API_KEY"),
+    creatorId: envOrUnset("LAYLO_CREATOR_ID"),
+  });
 };
 
 // Enough of the key to tell two apart in a log without disclosing either.
@@ -161,6 +177,10 @@ const mask = (apiKey: string | undefined) => {
  *
  * const customer = laylo.forCustomer(customerApiKey);
  * await customer.keys.verify();
+ *
+ * // Or, for an account on your own roster, name it by id instead of a key:
+ * const rosterAccount = laylo.forCustomer({ creatorId: customerUserId });
+ * await rosterAccount.drops.list();
  * ```
  * @see https://developers.laylo.com
  */
@@ -169,7 +189,7 @@ export class Laylo {
   readonly baseUrl: string;
 
   private readonly core: SharedCore;
-  private readonly apiKey: string | undefined;
+  private readonly customer: Customer | undefined;
   private keysResource: Keys | undefined;
   private dropsResource: Drops | undefined;
   private conversionsResource: Conversions | undefined;
@@ -186,7 +206,12 @@ export class Laylo {
     if (shared !== undefined) {
       this.core = shared;
       this.baseUrl = shared.baseUrl;
-      this.apiKey = customerKey(options.apiKey ?? "");
+      this.customer = customerFrom(options);
+      if (this.customer === undefined) {
+        throw new LayloConfigurationError(
+          "forCustomer needs an apiKey or a creatorId",
+        );
+      }
       return;
     }
 
@@ -200,7 +225,7 @@ export class Laylo {
       "clientSecret",
       "LAYLO_CLIENT_SECRET",
     );
-    const apiKey = options.apiKey ?? envOrUnset("LAYLO_API_KEY");
+    const customer = customerFromOptionsOrEnv(options);
     const baseUrl = validBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
     const timeoutMs = wholeNumber(
       options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
@@ -229,22 +254,30 @@ export class Laylo {
       baseUrl,
     };
     this.baseUrl = baseUrl;
-    this.apiKey = apiKey === undefined ? undefined : customerKey(apiKey);
+    this.customer = customer;
   }
 
   /**
-   * Scopes a client to one customer's API key, for a process acting on behalf
-   * of several Laylo accounts. The view shares this client's connections and
-   * access token, so making one per request is cheap.
-   * @param apiKey The customer's API key.
-   * @returns A client whose calls use `apiKey` unless a call passes its own.
+   * Scopes a client to one customer, for a process acting on behalf of several
+   * Laylo accounts. Name the customer by the API key they gave you, or, when
+   * their account sits under your integration's own Laylo account, by their
+   * user id. The view shares this client's connections and access token, so
+   * making one per request is cheap.
+   * @param customer The customer's API key, or `{ apiKey }` or `{ creatorId }`.
+   * @returns A client whose calls act as that customer unless a call names its
+   * own.
    * @example
    * ```ts
    * const drops = await laylo.forCustomer(customerApiKey).drops.list();
+   * const rosterDrops = await laylo
+   *   .forCustomer({ creatorId: customerUserId })
+   *   .drops.list();
    * ```
    */
-  forCustomer(apiKey: string): Laylo {
-    return new Laylo({ apiKey, [SHARED]: this.core } as ClientInit);
+  forCustomer(customer: string | Customer): Laylo {
+    const fields =
+      typeof customer === "string" ? { apiKey: customer } : customer;
+    return new Laylo({ ...fields, [SHARED]: this.core } as ClientInit);
   }
 
   /**
@@ -293,25 +326,29 @@ export class Laylo {
     return {
       http: this.core.http,
       tokens: this.core.tokens,
-      apiKey: this.apiKey,
+      customer: this.customer,
     };
   }
 
   /**
-   * @returns The client id, base URL, and a masked API key — `private` fields
-   * are enumerable at runtime, so without this a structured logger serializing
-   * the client would emit the customer key and the integrator secret.
+   * @returns The client id, base URL, creator id, and a masked API key —
+   * `private` fields are enumerable at runtime, so without this a structured
+   * logger serializing the client would emit the customer key and the
+   * integrator secret. A creator id is an account identifier, not a
+   * credential, so it is shown in full.
    */
   toJSON(): {
     clientId: string;
     baseUrl: string;
     apiKey: string | undefined;
+    creatorId: string | undefined;
     clientSecret: string;
   } {
     return {
       clientId: this.core.clientId,
       baseUrl: this.baseUrl,
-      apiKey: mask(this.apiKey),
+      apiKey: mask(this.customer?.apiKey),
+      creatorId: this.customer?.creatorId,
       clientSecret: "[redacted]",
     };
   }
@@ -321,7 +358,9 @@ export class Laylo {
    * masked, so the client is safe to `console.log` or `util.inspect`.
    */
   [Symbol.for("nodejs.util.inspect.custom")](): string {
-    const apiKey = mask(this.apiKey);
-    return `Laylo { clientId: ${JSON.stringify(this.core.clientId)}, baseUrl: ${JSON.stringify(this.baseUrl)}, apiKey: ${apiKey === undefined ? "undefined" : JSON.stringify(apiKey)}, clientSecret: [redacted] }`;
+    const { apiKey, creatorId } = this.toJSON();
+    const show = (value: string | undefined) =>
+      value === undefined ? "undefined" : JSON.stringify(value);
+    return `Laylo { clientId: ${JSON.stringify(this.core.clientId)}, baseUrl: ${JSON.stringify(this.baseUrl)}, apiKey: ${show(apiKey)}, creatorId: ${show(creatorId)}, clientSecret: [redacted] }`;
   }
 }

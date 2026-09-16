@@ -94,7 +94,21 @@ describe("HttpClient", () => {
       expect(headers.has("x-laylo-source")).toBe(false);
       expect(headers.has("authorization")).toBe(false);
       expect(headers.has("x-api-key")).toBe(false);
+      expect(headers.has("x-creator-id")).toBe(false);
       expect("body" in call.init).toBe(false);
+    });
+
+    it("sends a creator id as X-Creator-Id", async () => {
+      const { fetch, calls } = fakeFetch([json(200, { ok: true })]);
+      await client(fetch).request({
+        method: "GET",
+        path: "/v1/drops",
+        auth: { bearer: "tok_123", creatorId: "user_789" },
+      });
+
+      const headers = headersOf(calls[0]!);
+      expect(headers.get("x-creator-id")).toBe("user_789");
+      expect(headers.has("x-api-key")).toBe(false);
     });
 
     it("lets caller headers override defaults regardless of case", async () => {

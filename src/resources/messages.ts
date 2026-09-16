@@ -40,7 +40,7 @@ export class Messages {
 
   /**
    * @param context The client's shared transport, token provider, and default
-   * customer key.
+   * customer.
    */
   constructor(context: ResourceContext) {
     this.scheduled = new ScheduledMessages(context);

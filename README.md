@@ -50,6 +50,13 @@ The SDK uses two kinds of credentials:
 All three fall back to an environment variable when omitted from the
 constructor: `LAYLO_CLIENT_ID`, `LAYLO_CLIENT_SECRET`, and `LAYLO_API_KEY`.
 
+Enterprise accounts have a third option for naming the customer. If the
+account you're acting on sits under your integration's own Laylo account, pass
+its user id as `creatorId` instead of collecting an API key from it. It's sent
+as the `X-Creator-Id` header, and falls back to `LAYLO_CREATOR_ID`. Set one of
+`apiKey` or `creatorId`, not both. See
+[Acting on accounts under your own](#acting-on-accounts-under-your-own).
+
 ```ts
 import Laylo from "@laylo.com/node";
 
@@ -63,14 +70,16 @@ for the full model.
 
 ## Working with multiple customers
 
-A single process can act for many Laylo accounts. There are three ways to
-supply the customer `apiKey`, in increasing order of precedence:
+A single process can act for many Laylo accounts. There are three places to
+name the customer, in increasing order of precedence:
 
-1. The constructor's `apiKey` — the default for every call this client makes.
+1. The constructor's `apiKey` (or `creatorId`) — the default for every call
+   this client makes.
 2. `laylo.forCustomer(apiKey)` — a view that shares the parent client's
-   connections and access token but uses a different customer key.
-3. The trailing `RequestOptions` argument on any resource method — overrides
-   both, for the one call.
+   connections and access token but acts as a different customer. It also
+   takes `{ apiKey }` or `{ creatorId }`.
+3. The trailing `RequestOptions` argument on any resource method — its
+   `apiKey` or `creatorId` replaces the client's customer, for the one call.
 
 A request handler serving several customers typically scopes per request:
 
@@ -89,6 +98,32 @@ const handleRequest = async (customerApiKey: string) => {
 
 await handleRequest("customer-api-key");
 ```
+
+## Acting on accounts under your own
+
+If your integration was issued under an enterprise Laylo account, any account
+on that roster can be named by its Laylo user id rather than by an API key. It
+works at any depth of sub-account nesting, and your own account's id is
+accepted too. It's the same set of accounts you can switch between when you
+log in to Laylo on the web.
+
+```ts
+import Laylo from "@laylo.com/node";
+
+const laylo = new Laylo({
+  clientId: process.env.LAYLO_CLIENT_ID,
+  clientSecret: process.env.LAYLO_CLIENT_SECRET,
+});
+
+const artist = laylo.forCustomer({ creatorId: "artist-user-id" });
+const drops = await artist.drops.list();
+```
+
+An id outside your roster throws `PermissionError`. An id on your roster whose
+account no longer exists throws `AuthenticationError`, the same answer an API
+key gives when its account is gone. `keys.verify()` still works for a
+creator-id customer, but since there's no key to check it resolves with
+`apiKeyStatus: "not_provided"`.
 
 ## Resources
 
