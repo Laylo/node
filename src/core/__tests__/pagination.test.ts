@@ -202,6 +202,44 @@ describe("nextPage", () => {
     expect(calls[0]?.options).toBe(original);
     expect(calls[1]?.options).toEqual({ apiKey: "key-b", timeoutMs: 1_000 });
   });
+
+  it("replaces the customer rather than carrying both when an override names an apiKey", async () => {
+    const original: RequestOptions = { creatorId: "usr_1", timeoutMs: 1_000 };
+    const { fetchNext, calls } = source({
+      c1: response("events", [2], null),
+    });
+    const page = createPage(
+      response("events", [1], "c1"),
+      "events",
+      fetchNext,
+      original,
+    );
+
+    const second = await page.nextPage({ apiKey: "key-b" });
+
+    expect(ids(second?.data ?? [])).toEqual([2]);
+    expect(calls[0]?.options).toEqual({ apiKey: "key-b", timeoutMs: 1_000 });
+    expect(calls[0]?.options).not.toHaveProperty("creatorId");
+  });
+
+  it("replaces the customer rather than carrying both when an override names a creatorId", async () => {
+    const original: RequestOptions = { apiKey: "key-a", timeoutMs: 1_000 };
+    const { fetchNext, calls } = source({
+      c1: response("events", [2], null),
+    });
+    const page = createPage(
+      response("events", [1], "c1"),
+      "events",
+      fetchNext,
+      original,
+    );
+
+    const second = await page.nextPage({ creatorId: "usr_1" });
+
+    expect(ids(second?.data ?? [])).toEqual([2]);
+    expect(calls[0]?.options).toEqual({ creatorId: "usr_1", timeoutMs: 1_000 });
+    expect(calls[0]?.options).not.toHaveProperty("apiKey");
+  });
 });
 
 describe("toArray", () => {

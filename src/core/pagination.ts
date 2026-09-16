@@ -151,6 +151,28 @@ const collectionOf = <T, K extends string>(
 };
 
 /**
+ * Layers `nextPage` overrides onto the options the first page was fetched with.
+ * `apiKey` and `creatorId` are mutually exclusive, so an override naming one
+ * customer drops the other rather than merging into an object carrying both,
+ * which the customer resolver rejects.
+ * @param options The options the previous page was fetched with.
+ * @param overrides The options passed to `nextPage`.
+ * @returns The merged options.
+ */
+const layerRequestOptions = (
+  options: RequestOptions | undefined,
+  overrides: RequestOptions,
+): RequestOptions => {
+  const merged: RequestOptions = { ...options, ...overrides };
+  if (overrides.apiKey !== undefined) {
+    delete merged.creatorId;
+  } else if (overrides.creatorId !== undefined) {
+    delete merged.apiKey;
+  }
+  return merged;
+};
+
+/**
  * Wraps a paginated API response in a {@link Page}.
  * @param response The parsed response body.
  * @param collectionKey Name of the array under `data` holding the items.
@@ -177,7 +199,9 @@ export const createPage = <T, K extends string = string>(
       return null;
     }
     const next =
-      overrides === undefined ? options : { ...options, ...overrides };
+      overrides === undefined
+        ? options
+        : layerRequestOptions(options, overrides);
     throwIfAborted(next?.signal);
     return createPage(
       await fetchNext(nextCursor, next),
