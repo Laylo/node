@@ -150,15 +150,9 @@ const collectionOf = <T, K extends string>(
   return items;
 };
 
-/**
- * Layers `nextPage` overrides onto the options the first page was fetched with.
- * `apiKey` and `creatorId` are mutually exclusive, so an override naming one
- * customer drops the other rather than merging into an object carrying both,
- * which the customer resolver rejects.
- * @param options The options the previous page was fetched with.
- * @param overrides The options passed to `nextPage`.
- * @returns The merged options.
- */
+// `apiKey` and `creatorId` are mutually exclusive, so an override naming one
+// customer drops the other rather than merging into an object carrying both,
+// which the customer resolver rejects.
 const layerRequestOptions = (
   options: RequestOptions | undefined,
   overrides: RequestOptions,

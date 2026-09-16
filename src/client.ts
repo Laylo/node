@@ -142,8 +142,8 @@ const envOrUnset = (name: string): string | undefined => {
 };
 
 // Naming either half of the customer in code turns the environment off for
-// both, so an explicit creatorId is not overridden by a LAYLO_API_KEY that
-// happens to be set — or refused for clashing with it.
+// both, so an explicit creatorId is not refused for clashing with a
+// LAYLO_API_KEY that happens to be set.
 const customerFromOptionsOrEnv = (
   options: ClientOptions,
 ): Customer | undefined => {
