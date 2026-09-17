@@ -1,6 +1,7 @@
 import { vi } from "vitest";
 
 import { TokenProvider } from "../../core/auth.js";
+import { customerFrom } from "../../core/customer.js";
 import { HttpClient } from "../../core/http.js";
 import type { ResourceContext } from "../base.js";
 
@@ -27,7 +28,7 @@ export const drop = (id: string) => ({
 // calls[0] is always the mint; apiCalls() is everything after it.
 export const fakeContext = (
   responses: Response[],
-  options: { apiKey?: string } = {},
+  options: { apiKey?: string; creatorId?: string } = {},
 ) => {
   const calls: Call[] = [];
   const queue = [
@@ -58,7 +59,11 @@ export const fakeContext = (
     clientSecret: "shh-integrator-secret",
     http,
   });
-  const context: ResourceContext = { http, tokens, apiKey: options.apiKey };
+  const context: ResourceContext = {
+    http,
+    tokens,
+    customer: customerFrom(options),
+  };
   return { context, calls, apiCalls: () => calls.slice(1) };
 };
 

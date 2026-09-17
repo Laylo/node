@@ -1,21 +1,9 @@
 import { LayloConfigurationError } from "../core/errors.js";
-import {
-  createPage,
-  validateLimit,
-  type Page,
-  type PageResponse,
-} from "../core/pagination.js";
 import type { RequestOptions } from "../core/request-options.js";
 import type {
   Conversion,
   ConversionAction,
-  CreateConversionDefinitionRequest,
-  CreateConversionDefinitionResponse,
-  FanConversion,
-  ListConversionEventsParams,
   ListConversionsParams,
-  RetrieveConversionDefinitionParams,
-  RetrieveConversionDefinitionResponse,
   TrackConversionRequest,
   TrackConversionResponse,
 } from "../types.js";
@@ -48,130 +36,10 @@ export type TrackConversionEventInput = Omit<
 };
 
 /**
- * Conversion definition operations, exposed as `laylo.conversions.definitions`.
- * @see https://developers.laylo.com/records/conversion
- */
-export class ConversionDefinitions extends APIResource {
-  /**
-   * Creates a conversion definition idempotently — creating the same
-   * action/name pair again returns the existing definition.
-   * @param definition The definition to create.
-   * @param options Per-call overrides.
-   * @returns The customer-scoped conversion definition.
-   * @example
-   * ```ts
-   * const vipTicket = await laylo.conversions.definitions.create({
-   *   action: "TICKET_PURCHASE",
-   *   name: "VIP ticket",
-   *   relatedProductId: "drop_123",
-   * });
-   * ```
-   * @see https://developers.laylo.com/api-reference/conversions/conversions.definition.create
-   */
-  async create(
-    definition: CreateConversionDefinitionRequest,
-    options?: RequestOptions,
-  ): Promise<Conversion> {
-    const { conversion } =
-      await this.request<CreateConversionDefinitionResponse>(
-        {
-          method: "POST",
-          path: "/v1/conversions/definitions",
-          body: definition,
-        },
-        options,
-      );
-    return conversion;
-  }
-
-  /**
-   * Retrieves one conversion definition by its exact action and name.
-   * @param params The action and name identifying the definition.
-   * @param options Per-call overrides.
-   * @returns The matching conversion definition.
-   * @example
-   * ```ts
-   * const vipTicket = await laylo.conversions.definitions.retrieve({
-   *   action: "TICKET_PURCHASE",
-   *   name: "VIP ticket",
-   * });
-   * ```
-   * @see https://developers.laylo.com/api-reference/conversions/conversions.definition.get
-   */
-  async retrieve(
-    params: RetrieveConversionDefinitionParams,
-    options?: RequestOptions,
-  ): Promise<Conversion> {
-    const { conversion } =
-      await this.request<RetrieveConversionDefinitionResponse>(
-        {
-          method: "GET",
-          path: "/v1/conversions/definitions",
-          query: { action: params.action, name: params.name },
-        },
-        options,
-      );
-    return conversion;
-  }
-}
-
-/**
  * Conversion event operations, exposed as `laylo.conversions.events`.
- * @see https://developers.laylo.com/records/fan-conversion
+ * @see https://developers.laylo.com/api-reference/conversions/conversions.track
  */
 export class ConversionEvents extends APIResource {
-  /**
-   * Lists the tracked events for one conversion definition, one fan-event
-   * pair per item. Iterate the returned page with `for await` to walk every
-   * event lazily.
-   * @param params The definition's action and name, plus paging controls.
-   * @param options Per-call overrides, carried to subsequent pages.
-   * @returns The first page of events.
-   * @example
-   * ```ts
-   * const events = await laylo.conversions.events.list({
-   *   action: "TICKET_PURCHASE",
-   *   name: "VIP ticket",
-   *   limit: 100,
-   * });
-   * for await (const { fan, event } of events) {
-   *   console.log(fan.id, event.count, new Date(event.createdAt));
-   * }
-   * ```
-   * @see https://developers.laylo.com/api-reference/conversions/conversions.events.list
-   */
-  async list(
-    params: ListConversionEventsParams,
-    options?: RequestOptions,
-  ): Promise<Page<FanConversion>> {
-    validateLimit(params?.limit);
-
-    const fetchEvents = (
-      cursor: string | undefined,
-      callOptions: RequestOptions | undefined,
-    ) =>
-      this.request<PageResponse<FanConversion, "conversions">>(
-        {
-          method: "GET",
-          path: "/v1/conversions/events",
-          query: {
-            action: params?.action,
-            name: params?.name,
-            limit: params?.limit,
-            cursor: cursor ?? params?.cursor,
-          },
-        },
-        callOptions,
-      );
-
-    return createPage(
-      await fetchEvents(undefined, options),
-      "conversions",
-      fetchEvents,
-      options,
-    );
-  }
-
   /**
    * Tracks a conversion event for a fan. Repeated events with the same
    * `metadata.uniqueId` are merged, making it safe to retry. Contact details
@@ -227,23 +95,20 @@ export class ConversionEvents extends APIResource {
 }
 
 /**
- * Conversion operations, exposed as `laylo.conversions`: define what counts
- * as a conversion, track events against it, and read them back.
+ * Conversion operations, exposed as `laylo.conversions`: read the customer's
+ * conversion definitions and track events against them.
  * @see https://developers.laylo.com/guides/conversions
  */
 export class Conversions extends APIResource {
-  /** Definitions: `laylo.conversions.definitions.create()` / `.retrieve()`. */
-  readonly definitions: ConversionDefinitions;
-  /** Events: `laylo.conversions.events.list()` / `.track()`. */
+  /** Events: `laylo.conversions.events.track()`. */
   readonly events: ConversionEvents;
 
   /**
    * @param context The client's shared transport, token provider, and default
-   * customer key.
+   * customer.
    */
   constructor(context: ResourceContext) {
     super(context);
-    this.definitions = new ConversionDefinitions(context);
     this.events = new ConversionEvents(context);
   }
 

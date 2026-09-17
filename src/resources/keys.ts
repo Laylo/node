@@ -12,9 +12,19 @@ export class Keys extends APIResource {
    * the way to validate a key a customer gives you before storing it. An
    * invalid key throws `AuthenticationError` with `apiKeyStatus: "invalid"`;
    * a valid key whose account has no paid Laylo plan throws `PermissionError`.
+   *
+   * When the customer is named by `creatorId` instead there is no key to
+   * check: the call confirms the account is on your roster and resolves with
+   * `apiKeyStatus: "not_provided"`. An id outside your roster throws
+   * `PermissionError`.
    * @param options Per-call overrides; pass `apiKey` here to check a key other
-   * than the client's.
-   * @returns Confirmation that the key is valid.
+   * than the client's. Omitting it falls back to the client's customer, which
+   * for a `creatorId` client resolves without checking any key — read
+   * `apiKeyStatus` rather than treating a resolved promise as a valid key.
+   * @returns Confirmation that the customer resolved, and whether a key was
+   * checked. This `apiKeyStatus` is a different field from the one on
+   * `AuthenticationError`: a rejected key throws, so `"invalid"` never
+   * arrives here.
    * @example
    * ```ts
    * try {

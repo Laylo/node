@@ -4,21 +4,9 @@ import type {
   Contact,
   Conversion,
   ConversionAction,
-  ConversionEvent,
-  ConversionFan,
   ConversionSubject,
-  CreateConversionDefinitionRequest,
-  CreateConversionDefinitionResponse,
-  CursorPageInfo,
   Drop,
-  Fan,
-  FanConversion,
-  ListConversionEventsParams,
   ListConversionsParams,
-  Location,
-  RetrieveConversionDefinitionParams,
-  SegmentConfiguration,
-  SegmentCountResponse,
   SubscriptionCheckResponse,
   TokenResponse,
   TrackConversionRequest,
@@ -52,22 +40,9 @@ describe("record aliases", () => {
     expectTypeOf<Record<never, never>>().not.toMatchTypeOf<Contact>();
   });
 
-  test("CursorPageInfo carries the pagination flags", () => {
-    expectTypeOf<CursorPageInfo["has_more"]>().toEqualTypeOf<boolean>();
-    expectTypeOf<CursorPageInfo["next_cursor"]>().toMatchTypeOf<
-      string | null
-    >();
-  });
-
   test("record aliases resolve to object shapes", () => {
     expectTypeOf<Conversion>().toMatchTypeOf<object>();
-    expectTypeOf<ConversionEvent>().toMatchTypeOf<object>();
-    expectTypeOf<ConversionFan>().toMatchTypeOf<object>();
     expectTypeOf<ConversionSubject>().toMatchTypeOf<object>();
-    expectTypeOf<Fan>().toMatchTypeOf<object>();
-    expectTypeOf<FanConversion>().toMatchTypeOf<object>();
-    expectTypeOf<Location>().toMatchTypeOf<object>();
-    expectTypeOf<SegmentConfiguration>().toMatchTypeOf<object>();
     expectTypeOf<TrackedConversion>().toMatchTypeOf<object>();
   });
 });
@@ -75,20 +50,14 @@ describe("record aliases", () => {
 describe("request aliases", () => {
   test("TrackConversionRequest takes a ConversionAction", () => {
     expectTypeOf<TrackConversionRequest["action"]>().toMatchTypeOf<string>();
-    expectTypeOf<CreateConversionDefinitionRequest>().toMatchTypeOf<object>();
+    expectTypeOf<
+      TrackConversionRequest["action"]
+    >().toEqualTypeOf<ConversionAction>();
   });
 
-  test("list params keep required and optional fields apart", () => {
-    expectTypeOf<
-      ListConversionEventsParams["action"]
-    >().toMatchTypeOf<string>();
-    expectTypeOf<ListConversionEventsParams>().toMatchTypeOf<{
-      cursor?: string;
-    }>();
+  test("list params are all optional", () => {
     expectTypeOf<ListConversionsParams>().toMatchTypeOf<object>();
-    expectTypeOf<
-      RetrieveConversionDefinitionParams["name"]
-    >().toEqualTypeOf<string>();
+    expectTypeOf<Record<never, never>>().toMatchTypeOf<ListConversionsParams>();
   });
 });
 
@@ -96,15 +65,18 @@ describe("response aliases", () => {
   test("token and key verification responses", () => {
     expectTypeOf<TokenResponse["access_token"]>().toEqualTypeOf<string>();
     expectTypeOf<TokenResponse["expires_in"]>().toEqualTypeOf<number>();
-    expectTypeOf<VerifyKeyResponse["apiKeyStatus"]>().toEqualTypeOf<"valid">();
+    expectTypeOf<VerifyKeyResponse["apiKeyStatus"]>().toEqualTypeOf<
+      "valid" | "not_provided"
+    >();
   });
 
-  test("conversion tracking and segment counting responses", () => {
-    expectTypeOf<TrackConversionResponse>().toMatchTypeOf<object>();
-    expectTypeOf<CreateConversionDefinitionResponse>().toMatchTypeOf<object>();
+  test("conversion tracking response", () => {
+    expectTypeOf<TrackConversionResponse["status"]>().toEqualTypeOf<
+      "success" | "failure"
+    >();
     expectTypeOf<
-      SegmentCountResponse["numberOfFans"]
-    >().toEqualTypeOf<number>();
+      TrackConversionResponse["tracked"]
+    >().toEqualTypeOf<TrackedConversion>();
   });
 
   test("subscription check responses", () => {

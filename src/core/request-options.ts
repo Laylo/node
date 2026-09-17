@@ -3,7 +3,7 @@
  * @example
  * ```ts
  * const controller = new AbortController();
- * const page = await laylo.conversions.events.list(
+ * const purchases = await laylo.conversions.list(
  *   { action: "PURCHASE" },
  *   { signal: controller.signal, timeoutMs: 10_000 },
  * );
@@ -11,11 +11,18 @@
  */
 export interface RequestOptions {
   /**
-   * API key to authenticate this call with, overriding the client's key. Useful
-   * when one process acts on behalf of several Laylo accounts.
+   * Customer API key to act with on this call, replacing whichever customer the
+   * client is scoped to. Useful when one process acts on behalf of several
+   * Laylo accounts. Pass either this or `creatorId`, not both.
    */
   apiKey?: string;
-  /** Aborts the request (and any pages it goes on to fetch) when signalled. */
+  /**
+   * Laylo user id of a customer on your roster to act as on this call, in place
+   * of an API key, replacing whichever customer the client is scoped to. Pass
+   * either this or `apiKey`, not both.
+   */
+  creatorId?: string;
+  /** Aborts the request when signalled. */
   signal?: AbortSignal;
   /** Overrides the client-wide timeout, in milliseconds, for this call. */
   timeoutMs?: number;

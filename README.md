@@ -50,6 +50,15 @@ The SDK uses two kinds of credentials:
 All three fall back to an environment variable when omitted from the
 constructor: `LAYLO_CLIENT_ID`, `LAYLO_CLIENT_SECRET`, and `LAYLO_API_KEY`.
 
+Enterprise accounts have a third option for naming the customer. If the
+account you're acting on sits under your integration's own Laylo account, pass
+its user id as `creatorId` instead of collecting an API key from it. It's sent
+as the `X-Creator-Id` header, and falls back to `LAYLO_CREATOR_ID`. Set one of
+`apiKey` or `creatorId`, not both — including in the environment, where having
+`LAYLO_API_KEY` and `LAYLO_CREATOR_ID` both set fails at construction rather
+than picking one. See
+[Acting on accounts under your own](#acting-on-accounts-under-your-own).
+
 ```ts
 import Laylo from "@laylo.com/node";
 
@@ -63,14 +72,16 @@ for the full model.
 
 ## Working with multiple customers
 
-A single process can act for many Laylo accounts. There are three ways to
-supply the customer `apiKey`, in increasing order of precedence:
+A single process can act for many Laylo accounts. There are three places to
+name the customer, in increasing order of precedence:
 
-1. The constructor's `apiKey` — the default for every call this client makes.
+1. The constructor's `apiKey` (or `creatorId`) — the default for every call
+   this client makes.
 2. `laylo.forCustomer(apiKey)` — a view that shares the parent client's
-   connections and access token but uses a different customer key.
-3. The trailing `RequestOptions` argument on any resource method — overrides
-   both, for the one call.
+   connections and access token but acts as a different customer. It also
+   takes `{ apiKey }` or `{ creatorId }`.
+3. The trailing `RequestOptions` argument on any resource method — its
+   `apiKey` or `creatorId` replaces the client's customer, for the one call.
 
 A request handler serving several customers typically scopes per request:
 
@@ -90,6 +101,32 @@ const handleRequest = async (customerApiKey: string) => {
 await handleRequest("customer-api-key");
 ```
 
+## Acting on accounts under your own
+
+If your integration was issued under an enterprise Laylo account, any account
+on that roster can be named by its Laylo user id rather than by an API key. It
+works at any depth of sub-account nesting, and your own account's id is
+accepted too. It's the same set of accounts you can switch between when you
+log in to Laylo on the web.
+
+```ts
+import Laylo from "@laylo.com/node";
+
+const laylo = new Laylo({
+  clientId: process.env.LAYLO_CLIENT_ID,
+  clientSecret: process.env.LAYLO_CLIENT_SECRET,
+});
+
+const artist = laylo.forCustomer({ creatorId: "artist-user-id" });
+const drops = await artist.drops.list();
+```
+
+An id outside your roster throws `PermissionError`. An id on your roster whose
+account no longer exists throws `AuthenticationError`, the same answer an API
+key gives when its account is gone. `keys.verify()` still works for a
+creator-id customer, but since there's no key to check it resolves with
+`apiKeyStatus: "not_provided"`.
+
 ## Resources
 
 Every resource method's last argument is an optional
@@ -100,7 +137,9 @@ is the one exception — it only accepts `signal`).
 
 - [`keys.verify(options?)`](https://developers.laylo.com/api-reference/users/keys.verify) —
   checks that a customer API key is valid; the way to validate a key a
-  customer just gave you before you store it.
+  customer just gave you before you store it. For a customer named by
+  `creatorId` there is no key to check, so it confirms the account is on your
+  roster and resolves with `apiKeyStatus: "not_provided"`.
 
   ```ts
   import Laylo, { AuthenticationError } from "@laylo.com/node";
@@ -164,67 +203,6 @@ is the one exception — it only accepts `signal`).
   });
   ```
 
-- [`conversions.definitions.create(definition, options?)`](https://developers.laylo.com/api-reference/conversions/conversions.definition.create) —
-  creates a conversion definition idempotently; creating the same
-  action/name pair again returns the existing one.
-
-  ```ts
-  import Laylo from "@laylo.com/node";
-
-  const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
-    apiKey: process.env.LAYLO_API_KEY,
-  });
-
-  const vipTicket = await laylo.conversions.definitions.create({
-    action: "TICKET_PURCHASE",
-    name: "VIP ticket",
-    relatedProductId: "drop_123",
-  });
-  ```
-
-- [`conversions.definitions.retrieve(params, options?)`](https://developers.laylo.com/api-reference/conversions/conversions.definition.get) —
-  retrieves one conversion definition by its exact action and name.
-
-  ```ts
-  import Laylo from "@laylo.com/node";
-
-  const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
-    apiKey: process.env.LAYLO_API_KEY,
-  });
-
-  const vipTicket = await laylo.conversions.definitions.retrieve({
-    action: "TICKET_PURCHASE",
-    name: "VIP ticket",
-  });
-  ```
-
-- [`conversions.events.list(params, options?)`](https://developers.laylo.com/api-reference/conversions/conversions.events.list) —
-  lists the tracked events for one conversion definition. See
-  [Pagination](#pagination).
-
-  ```ts
-  import Laylo from "@laylo.com/node";
-
-  const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
-    apiKey: process.env.LAYLO_API_KEY,
-  });
-
-  const events = await laylo.conversions.events.list({
-    action: "TICKET_PURCHASE",
-    name: "VIP ticket",
-    limit: 100,
-  });
-  for await (const { fan, event } of events) {
-    console.log(fan.id, event.count, new Date(event.createdAt));
-  }
-  ```
-
 - [`conversions.events.track(event, options?)`](https://developers.laylo.com/api-reference/conversions/conversions.track) —
   tracks a conversion event for a fan. Repeated events with the same
   `metadata.uniqueId` are merged, so retrying is safe.
@@ -286,84 +264,8 @@ is the one exception — it only accepts `signal`).
   });
   ```
 
-- [`fans.segments.count(configuration, options?)`](https://developers.laylo.com/api-reference/fans/fans.segments.search) —
-  counts the fans matching a segment configuration.
-
-  ```ts
-  import Laylo from "@laylo.com/node";
-
-  const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
-    apiKey: process.env.LAYLO_API_KEY,
-  });
-
-  // SMS fans who purchased drop A but not drop B
-  const numberOfFans = await laylo.fans.segments.count({
-    signUpType: "sms",
-    dropIds: ["drop_A"],
-    excludedDropIds: ["drop_B"],
-  });
-  ```
-
-### `messages`
-
-- [`messages.scheduled.list(options?)`](https://developers.laylo.com/api-reference/messages/messages.scheduled.list) —
-  lists the customer's drops whose drop-day message is still scheduled to
-  go out.
-
-  ```ts
-  import Laylo from "@laylo.com/node";
-
-  const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
-    apiKey: process.env.LAYLO_API_KEY,
-  });
-
-  const scheduled = await laylo.messages.scheduled.list();
-  for (const drop of scheduled) {
-    console.log(
-      drop.title,
-      drop.endDate === null ? null : new Date(drop.endDate),
-    );
-  }
-  ```
-
 The SDK mints and refreshes access tokens for you, but `laylo.auth.createToken()`
 is available if you need a raw bearer token to call the API outside the SDK.
-
-## Pagination
-
-Methods that return a `Page`, like `conversions.events.list`, fetch one page
-at a time but can be walked further without you tracking cursors:
-
-```ts
-import Laylo from "@laylo.com/node";
-
-const laylo = new Laylo({
-  clientId: process.env.LAYLO_CLIENT_ID,
-  clientSecret: process.env.LAYLO_CLIENT_SECRET,
-  apiKey: process.env.LAYLO_API_KEY,
-});
-
-const page = await laylo.conversions.events.list({
-  action: "TICKET_PURCHASE",
-  name: "VIP ticket",
-  limit: 100,
-});
-
-// Every page, fetched as you go
-for await (const { fan, event } of page) {
-  console.log(fan.id, event.count);
-}
-
-// Step through manually
-const next = await page.nextPage();
-
-// Collect with a safety cap
-const first500 = await page.toArray({ maxItems: 500 });
-```
 
 ## Errors
 
@@ -417,7 +319,7 @@ A response with status `408`, `429`, `500`, `502`, `503`, or `504` is retried
 automatically with exponential backoff, up to `DEFAULT_MAX_RETRIES` (2)
 times. A `429` is retried regardless of method; the other statuses are only
 retried for idempotent requests — reads, and writes the SDK itself marks
-idempotent, such as `fans.isSubscribed` and `fans.segments.count`. A
+idempotent, such as `fans.isSubscribed` and `fans.isUnsubscribed`. A
 non-idempotent write like `conversions.events.track` is not replayed on a
 `5xx`, since the server may already have applied it. Each request also has a
 `DEFAULT_TIMEOUT_MS` (30,000ms) timeout.
