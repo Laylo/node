@@ -9,7 +9,6 @@ import { Conversions } from "./resources/conversions.js";
 import { Drops } from "./resources/drops.js";
 import { Fans } from "./resources/fans.js";
 import { Keys } from "./resources/keys.js";
-import { Messages } from "./resources/messages.js";
 import { VERSION } from "./version.js";
 
 /** Base URL used when `baseUrl` is not given. */
@@ -198,7 +197,6 @@ export class Laylo {
   private dropsResource: Drops | undefined;
   private conversionsResource: Conversions | undefined;
   private fansResource: Fans | undefined;
-  private messagesResource: Messages | undefined;
   private authResource: Auth | undefined;
 
   /**
@@ -299,24 +297,17 @@ export class Laylo {
   }
 
   /**
-   * @returns Conversion definitions, events, and tracking.
+   * @returns Conversion definitions and event tracking.
    */
   get conversions(): Conversions {
     return (this.conversionsResource ??= new Conversions(this.context()));
   }
 
   /**
-   * @returns Fan lookups and segment counts.
+   * @returns Fan subscription checks.
    */
   get fans(): Fans {
     return (this.fansResource ??= new Fans(this.context()));
-  }
-
-  /**
-   * @returns Messaging, starting with scheduled sends.
-   */
-  get messages(): Messages {
-    return (this.messagesResource ??= new Messages(this.context()));
   }
 
   /**

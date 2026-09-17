@@ -3,7 +3,7 @@
  * @example
  * ```ts
  * const controller = new AbortController();
- * const page = await laylo.conversions.events.list(
+ * const purchases = await laylo.conversions.list(
  *   { action: "PURCHASE" },
  *   { signal: controller.signal, timeoutMs: 10_000 },
  * );
@@ -22,7 +22,7 @@ export interface RequestOptions {
    * either this or `apiKey`, not both.
    */
   creatorId?: string;
-  /** Aborts the request (and any pages it goes on to fetch) when signalled. */
+  /** Aborts the request when signalled. */
   signal?: AbortSignal;
   /** Overrides the client-wide timeout, in milliseconds, for this call. */
   timeoutMs?: number;

@@ -203,67 +203,6 @@ is the one exception — it only accepts `signal`).
   });
   ```
 
-- [`conversions.definitions.create(definition, options?)`](https://developers.laylo.com/api-reference/conversions/conversions.definition.create) —
-  creates a conversion definition idempotently; creating the same
-  action/name pair again returns the existing one.
-
-  ```ts
-  import Laylo from "@laylo.com/node";
-
-  const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
-    apiKey: process.env.LAYLO_API_KEY,
-  });
-
-  const vipTicket = await laylo.conversions.definitions.create({
-    action: "TICKET_PURCHASE",
-    name: "VIP ticket",
-    relatedProductId: "drop_123",
-  });
-  ```
-
-- [`conversions.definitions.retrieve(params, options?)`](https://developers.laylo.com/api-reference/conversions/conversions.definition.get) —
-  retrieves one conversion definition by its exact action and name.
-
-  ```ts
-  import Laylo from "@laylo.com/node";
-
-  const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
-    apiKey: process.env.LAYLO_API_KEY,
-  });
-
-  const vipTicket = await laylo.conversions.definitions.retrieve({
-    action: "TICKET_PURCHASE",
-    name: "VIP ticket",
-  });
-  ```
-
-- [`conversions.events.list(params, options?)`](https://developers.laylo.com/api-reference/conversions/conversions.events.list) —
-  lists the tracked events for one conversion definition. See
-  [Pagination](#pagination).
-
-  ```ts
-  import Laylo from "@laylo.com/node";
-
-  const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
-    apiKey: process.env.LAYLO_API_KEY,
-  });
-
-  const events = await laylo.conversions.events.list({
-    action: "TICKET_PURCHASE",
-    name: "VIP ticket",
-    limit: 100,
-  });
-  for await (const { fan, event } of events) {
-    console.log(fan.id, event.count, new Date(event.createdAt));
-  }
-  ```
-
 - [`conversions.events.track(event, options?)`](https://developers.laylo.com/api-reference/conversions/conversions.track) —
   tracks a conversion event for a fan. Repeated events with the same
   `metadata.uniqueId` are merged, so retrying is safe.
@@ -325,84 +264,8 @@ is the one exception — it only accepts `signal`).
   });
   ```
 
-- [`fans.segments.count(configuration, options?)`](https://developers.laylo.com/api-reference/fans/fans.segments.search) —
-  counts the fans matching a segment configuration.
-
-  ```ts
-  import Laylo from "@laylo.com/node";
-
-  const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
-    apiKey: process.env.LAYLO_API_KEY,
-  });
-
-  // SMS fans who purchased drop A but not drop B
-  const numberOfFans = await laylo.fans.segments.count({
-    signUpType: "sms",
-    dropIds: ["drop_A"],
-    excludedDropIds: ["drop_B"],
-  });
-  ```
-
-### `messages`
-
-- [`messages.scheduled.list(options?)`](https://developers.laylo.com/api-reference/messages/messages.scheduled.list) —
-  lists the customer's drops whose drop-day message is still scheduled to
-  go out.
-
-  ```ts
-  import Laylo from "@laylo.com/node";
-
-  const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
-    apiKey: process.env.LAYLO_API_KEY,
-  });
-
-  const scheduled = await laylo.messages.scheduled.list();
-  for (const drop of scheduled) {
-    console.log(
-      drop.title,
-      drop.endDate === null ? null : new Date(drop.endDate),
-    );
-  }
-  ```
-
 The SDK mints and refreshes access tokens for you, but `laylo.auth.createToken()`
 is available if you need a raw bearer token to call the API outside the SDK.
-
-## Pagination
-
-Methods that return a `Page`, like `conversions.events.list`, fetch one page
-at a time but can be walked further without you tracking cursors:
-
-```ts
-import Laylo from "@laylo.com/node";
-
-const laylo = new Laylo({
-  clientId: process.env.LAYLO_CLIENT_ID,
-  clientSecret: process.env.LAYLO_CLIENT_SECRET,
-  apiKey: process.env.LAYLO_API_KEY,
-});
-
-const page = await laylo.conversions.events.list({
-  action: "TICKET_PURCHASE",
-  name: "VIP ticket",
-  limit: 100,
-});
-
-// Every page, fetched as you go
-for await (const { fan, event } of page) {
-  console.log(fan.id, event.count);
-}
-
-// Step through manually
-const next = await page.nextPage();
-
-// Collect with a safety cap
-const first500 = await page.toArray({ maxItems: 500 });
-```
 
 ## Errors
 
@@ -456,7 +319,7 @@ A response with status `408`, `429`, `500`, `502`, `503`, or `504` is retried
 automatically with exponential backoff, up to `DEFAULT_MAX_RETRIES` (2)
 times. A `429` is retried regardless of method; the other statuses are only
 retried for idempotent requests — reads, and writes the SDK itself marks
-idempotent, such as `fans.isSubscribed` and `fans.segments.count`. A
+idempotent, such as `fans.isSubscribed` and `fans.isUnsubscribed`. A
 non-idempotent write like `conversions.events.track` is not replayed on a
 `5xx`, since the server may already have applied it. Each request also has a
 `DEFAULT_TIMEOUT_MS` (30,000ms) timeout.

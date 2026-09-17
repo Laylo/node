@@ -1,71 +1,11 @@
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
 import { LayloConfigurationError } from "../../core/errors.js";
-import type { Contact, SegmentConfiguration } from "../../types.js";
+import type { Contact } from "../../types.js";
 import { Fans } from "../fans.js";
 import { bodyOf, fakeContext, headersOf, json } from "./harness.js";
 
 describe("Fans", () => {
-  describe("segments.count", () => {
-    it("issues POST /v1/fans/segments/search and unwraps numberOfFans", async () => {
-      const { context, apiCalls } = fakeContext(
-        [json(200, { numberOfFans: 42 })],
-        { apiKey: "customer-key-1" },
-      );
-
-      const numberOfFans = await new Fans(context).segments.count({
-        signUpType: "sms",
-      });
-
-      expect(numberOfFans).toBe(42);
-      const [call] = apiCalls();
-      expect(call?.url).toBe(
-        "https://api.example.test/api/v1/fans/segments/search",
-      );
-      expect(call?.init.method).toBe("POST");
-      expect(call && headersOf(call).get("authorization")).toBe(
-        "Bearer integrator-token",
-      );
-      expect(call && headersOf(call).get("x-api-key")).toBe("customer-key-1");
-      expect(bodyOf(call)).toEqual({
-        signUpType: "sms",
-      });
-    });
-
-    it("serializes nested location filters untouched", async () => {
-      const { context, apiCalls } = fakeContext(
-        [json(200, { numberOfFans: 7 })],
-        { apiKey: "customer-key-1" },
-      );
-      const configuration: SegmentConfiguration = {
-        signUpType: "email",
-        dropIds: ["drop-1"],
-        excludedDropIds: ["drop-2"],
-        conversionIds: ["conv-1"],
-        excludedConversionIds: ["conv-2"],
-        locations: [
-          { city: "Austin", state: "TX", country: "US", radius: 50 },
-          { state: "NY", country: "US" },
-          { country: "CA" },
-        ],
-        excludedLocations: [{ country: "FR" }],
-      };
-
-      await new Fans(context).segments.count(configuration);
-
-      const [call] = apiCalls();
-      expect(bodyOf(call)).toEqual(configuration);
-    });
-
-    it("resolves to a number", () => {
-      const { context } = fakeContext([], { apiKey: "customer-key-1" });
-
-      expectTypeOf(
-        new Fans(context).segments.count({ signUpType: "sms" }),
-      ).resolves.toEqualTypeOf<number>();
-    });
-  });
-
   describe("isSubscribed", () => {
     it("issues POST /v1/fans/subscribed and unwraps isSubscribed", async () => {
       const { context, apiCalls } = fakeContext(
@@ -81,6 +21,10 @@ describe("Fans", () => {
       const [call] = apiCalls();
       expect(call?.url).toBe("https://api.example.test/api/v1/fans/subscribed");
       expect(call?.init.method).toBe("POST");
+      expect(call && headersOf(call).get("authorization")).toBe(
+        "Bearer integrator-token",
+      );
+      expect(call && headersOf(call).get("x-api-key")).toBe("customer-key-1");
       expect(bodyOf(call)).toEqual({
         email: "fan@example.invalid",
       });

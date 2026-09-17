@@ -3,9 +3,8 @@ import { LayloConfigurationError } from "./errors.js";
 /**
  * Serializes request parameters into a query string the API understands.
  * `undefined` and `null` are skipped, arrays repeat the key, and primitives are
- * stringified. Objects are rejected: the few API parameters that take JSON in
- * the query string are sent pre-encoded by the methods that use them, never
- * through this helper.
+ * stringified. Objects are rejected rather than silently stringified as
+ * `[object Object]`.
  * @param params The parameters to serialize.
  * @returns The populated `URLSearchParams`.
  * @throws LayloConfigurationError When a value is an object.

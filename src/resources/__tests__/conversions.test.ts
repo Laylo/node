@@ -1,12 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 import { BadRequestError, LayloConfigurationError } from "../../core/errors.js";
-import type { Page } from "../../core/pagination.js";
-import type {
-  Conversion,
-  FanConversion,
-  TrackConversionResponse,
-} from "../../types.js";
+import type { Conversion, TrackConversionResponse } from "../../types.js";
 import { Conversions } from "../conversions.js";
 import { bodyOf, fakeContext, headersOf, json } from "./harness.js";
 
@@ -16,27 +11,6 @@ const conversion = (overrides: Partial<Conversion> = {}): Conversion => ({
   name: "VIP ticket",
   ...overrides,
 });
-
-const fanConversion = (fanId: string): FanConversion => ({
-  conversion: conversion(),
-  event: {
-    action: "TICKET_PURCHASE",
-    count: 1,
-    createdAt: 1_722_500_000_000,
-    id: `event_${fanId}`,
-    name: "VIP ticket",
-  },
-  fan: { id: fanId },
-});
-
-const eventsPage = (
-  fanIds: string[],
-  pageInfo: { has_more: boolean; next_cursor: string | null },
-) =>
-  json(200, {
-    data: { conversions: fanIds.map(fanConversion) },
-    page_info: pageInfo,
-  });
 
 describe("Conversions", () => {
   describe("list", () => {
@@ -94,144 +68,6 @@ describe("Conversions", () => {
 
       const failure: unknown = await new Conversions(context)
         .list({ action: [] })
-        .catch((error: unknown) => error);
-
-      expect(failure).toBeInstanceOf(LayloConfigurationError);
-      expect(apiCalls()).toHaveLength(0);
-    });
-  });
-
-  describe("definitions.create", () => {
-    it("POSTs the definition and unwraps the conversion envelope", async () => {
-      const { context, apiCalls } = fakeContext(
-        [json(200, { conversion: conversion(), status: "success" })],
-        { apiKey: "customer-key-1" },
-      );
-
-      const created = await new Conversions(context).definitions.create({
-        action: "TICKET_PURCHASE",
-        name: "VIP ticket",
-        relatedProductId: "drop_123",
-      });
-
-      expect(created).toEqual(conversion());
-      expectTypeOf(created).toEqualTypeOf<Conversion>();
-      const [call] = apiCalls();
-      expect(call?.url).toBe(
-        "https://api.example.test/api/v1/conversions/definitions",
-      );
-      expect(call?.init.method).toBe("POST");
-      expect(bodyOf(call)).toEqual({
-        action: "TICKET_PURCHASE",
-        name: "VIP ticket",
-        relatedProductId: "drop_123",
-      });
-    });
-
-    it("surfaces a 400 as BadRequestError with the server message intact", async () => {
-      const { context } = fakeContext(
-        [
-          json(400, {
-            error: { code: "BAD_REQUEST", message: "name must not be empty" },
-          }),
-        ],
-        { apiKey: "customer-key-1" },
-      );
-
-      const failure: unknown = await new Conversions(context).definitions
-        .create({ action: "TICKET_PURCHASE", name: "" })
-        .catch((error: unknown) => error);
-
-      expect(failure).toBeInstanceOf(BadRequestError);
-      expect((failure as BadRequestError).message).toBe(
-        "name must not be empty",
-      );
-    });
-  });
-
-  describe("definitions.retrieve", () => {
-    it("issues GET /v1/conversions/definitions with action and name and unwraps the envelope", async () => {
-      const { context, apiCalls } = fakeContext(
-        [json(200, { conversion: conversion() })],
-        { apiKey: "customer-key-1" },
-      );
-
-      const retrieved = await new Conversions(context).definitions.retrieve({
-        action: "TICKET_PURCHASE",
-        name: "VIP ticket",
-      });
-
-      expect(retrieved).toEqual(conversion());
-      const [call] = apiCalls();
-      expect(call?.url).toBe(
-        "https://api.example.test/api/v1/conversions/definitions?action=TICKET_PURCHASE&name=VIP+ticket",
-      );
-      expect(call?.init.method).toBe("GET");
-    });
-  });
-
-  describe("events.list", () => {
-    it("issues GET /v1/conversions/events and wraps the conversions collection in a Page", async () => {
-      const { context, apiCalls } = fakeContext(
-        [
-          eventsPage(["fan_1", "fan_2"], {
-            has_more: false,
-            next_cursor: null,
-          }),
-        ],
-        { apiKey: "customer-key-1" },
-      );
-
-      const page = await new Conversions(context).events.list({
-        action: "TICKET_PURCHASE",
-        name: "VIP ticket",
-        limit: 2,
-      });
-
-      expect(page.data).toEqual([
-        fanConversion("fan_1"),
-        fanConversion("fan_2"),
-      ]);
-      expect(page.hasMore).toBe(false);
-      expectTypeOf(page).toEqualTypeOf<Page<FanConversion>>();
-      const [call] = apiCalls();
-      expect(call?.url).toBe(
-        "https://api.example.test/api/v1/conversions/events?action=TICKET_PURCHASE&name=VIP+ticket&limit=2",
-      );
-    });
-
-    it("re-sends action, name, and limit with the new cursor and the same apiKey on nextPage", async () => {
-      const { context, apiCalls } = fakeContext(
-        [
-          eventsPage(["fan_1"], { has_more: true, next_cursor: "NTA" }),
-          eventsPage(["fan_2"], { has_more: false, next_cursor: null }),
-        ],
-        { apiKey: "default-key" },
-      );
-
-      const page = await new Conversions(context).events.list(
-        { action: "TICKET_PURCHASE", name: "VIP ticket", limit: 1 },
-        { apiKey: "override-key" },
-      );
-      const next = await page.nextPage();
-
-      expect(next?.data).toEqual([fanConversion("fan_2")]);
-      const [, secondCall] = apiCalls();
-      expect(secondCall?.url).toBe(
-        "https://api.example.test/api/v1/conversions/events?action=TICKET_PURCHASE&name=VIP+ticket&limit=1&cursor=NTA",
-      );
-      expect(secondCall && headersOf(secondCall).get("x-api-key")).toBe(
-        "override-key",
-      );
-    });
-
-    it("rejects an out-of-range limit before any request", async () => {
-      const { context, apiCalls } = fakeContext([], {
-        apiKey: "customer-key-1",
-      });
-
-      const failure: unknown = await new Conversions(context).events
-        .list({ action: "TICKET_PURCHASE", name: "VIP ticket", limit: 0 })
         .catch((error: unknown) => error);
 
       expect(failure).toBeInstanceOf(LayloConfigurationError);
@@ -311,6 +147,32 @@ describe("Conversions", () => {
 
       expect(failure).toBeInstanceOf(LayloConfigurationError);
       expect(apiCalls()).toHaveLength(0);
+    });
+
+    it("surfaces a 400 as BadRequestError with the server message intact", async () => {
+      const { context } = fakeContext(
+        [
+          json(400, {
+            error: { code: "BAD_REQUEST", message: "name must not be empty" },
+          }),
+        ],
+        { apiKey: "customer-key-1" },
+      );
+
+      const failure: unknown = await new Conversions(context).events
+        .track({
+          action: "TICKET_PURCHASE",
+          name: "",
+          timestamp: "2026-08-25T12:30:00.000Z",
+          metadata: { uniqueId: "order_123" },
+          user: { email: "fan@example.invalid" },
+        })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(BadRequestError);
+      expect((failure as BadRequestError).message).toBe(
+        "name must not be empty",
+      );
     });
 
     it("returns a failure status without throwing", async () => {
