@@ -1,6 +1,6 @@
 name: Spec drift
 
-# Regenerates the committed types from the published spec and diffs. Scheduled
+# Regenerates the committed types from the current spec and diffs. Scheduled
 # rather than per-PR so a spec change fails loudly here without gating
 # unrelated work.
 on:
@@ -22,4 +22,13 @@ jobs:
           node-version: 22.x
           cache: npm
       - run: npm ci
+      - name: Fetch the spec
+        env:
+          GH_TOKEN: ${{ secrets.OPENAPI_SPEC_TOKEN }}
+          SPEC_PATH: ${{ secrets.OPENAPI_SPEC_PATH }}
+        run: >
+          gh api "$SPEC_PATH" -H "Accept: application/vnd.github.raw+json"
+          > "$RUNNER_TEMP/openapi.json"
       - run: npm run generate:check
+        env:
+          LAYLO_OPENAPI_SOURCE: ${{ runner.temp }}/openapi.json

@@ -25,12 +25,12 @@ npm ci
 
 ## Regenerating types
 
-`npm run generate` pulls `https://developers.laylo.com/openapi.json` and
-writes the result to `src/generated/openapi.ts`. Don't edit that file by
-hand — it's regenerated wholesale. A scheduled workflow runs
-`npm run generate:check` on weekdays and fails when the committed output no
-longer matches the published spec, so run `npm run generate` and commit the
-diff whenever the spec changes.
+`npm run generate -- <spec>` regenerates `src/generated/openapi.ts` from an
+OpenAPI document, given as a path or URL (or via `LAYLO_OPENAPI_SOURCE`).
+Don't edit the generated file by hand — it's regenerated wholesale. A
+scheduled workflow runs `npm run generate:check` against the current spec on
+weekdays and fails when the committed output no longer matches, so regenerate
+and commit the diff whenever the spec changes.
 
 Friendly, hand-written aliases for the generated types live in
 `src/types.ts`. Add one there when a generated name is awkward to use in
