@@ -6,6 +6,7 @@ import { DEFAULT_MAX_RETRIES } from "./core/retry.js";
 import { Auth } from "./resources/auth.js";
 import type { ResourceContext } from "./resources/base.js";
 import { Conversions } from "./resources/conversions.js";
+import { Customers } from "./resources/customers.js";
 import { Drops } from "./resources/drops.js";
 import { Fans } from "./resources/fans.js";
 import { Keys } from "./resources/keys.js";
@@ -195,6 +196,7 @@ export class Laylo {
   private readonly customer: Customer | undefined;
   private keysResource: Keys | undefined;
   private dropsResource: Drops | undefined;
+  private customersResource: Customers | undefined;
   private conversionsResource: Conversions | undefined;
   private fansResource: Fans | undefined;
   private authResource: Auth | undefined;
@@ -297,14 +299,21 @@ export class Laylo {
   }
 
   /**
-   * @returns Conversion definitions and event tracking.
+   * @returns The roster of accounts under your own: `laylo.customers.list()`.
+   */
+  get customers(): Customers {
+    return (this.customersResource ??= new Customers(this.context()));
+  }
+
+  /**
+   * @returns Conversion definitions, counts, and event tracking.
    */
   get conversions(): Conversions {
     return (this.conversionsResource ??= new Conversions(this.context()));
   }
 
   /**
-   * @returns Fan subscription checks.
+   * @returns Fan subscription checks, subscribing, and segment counts.
    */
   get fans(): Fans {
     return (this.fansResource ??= new Fans(this.context()));

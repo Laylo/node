@@ -10,13 +10,21 @@ export {
 } from "./client.js";
 export type { Auth } from "./resources/auth.js";
 export type {
+  ConversionCounts,
   ConversionEvents,
   Conversions,
+  ListConversionCountsInput,
   ListConversionsInput,
   TrackConversionEventInput,
 } from "./resources/conversions.js";
+export type { Customers } from "./resources/customers.js";
 export type { Drops } from "./resources/drops.js";
-export type { Fans } from "./resources/fans.js";
+export type {
+  CountFansInput,
+  Fans,
+  FanSegments,
+  SubscribeFanInput,
+} from "./resources/fans.js";
 export type { Keys } from "./resources/keys.js";
 export {
   AuthenticationError,
@@ -41,9 +49,19 @@ export type {
   Contact,
   Conversion,
   ConversionAction,
+  ConversionCount,
+  ConversionCountBucket,
+  ConversionCountsReport,
   ConversionSubject,
+  CustomerAccount,
   Drop,
+  ListConversionCountsParams,
   ListConversionsParams,
+  SegmentCountResponse,
+  SegmentFilters,
+  SegmentLocation,
+  SubscribeFanRequest,
+  SubscribeFanResponse,
   SubscriptionCheckResponse,
   TokenResponse,
   TrackConversionRequest,

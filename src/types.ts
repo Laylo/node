@@ -109,3 +109,90 @@ export type SubscriptionCheckResponse = SuccessJson<
 export type UnsubscriptionCheckResponse = SuccessJson<
   operations["fans.unsubscribed.check"]
 >;
+
+type QueryOf<Operation> = Operation extends {
+  parameters: { query: infer Query };
+}
+  ? NonNullable<Query>
+  : Operation extends { parameters: { query?: infer Query } }
+    ? NonNullable<Query>
+    : never;
+
+/**
+ * A customer account under the integrator's own Laylo account. Its `id` is
+ * the value `forCustomer({ creatorId })` accepts. Contact details are never
+ * returned.
+ * @see https://developers.laylo.com/api-reference/users/customers.list
+ */
+export type CustomerAccount = SuccessJson<operations["customers.list"]>[number];
+
+/**
+ * Conversion event counts per action over a reporting window, with a daily
+ * series for each action.
+ * @see https://developers.laylo.com/api-reference/conversions/conversions.counts.list
+ */
+export type ConversionCountsReport = SuccessJson<
+  operations["conversions.counts.list"]
+>;
+
+/**
+ * Conversion events for one action across the reporting window. Counts are
+ * events, not distinct fans.
+ * @see https://developers.laylo.com/api-reference/conversions/conversions.counts.list
+ */
+export type ConversionCount = ConversionCountsReport["counts"][number];
+
+/**
+ * The number of conversion events counted on one day of the window.
+ * @see https://developers.laylo.com/api-reference/conversions/conversions.counts.list
+ */
+export type ConversionCountBucket = ConversionCount["series"][number];
+
+/**
+ * Query parameters accepted when listing conversion counts.
+ * @see https://developers.laylo.com/api-reference/conversions/conversions.counts.list
+ */
+export type ListConversionCountsParams = QueryOf<
+  operations["conversions.counts.list"]
+>;
+
+/**
+ * Query parameters accepted when counting the fans in a segment. Only
+ * `signUpType` is required.
+ * @see https://developers.laylo.com/api-reference/fans/fans.segments.list
+ */
+export type SegmentFilters = QueryOf<operations["fans.segments.list"]>;
+
+/**
+ * A location a segment can be filtered by: a country, a state within one, or
+ * a city with an optional radius.
+ * @see https://developers.laylo.com/api-reference/fans/fans.segments.list
+ */
+export type SegmentLocation = NonNullable<SegmentFilters["locations"]>[number];
+
+/**
+ * Response carrying the number of fans matching a segment's filters.
+ * @see https://developers.laylo.com/api-reference/fans/fans.segments.list
+ */
+export type SegmentCountResponse = SuccessJson<
+  operations["fans.segments.list"]
+>;
+
+/**
+ * Request body for subscribing a fan: exactly one of an email address with
+ * `emailMarketingConsent: true` or an E.164 phone number with
+ * `smsMarketingConsent: true`, plus when the consent was granted.
+ * @see https://developers.laylo.com/api-reference/fans/fans.subscriptions.create
+ */
+export type SubscribeFanRequest = RequestJson<
+  operations["fans.subscriptions.create"]
+>;
+
+/**
+ * Response acknowledging a subscribed fan. `rsvp` is present only when the
+ * request named a `dropId`.
+ * @see https://developers.laylo.com/api-reference/fans/fans.subscriptions.create
+ */
+export type SubscribeFanResponse = SuccessJson<
+  operations["fans.subscriptions.create"]
+>;

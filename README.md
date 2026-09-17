@@ -163,6 +163,32 @@ is the one exception — it only accepts `signal`).
   }
   ```
 
+### `customers`
+
+- [`customers.list(options?)`](https://developers.laylo.com/api-reference/users/customers.list) —
+  lists the accounts under your integration's own Laylo account. Each entry's
+  `id` is the `creatorId` that `forCustomer({ creatorId })` accepts, so this
+  is how you discover the roster without collecting API keys. The list is
+  scoped to your integration, not to the customer the client is acting as.
+
+  ```ts
+  import Laylo from "@laylo.com/node";
+
+  const laylo = new Laylo({
+    clientId: process.env.LAYLO_CLIENT_ID,
+    clientSecret: process.env.LAYLO_CLIENT_SECRET,
+    apiKey: process.env.LAYLO_API_KEY,
+  });
+
+  const customers = await laylo.customers.list();
+  for (const customer of customers) {
+    const drops = await laylo
+      .forCustomer({ creatorId: customer.id })
+      .drops.list();
+    console.log(customer.displayName, drops.length);
+  }
+  ```
+
 ### `drops`
 
 - [`drops.list(options?)`](https://developers.laylo.com/api-reference/drops/drops.list) —
@@ -201,6 +227,32 @@ is the one exception — it only accepts `signal`).
   const purchases = await laylo.conversions.list({
     action: ["TICKET_PURCHASE", "STORE_PURCHASE"],
   });
+  ```
+
+- [`conversions.counts.list(params?, options?)`](https://developers.laylo.com/api-reference/conversions/conversions.counts.list) —
+  counts the customer's conversion events per action over a window, with a
+  daily series for each, the way the dashboard's Fan Activity chart does.
+  Filter by `action` and bound the window with `startDate` and `endDate`,
+  which accept a `Date` or an ISO 8601 string. The window defaults to the
+  last 28 days.
+
+  ```ts
+  import Laylo from "@laylo.com/node";
+
+  const laylo = new Laylo({
+    clientId: process.env.LAYLO_CLIENT_ID,
+    clientSecret: process.env.LAYLO_CLIENT_SECRET,
+    apiKey: process.env.LAYLO_API_KEY,
+  });
+
+  const report = await laylo.conversions.counts.list({
+    action: ["TICKET_PURCHASE", "RSVP"],
+    startDate: new Date("2026-08-01T00:00:00Z"),
+    endDate: new Date(),
+  });
+  for (const { action, total } of report.counts) {
+    console.log(action, total);
+  }
   ```
 
 - [`conversions.events.track(event, options?)`](https://developers.laylo.com/api-reference/conversions/conversions.track) —
@@ -264,6 +316,54 @@ is the one exception — it only accepts `signal`).
   });
   ```
 
+- [`fans.subscribe(fan, options?)`](https://developers.laylo.com/api-reference/fans/fans.subscriptions.create) —
+  subscribes a fan to the customer with an explicit marketing-consent record:
+  an `email` with `emailMarketingConsent: true`, or an E.164 `phone` with
+  `smsMarketingConsent: true`, plus `consentGrantedAt` as a `Date` or an ISO
+  8601 string. Pass `dropId` to also RSVP them to one of the customer's
+  drops. This is a write, so it isn't retried on a server error.
+
+  ```ts
+  import Laylo from "@laylo.com/node";
+
+  const laylo = new Laylo({
+    clientId: process.env.LAYLO_CLIENT_ID,
+    clientSecret: process.env.LAYLO_CLIENT_SECRET,
+    apiKey: process.env.LAYLO_API_KEY,
+  });
+
+  const { fan, rsvp } = await laylo.fans.subscribe({
+    email: "fan@example.com",
+    emailMarketingConsent: true,
+    consentGrantedAt: new Date(),
+    dropId: "drop_123",
+  });
+  console.log(fan.id, rsvp?.status);
+  ```
+
+- [`fans.segments.count(filters, options?)`](https://developers.laylo.com/api-reference/fans/fans.segments.list) —
+  counts the customer's fans matching a segment, like the dashboard's
+  audience builder. `signUpType` (`"sms"` or `"email"`) is required; narrow
+  further by drops purchased, conversions, locations, and sign-up time, where
+  `signedUpAfter` and `signedUpBefore` accept a `Date` or an ISO 8601 string.
+
+  ```ts
+  import Laylo from "@laylo.com/node";
+
+  const laylo = new Laylo({
+    clientId: process.env.LAYLO_CLIENT_ID,
+    clientSecret: process.env.LAYLO_CLIENT_SECRET,
+    apiKey: process.env.LAYLO_API_KEY,
+  });
+
+  const smsFans = await laylo.fans.segments.count({
+    signUpType: "sms",
+    dropIds: ["drop_123"],
+    locations: [{ country: "US" }],
+    signedUpAfter: new Date("2026-01-01T00:00:00Z"),
+  });
+  ```
+
 The SDK mints and refreshes access tokens for you, but `laylo.auth.createToken()`
 is available if you need a raw bearer token to call the API outside the SDK.
 
@@ -320,8 +420,8 @@ automatically with exponential backoff, up to `DEFAULT_MAX_RETRIES` (2)
 times. A `429` is retried regardless of method; the other statuses are only
 retried for idempotent requests — reads, and writes the SDK itself marks
 idempotent, such as `fans.isSubscribed` and `fans.isUnsubscribed`. A
-non-idempotent write like `conversions.events.track` is not replayed on a
-`5xx`, since the server may already have applied it. Each request also has a
+non-idempotent write like `conversions.events.track` or `fans.subscribe` is
+not replayed on a `5xx`, since the server may already have applied it. Each request also has a
 `DEFAULT_TIMEOUT_MS` (30,000ms) timeout.
 
 `maxRetries` and the default `timeoutMs` are set once, on the client. Per

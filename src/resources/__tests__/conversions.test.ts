@@ -1,7 +1,11 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
 import { BadRequestError, LayloConfigurationError } from "../../core/errors.js";
-import type { Conversion, TrackConversionResponse } from "../../types.js";
+import type {
+  Conversion,
+  ConversionCountsReport,
+  TrackConversionResponse,
+} from "../../types.js";
 import { Conversions } from "../conversions.js";
 import { bodyOf, fakeContext, headersOf, json } from "./harness.js";
 
@@ -72,6 +76,151 @@ describe("Conversions", () => {
 
       expect(failure).toBeInstanceOf(LayloConfigurationError);
       expect(apiCalls()).toHaveLength(0);
+    });
+  });
+
+  describe("counts.list", () => {
+    const report: ConversionCountsReport = {
+      startDate: "2026-08-27T00:00:00.000Z",
+      endDate: "2026-08-29T00:00:00.000Z",
+      counts: [
+        {
+          action: "RSVP",
+          total: 52,
+          series: [
+            { time: "2026-08-27T07:00:00.000Z", count: 40 },
+            { time: "2026-08-28T07:00:00.000Z", count: 12 },
+          ],
+        },
+      ],
+    };
+
+    it("issues GET /v1/conversions/counts with no query when called bare", async () => {
+      const { context, apiCalls } = fakeContext([json(200, report)], {
+        apiKey: "customer-key-1",
+      });
+
+      const counts = await new Conversions(context).counts.list();
+
+      expect(counts).toEqual(report);
+      expectTypeOf(counts).toEqualTypeOf<ConversionCountsReport>();
+      const [call] = apiCalls();
+      expect(call?.url).toBe(
+        "https://api.example.test/api/v1/conversions/counts",
+      );
+      expect(call?.init.method).toBe("GET");
+      expect(call && headersOf(call).get("x-api-key")).toBe("customer-key-1");
+      expect(call?.init.body).toBeUndefined();
+    });
+
+    it("sends a single action and ISO string bounds as query keys", async () => {
+      const { context, apiCalls } = fakeContext([json(200, report)], {
+        apiKey: "customer-key-1",
+      });
+
+      await new Conversions(context).counts.list({
+        action: "RSVP",
+        startDate: "2026-08-27T00:00:00Z",
+        endDate: "2026-08-29T00:00:00Z",
+      });
+
+      const [call] = apiCalls();
+      expect(call?.url).toBe(
+        "https://api.example.test/api/v1/conversions/counts?action=RSVP&startDate=2026-08-27T00%3A00%3A00Z&endDate=2026-08-29T00%3A00%3A00Z",
+      );
+    });
+
+    it("repeats the action key for an array and serializes Date bounds as ISO strings", async () => {
+      const { context, apiCalls } = fakeContext([json(200, report)], {
+        apiKey: "customer-key-1",
+      });
+
+      await new Conversions(context).counts.list({
+        action: ["TICKET_PURCHASE", "RSVP"],
+        startDate: new Date("2026-08-27T00:00:00.000Z"),
+        endDate: new Date("2026-08-29T00:00:00.000Z"),
+      });
+
+      const [call] = apiCalls();
+      const url = new URL(call?.url ?? "");
+      expect(url.searchParams.getAll("action")).toEqual([
+        "TICKET_PURCHASE",
+        "RSVP",
+      ]);
+      expect(url.searchParams.get("startDate")).toBe(
+        "2026-08-27T00:00:00.000Z",
+      );
+      expect(url.searchParams.get("endDate")).toBe("2026-08-29T00:00:00.000Z");
+    });
+
+    it("rejects an empty action array before any request", async () => {
+      const { context, apiCalls } = fakeContext([], {
+        apiKey: "customer-key-1",
+      });
+
+      const failure: unknown = await new Conversions(context).counts
+        .list({ action: [] })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(LayloConfigurationError);
+      expect(apiCalls()).toHaveLength(0);
+    });
+
+    it("rejects an invalid Date bound before any request", async () => {
+      const { context, apiCalls } = fakeContext([], {
+        apiKey: "customer-key-1",
+      });
+
+      const failure: unknown = await new Conversions(context).counts
+        .list({ startDate: new Date("not a date") })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(LayloConfigurationError);
+      expect((failure as LayloConfigurationError).message).toMatch(/startDate/);
+      expect(apiCalls()).toHaveLength(0);
+    });
+
+    it("surfaces a 400 for an inverted window as BadRequestError", async () => {
+      const { context } = fakeContext(
+        [
+          json(400, {
+            error: {
+              code: "BAD_REQUEST",
+              message:
+                "Invalid date range: 'startDate' must be before 'endDate'",
+            },
+          }),
+        ],
+        { apiKey: "customer-key-1" },
+      );
+
+      const failure: unknown = await new Conversions(context).counts
+        .list({
+          startDate: "2026-08-29T00:00:00Z",
+          endDate: "2026-08-27T00:00:00Z",
+        })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(BadRequestError);
+      expect((failure as BadRequestError).message).toBe(
+        "Invalid date range: 'startDate' must be before 'endDate'",
+      );
+    });
+
+    it("retries a 503 like any other read", async () => {
+      vi.useFakeTimers();
+      try {
+        const { context } = fakeContext([json(503, {}), json(200, report)], {
+          apiKey: "customer-key-1",
+        });
+        const result = new Conversions(context).counts.list();
+
+        await vi.runAllTimersAsync();
+
+        await expect(result).resolves.toEqual(report);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 

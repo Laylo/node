@@ -1,8 +1,11 @@
 import { LayloConfigurationError } from "../core/errors.js";
 import type { RequestOptions } from "../core/request-options.js";
+import { isoTimestamp } from "../core/time.js";
 import type {
   Conversion,
   ConversionAction,
+  ConversionCountsReport,
+  ListConversionCountsParams,
   ListConversionsParams,
   TrackConversionRequest,
   TrackConversionResponse,
@@ -17,6 +20,40 @@ import { APIResource, type ResourceContext } from "./base.js";
 export type ListConversionsInput = Omit<ListConversionsParams, "action"> & {
   /** Only return conversions with one of these actions. */
   action?: ConversionAction | ConversionAction[];
+};
+
+/**
+ * Filters accepted when listing conversion counts. `action` takes a single
+ * value or an array; an array matches any of the given actions. The window
+ * bounds accept a `Date` as well as an ISO 8601 string.
+ * @see https://developers.laylo.com/api-reference/conversions/conversions.counts.list
+ */
+export type ListConversionCountsInput = Omit<
+  ListConversionCountsParams,
+  "action" | "startDate" | "endDate"
+> & {
+  /** Only count events with one of these actions. */
+  action?: ConversionAction | ConversionAction[];
+  /**
+   * Start of the window, inclusive: a `Date`, or an ISO 8601 string with an
+   * explicit UTC offset. Defaults to 28 days before `endDate`.
+   */
+  startDate?: string | Date;
+  /**
+   * End of the window, inclusive: a `Date`, or an ISO 8601 string with an
+   * explicit UTC offset. Defaults to now.
+   */
+  endDate?: string | Date;
+};
+
+// Shared by conversions.list and conversions.counts.list, whose `action`
+// filter has the same shape.
+const assertSomeAction = (action: ConversionAction[] | undefined) => {
+  if (action !== undefined && action.length === 0) {
+    throw new LayloConfigurationError(
+      "action must contain at least one value; omit it to include every action",
+    );
+  }
 };
 
 /**
@@ -70,19 +107,7 @@ export class ConversionEvents extends APIResource {
     event: TrackConversionEventInput,
     options?: RequestOptions,
   ): Promise<TrackConversionResponse> {
-    if (
-      event.timestamp instanceof Date &&
-      Number.isNaN(event.timestamp.getTime())
-    ) {
-      throw new LayloConfigurationError(
-        "timestamp is an invalid Date; pass a valid Date or an ISO 8601 string",
-      );
-    }
-
-    const timestamp =
-      event.timestamp instanceof Date
-        ? event.timestamp.toISOString()
-        : event.timestamp;
+    const timestamp = isoTimestamp(event.timestamp, "timestamp");
     return this.request<TrackConversionResponse>(
       {
         method: "POST",
@@ -95,13 +120,66 @@ export class ConversionEvents extends APIResource {
 }
 
 /**
+ * Conversion count reads, exposed as `laylo.conversions.counts`.
+ * @see https://developers.laylo.com/api-reference/conversions/conversions.counts.list
+ */
+export class ConversionCounts extends APIResource {
+  /**
+   * Counts the customer's conversion events per action over a window,
+   * mirroring the Fan Activity chart on the Laylo dashboard. Each entry
+   * carries a total and a daily series covering the whole window, oldest
+   * first, with days that follow the Pacific calendar. Actions with no events
+   * in the window are omitted. The window defaults to the last 28 days.
+   * @param params Optional action filter and window bounds.
+   * @param options Per-call overrides.
+   * @returns The applied window and one count per action with events in it.
+   * @example
+   * ```ts
+   * const report = await laylo.conversions.counts.list({
+   *   action: ["TICKET_PURCHASE", "RSVP"],
+   *   startDate: new Date("2026-08-01T00:00:00Z"),
+   *   endDate: new Date(),
+   * });
+   * for (const { action, total } of report.counts) {
+   *   console.log(action, total);
+   * }
+   * ```
+   * @see https://developers.laylo.com/api-reference/conversions/conversions.counts.list
+   */
+  async list(
+    params?: ListConversionCountsInput,
+    options?: RequestOptions,
+  ): Promise<ConversionCountsReport> {
+    if (Array.isArray(params?.action)) {
+      assertSomeAction(params.action);
+    }
+
+    return this.request<ConversionCountsReport>(
+      {
+        method: "GET",
+        path: "/v1/conversions/counts",
+        query: {
+          action: params?.action,
+          startDate: isoTimestamp(params?.startDate, "startDate"),
+          endDate: isoTimestamp(params?.endDate, "endDate"),
+        },
+      },
+      options,
+    );
+  }
+}
+
+/**
  * Conversion operations, exposed as `laylo.conversions`: read the customer's
- * conversion definitions and track events against them.
+ * conversion definitions, count events against them, and track new ones.
  * @see https://developers.laylo.com/guides/conversions
  */
 export class Conversions extends APIResource {
   /** Events: `laylo.conversions.events.track()`. */
   readonly events: ConversionEvents;
+
+  /** Counts: `laylo.conversions.counts.list()`. */
+  readonly counts: ConversionCounts;
 
   /**
    * @param context The client's shared transport, token provider, and default
@@ -110,6 +188,7 @@ export class Conversions extends APIResource {
   constructor(context: ResourceContext) {
     super(context);
     this.events = new ConversionEvents(context);
+    this.counts = new ConversionCounts(context);
   }
 
   /**
@@ -130,10 +209,8 @@ export class Conversions extends APIResource {
     params?: ListConversionsInput,
     options?: RequestOptions,
   ): Promise<Conversion[]> {
-    if (Array.isArray(params?.action) && params.action.length === 0) {
-      throw new LayloConfigurationError(
-        "action must contain at least one value; omit it to list every conversion",
-      );
+    if (Array.isArray(params?.action)) {
+      assertSomeAction(params.action);
     }
 
     return this.request<Conversion[]>(
