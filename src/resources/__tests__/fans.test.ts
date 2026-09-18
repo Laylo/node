@@ -242,22 +242,20 @@ describe("Fans", () => {
       );
     });
 
-    it("sends no key for an empty id filter", async () => {
-      const { context, apiCalls } = fakeContext(
-        [json(200, { numberOfFans: 0 })],
-        { apiKey: "customer-key-1" },
-      );
-
-      await new Fans(context).segments.count({
-        signUpType: "sms",
-        dropIds: [],
-        locations: [],
+    // An empty array would drop out of the query string and return the whole
+    // audience, so it is rejected rather than silently widening the segment.
+    it("rejects an empty id filter instead of widening the segment", async () => {
+      const { context, apiCalls } = fakeContext([], {
+        apiKey: "customer-key-1",
       });
 
-      const [call] = apiCalls();
-      expect(call?.url).toBe(
-        "https://api.example.test/api/v1/fans/segments?signUpType=sms",
-      );
+      await expect(
+        new Fans(context).segments.count({ signUpType: "sms", dropIds: [] }),
+      ).rejects.toThrow(LayloConfigurationError);
+      await expect(
+        new Fans(context).segments.count({ signUpType: "sms", locations: [] }),
+      ).rejects.toThrow(/^locations must contain at least one value/);
+      expect(apiCalls()).toHaveLength(0);
     });
 
     it("resolves to a number", () => {

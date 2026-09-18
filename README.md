@@ -234,8 +234,8 @@ is the one exception — it only accepts `signal`).
   counts the customer's conversion events per action over a window, with a
   daily series for each, the way the dashboard's Fan Activity chart does.
   Filter by `action` and bound the window with `startDate` and `endDate`,
-  which accept a `Date` or an ISO 8601 string. The window defaults to the
-  last 28 days.
+  which accept a `Date` or an ISO 8601 string carrying an explicit UTC
+  offset. The window defaults to the last 28 days.
 
   ```ts
   import Laylo from "@laylo.com/node";
@@ -321,8 +321,9 @@ is the one exception — it only accepts `signal`).
   subscribes a fan to the customer with an explicit marketing-consent record:
   an `email` with `emailMarketingConsent: true`, or an E.164 `phone` with
   `smsMarketingConsent: true`, plus `consentGrantedAt` as a `Date` or an ISO
-  8601 string. Pass `dropId` to also RSVP them to one of the customer's
-  drops. This is a write, so it isn't retried on a server error.
+  8601 string carrying an explicit UTC offset. Pass `dropId` to also RSVP
+  them to one of the customer's drops. This is a write, so it isn't retried
+  on a server error.
 
   ```ts
   import Laylo from "@laylo.com/node";
@@ -346,7 +347,10 @@ is the one exception — it only accepts `signal`).
   counts the customer's fans matching a segment, like the dashboard's
   audience builder. `signUpType` (`"sms"` or `"email"`) is required; narrow
   further by drops purchased, conversions, locations, and sign-up time, where
-  `signedUpAfter` and `signedUpBefore` accept a `Date` or an ISO 8601 string.
+  `signedUpAfter` and `signedUpBefore` accept a `Date` or an ISO 8601 string
+  carrying an explicit UTC offset. An array filter must name at least one
+  value; omit it rather than passing an empty array, which would count the
+  whole audience.
 
   ```ts
   import Laylo from "@laylo.com/node";

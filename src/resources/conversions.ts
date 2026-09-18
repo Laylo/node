@@ -46,8 +46,6 @@ export type ListConversionCountsInput = Omit<
   endDate?: string | Date;
 };
 
-// Shared by conversions.list and conversions.counts.list, whose `action`
-// filter has the same shape.
 const assertSomeAction = (action: ConversionAction[]) => {
   if (action.length === 0) {
     throw new LayloConfigurationError(
