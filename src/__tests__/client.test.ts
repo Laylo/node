@@ -14,6 +14,7 @@ import { VERSION } from "../version.js";
 import { LayloConfigurationError } from "../core/errors.js";
 import { Auth } from "../resources/auth.js";
 import { Conversions } from "../resources/conversions.js";
+import { Customers } from "../resources/customers.js";
 import { Drops } from "../resources/drops.js";
 import { Fans } from "../resources/fans.js";
 import { Keys } from "../resources/keys.js";
@@ -438,6 +439,7 @@ describe("resources", () => {
 
     expect(laylo.keys).toBe(laylo.keys);
     expect(laylo.drops).toBe(laylo.drops);
+    expect(laylo.customers).toBe(laylo.customers);
     expect(laylo.conversions).toBe(laylo.conversions);
     expect(laylo.fans).toBe(laylo.fans);
     expect(laylo.auth).toBe(laylo.auth);
@@ -448,6 +450,7 @@ describe("resources", () => {
 
     expect(laylo.keys).toBeInstanceOf(Keys);
     expect(laylo.drops).toBeInstanceOf(Drops);
+    expect(laylo.customers).toBeInstanceOf(Customers);
     expect(laylo.conversions).toBeInstanceOf(Conversions);
     expect(laylo.fans).toBeInstanceOf(Fans);
     expect(laylo.auth).toBeInstanceOf(Auth);
