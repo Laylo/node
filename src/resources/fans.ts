@@ -79,27 +79,6 @@ const assertExactlyOneChannel = (contact: {
 const encodeLocations = (locations: SegmentFilters["locations"]) =>
   locations?.map((location) => JSON.stringify(location));
 
-const LIST_FILTERS = [
-  "dropIds",
-  "excludedDropIds",
-  "conversionIds",
-  "excludedConversionIds",
-  "locations",
-  "excludedLocations",
-] as const;
-
-// An empty array drops out of the query string entirely, which would widen the
-// segment to every fan rather than narrow it to none.
-const assertNoEmptyFilter = (filters: CountFansInput) => {
-  for (const filter of LIST_FILTERS) {
-    if (filters[filter]?.length === 0) {
-      throw new LayloConfigurationError(
-        `${filter} must contain at least one value; omit it to leave that filter off`,
-      );
-    }
-  }
-};
-
 /**
  * Fan segment reads, exposed as `laylo.fans.segments`.
  * @see https://developers.laylo.com/api-reference/fans/fans.segments.list
@@ -110,8 +89,8 @@ export class FanSegments extends APIResource {
    * audience builder on the Laylo dashboard does. `signUpType` picks the
    * contact channel to count; the other filters narrow by drops purchased,
    * conversions, location, and sign-up time. Array filters match any of
-   * their values, and must name at least one: an empty array is rejected
-   * rather than counting the whole audience.
+   * their values. An empty array is left out of the request entirely, so it
+   * switches that filter off rather than matching no fan.
    * @param filters The segment's filters; `signUpType` is required.
    * @param options Per-call overrides.
    * @returns The number of matching fans.
@@ -134,7 +113,6 @@ export class FanSegments extends APIResource {
         'signUpType is required and must be "sms" or "email"',
       );
     }
-    assertNoEmptyFilter(filters);
 
     const { numberOfFans } = await this.request<SegmentCountResponse>(
       {

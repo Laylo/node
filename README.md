@@ -348,9 +348,8 @@ is the one exception — it only accepts `signal`).
   audience builder. `signUpType` (`"sms"` or `"email"`) is required; narrow
   further by drops purchased, conversions, locations, and sign-up time, where
   `signedUpAfter` and `signedUpBefore` accept a `Date` or an ISO 8601 string
-  carrying an explicit UTC offset. An array filter must name at least one
-  value; omit it rather than passing an empty array, which would count the
-  whole audience.
+  carrying an explicit UTC offset. An empty array is left out of the request,
+  so it switches that filter off rather than matching no fan.
 
   ```ts
   import Laylo from "@laylo.com/node";
