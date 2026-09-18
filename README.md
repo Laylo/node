@@ -167,9 +167,10 @@ is the one exception — it only accepts `signal`).
 
 - [`customers.list(options?)`](https://developers.laylo.com/api-reference/users/customers.list) —
   lists the accounts under your integration's own Laylo account. Each entry's
-  `id` is the `creatorId` that `forCustomer({ creatorId })` accepts, so this
-  is how you discover the roster without collecting API keys. The list is
-  scoped to your integration, not to the customer the client is acting as.
+  `id` is the `creatorId` that `forCustomer({ creatorId })` accepts, so one
+  customer is enough to discover the rest. The list is scoped to your
+  integration, not to the customer the client is acting as, but a customer
+  must still be named like on every other call.
 
   ```ts
   import Laylo from "@laylo.com/node";
@@ -421,8 +422,8 @@ times. A `429` is retried regardless of method; the other statuses are only
 retried for idempotent requests — reads, and writes the SDK itself marks
 idempotent, such as `fans.isSubscribed` and `fans.isUnsubscribed`. A
 non-idempotent write like `conversions.events.track` or `fans.subscribe` is
-not replayed on a `5xx`, since the server may already have applied it. Each request also has a
-`DEFAULT_TIMEOUT_MS` (30,000ms) timeout.
+not replayed on a `5xx`, since the server may already have applied it. Each
+request also has a `DEFAULT_TIMEOUT_MS` (30,000ms) timeout.
 
 `maxRetries` and the default `timeoutMs` are set once, on the client. Per
 call, you can override the timeout, disable retries for just that call with

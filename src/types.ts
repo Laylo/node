@@ -111,12 +111,10 @@ export type UnsubscriptionCheckResponse = SuccessJson<
 >;
 
 type QueryOf<Operation> = Operation extends {
-  parameters: { query: infer Query };
+  parameters: { query?: infer Query };
 }
   ? NonNullable<Query>
-  : Operation extends { parameters: { query?: infer Query } }
-    ? NonNullable<Query>
-    : never;
+  : never;
 
 /**
  * A customer account under the integrator's own Laylo account. Its `id` is

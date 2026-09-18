@@ -48,8 +48,8 @@ export type ListConversionCountsInput = Omit<
 
 // Shared by conversions.list and conversions.counts.list, whose `action`
 // filter has the same shape.
-const assertSomeAction = (action: ConversionAction[] | undefined) => {
-  if (action !== undefined && action.length === 0) {
+const assertSomeAction = (action: ConversionAction[]) => {
+  if (action.length === 0) {
     throw new LayloConfigurationError(
       "action must contain at least one value; omit it to include every action",
     );

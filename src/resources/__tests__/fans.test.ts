@@ -4,6 +4,7 @@ import {
   BadRequestError,
   LayloConfigurationError,
   NotFoundError,
+  ServerError,
 } from "../../core/errors.js";
 import type { Contact, SubscribeFanResponse } from "../../types.js";
 import { Fans, type CountFansInput, type SubscribeFanInput } from "../fans.js";
@@ -525,7 +526,7 @@ describe("Fans", () => {
         })
         .catch((error: unknown) => error);
 
-      expect(failure).toBeInstanceOf(Error);
+      expect(failure).toBeInstanceOf(ServerError);
       expect(apiCalls()).toHaveLength(1);
     });
   });
