@@ -34,6 +34,23 @@ const drops = await laylo.drops.list();
 console.log(drops.map((drop) => drop.title));
 ```
 
+## Using an AI assistant
+
+If you work with Claude, Codex, or another assistant that reads
+[Agent Skills](https://agentskills.io), the [`skills/`](./skills) folder has two
+you can install. They walk you through getting credentials into a `.env` and
+verifying them, help you choose between an API key and a creator id, and answer
+questions about an account ("how many SMS subscribers signed up in August?")
+by writing and running the call for you. Both ask before anything that writes
+fan data.
+
+- [`laylo-node`](./skills/laylo-node) uses this SDK.
+- [`laylo-api`](./skills/laylo-api) calls the HTTP API directly, for other
+  languages or plain curl.
+
+[skills/README.md](./skills/README.md) has install steps for Claude Code, the
+Claude apps, Codex, and other assistants.
+
 ## Authentication
 
 The SDK uses two kinds of credentials:
@@ -486,13 +503,6 @@ import Laylo from "@laylo.com/node";
 ```js
 const { Laylo } = require("@laylo.com/node");
 ```
-
-## AI assistants
-
-[`skills/`](./skills) has two Agent Skills you can drop into Claude, Codex, or
-any assistant that reads them. They help with setting up credentials and
-answering questions about an account. One uses this SDK and the other calls
-the HTTP API directly. Install steps are in [skills/README.md](./skills/README.md).
 
 ## Requirements
 
