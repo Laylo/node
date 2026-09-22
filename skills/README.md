@@ -18,7 +18,13 @@ Installing both is fine. The descriptions steer the assistant to the right one.
 
 ## Install
 
-Download the folder you want (or clone this repo), then:
+The easiest way is as a plugin: this repo is a plugin marketplace for Claude
+Code, Codex, and Cursor, and installing the `laylo` plugin gets you both
+skills. See [Using an AI assistant](../README.md#using-an-ai-assistant) for
+the commands.
+
+To install a single skill by hand instead, download the folder you want (or
+clone this repo), then:
 
 **Claude Code.** Copy the folder into `~/.claude/skills/` to use it in every
 project, or into `.claude/skills/` inside one project:

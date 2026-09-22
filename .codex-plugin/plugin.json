@@ -1,0 +1,24 @@
+{
+  "name": "laylo",
+  "description": "Skills for building with the Laylo API: set up and verify credentials, then answer questions about an account's drops, fans, and conversions with the Node SDK or plain HTTP.",
+  "author": { "name": "Laylo", "url": "https://laylo.com" },
+  "homepage": "https://developers.laylo.com",
+  "repository": "https://github.com/Laylo/node",
+  "license": "MIT",
+  "keywords": ["laylo", "sdk", "api", "skills"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Laylo",
+    "shortDescription": "Build with the Laylo API.",
+    "longDescription": "Skills for building with the Laylo API: set up and verify credentials, then answer questions about an account's drops, fans, and conversions with the Node SDK or plain HTTP.",
+    "developerName": "Laylo",
+    "category": "Developer Tools",
+    "capabilities": ["Skills"],
+    "websiteURL": "https://developers.laylo.com",
+    "defaultPrompt": [
+      "Help me set up Laylo credentials for this project.",
+      "Which of our Laylo drops are live right now?",
+      "How many SMS subscribers do we have in the US?"
+    ]
+  }
+}
