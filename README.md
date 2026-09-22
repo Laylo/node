@@ -37,20 +37,53 @@ console.log(drops.map((drop) => drop.title));
 
 ## Using an AI assistant
 
-If you work with Claude, Codex, or another assistant that reads
-[Agent Skills](https://agentskills.io), the [`skills/`](./skills) folder has two
-you can install. They walk you through getting credentials into a `.env` and
-verifying them, help you choose between an API key and a creator id, and answer
-questions about an account ("how many SMS subscribers signed up in August?")
-by writing and running the call for you. Both ask before anything that writes
-fan data.
+This repo is also a plugin for AI coding assistants. It carries two
+[Agent Skills](https://agentskills.io) that walk you through getting
+credentials into a `.env` and verifying them, help you choose between an API
+key and a creator id, and answer questions about an account ("how many SMS
+subscribers signed up in August?") by writing and running the call for you.
+Both ask before anything that writes fan data.
 
 - [`laylo-node`](./skills/laylo-node) uses this SDK.
 - [`laylo-api`](./skills/laylo-api) calls the HTTP API directly, for other
   languages or plain curl.
 
-[skills/README.md](./skills/README.md) has install steps for Claude Code, the
-Claude apps, Codex, and other assistants.
+Installing the plugin gets you both; the assistant picks whichever fits the
+project.
+
+**Claude Code.** Add the marketplace, then install the plugin:
+
+```sh
+claude plugin marketplace add Laylo/node
+claude plugin install laylo@laylo-skills
+```
+
+Or from inside a session, run `/plugin marketplace add Laylo/node` and pick
+`laylo` from `/plugin`.
+
+**Codex.** Add the marketplace, then install the plugin, and start a new
+thread:
+
+```sh
+codex plugin marketplace add Laylo/node
+codex plugin add laylo@laylo-skills
+```
+
+**Cursor.** On a Teams or Enterprise plan, go to **Dashboard → Plugins & MCPs
+→ Team Marketplaces → Add Marketplace → Import from Repo** and paste
+`https://github.com/Laylo/node`. On your own, clone the repo into Cursor's
+local plugins folder and run **Developer: Reload Window**:
+
+```sh
+git clone https://github.com/Laylo/node ~/.cursor/plugins/local/laylo
+```
+
+**Anything else.** The plugin follows the
+[Agent Plugins](https://agent-plugins.org) layout, so tools that read it, such
+as GitHub Copilot and VS Code, can load this repo directly. For the skills on
+their own, `npx skills add Laylo/node` installs them into most assistants.
+[skills/README.md](./skills/README.md) covers the Claude desktop app,
+claude.ai, and copying the folders by hand.
 
 ## Authentication
 

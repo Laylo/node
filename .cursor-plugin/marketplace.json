@@ -1,0 +1,16 @@
+{
+  "name": "laylo-skills",
+  "owner": {
+    "name": "Laylo"
+  },
+  "metadata": {
+    "description": "Laylo's public skills for AI coding assistants"
+  },
+  "plugins": [
+    {
+      "name": "laylo",
+      "source": "./",
+      "description": "Skills for building with the Laylo API: set up and verify credentials, then answer questions about an account's drops, fans, and conversions with the Node SDK or plain HTTP."
+    }
+  ]
+}
