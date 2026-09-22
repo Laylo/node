@@ -487,6 +487,13 @@ import Laylo from "@laylo.com/node";
 const { Laylo } = require("@laylo.com/node");
 ```
 
+## AI assistants
+
+[`skills/`](./skills) has two Agent Skills you can drop into Claude, Codex, or
+any assistant that reads them. They help with setting up credentials and
+answering questions about an account. One uses this SDK and the other calls
+the HTTP API directly. Install steps are in [skills/README.md](./skills/README.md).
+
 ## Requirements
 
 - Node.js 20 or later
