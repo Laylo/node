@@ -1,6 +1,6 @@
 {
   "name": "@laylo.com/node",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Official Laylo Node.js SDK for the Laylo public API",
   "license": "MIT",
   "type": "module",
