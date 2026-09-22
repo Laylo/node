@@ -63,7 +63,10 @@ call you haven't seen here. The ones that are easiest to get wrong:
 Walk the user through these steps in order, confirming each one before moving
 to the next.
 
-1. **Install.** `npm install @laylo.com/node` (or pnpm/yarn).
+1. **Install.** `npm install @laylo.com/node` (or pnpm/yarn). This skill
+   needs 0.3.0 or later: older releases take a joined `clientId` and
+   `clientSecret` instead of `userId`, `accessKey`, and `secretKey`, so
+   upgrade an existing install with `npm install @laylo.com/node@latest`.
 2. **Integrator credentials.** A `userId`, `accessKey`, and `secretKey`
    issued to the integration. They come from the user's Laylo account manager
    and can't be self-served. The `userId` is the Laylo user id of the account
