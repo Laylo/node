@@ -23,8 +23,9 @@ yarn add @laylo.com/node
 import Laylo from "@laylo.com/node";
 
 const laylo = new Laylo({
-  clientId: process.env.LAYLO_CLIENT_ID,
-  clientSecret: process.env.LAYLO_CLIENT_SECRET,
+  userId: process.env.LAYLO_USER_ID,
+  accessKey: process.env.LAYLO_ACCESS_KEY,
+  secretKey: process.env.LAYLO_SECRET_KEY,
   apiKey: process.env.LAYLO_API_KEY,
 });
 
@@ -55,8 +56,10 @@ Claude apps, Codex, and other assistants.
 
 The SDK uses two kinds of credentials:
 
-- **Integrator credentials** — a `clientId` and `clientSecret` issued to
-  your integration. Request these from your account manager.
+- **Integrator credentials** — a `userId`, `accessKey`, and `secretKey`
+  issued to your integration. Request these from your account manager. The
+  `userId` is the Laylo user id of the account the credentials were issued
+  under.
   The SDK uses them to mint and refresh a bearer access token for you; you
   never handle the token directly.
 - **Customer API key** — the `apiKey` of the Laylo account you're acting on
@@ -64,8 +67,9 @@ The SDK uses two kinds of credentials:
   [laylo.com/settings?tab=Integrations](https://laylo.com/settings?tab=Integrations)
   and gives it to you. It's sent as the `X-Api-Key` header on every request.
 
-All three fall back to an environment variable when omitted from the
-constructor: `LAYLO_CLIENT_ID`, `LAYLO_CLIENT_SECRET`, and `LAYLO_API_KEY`.
+Each falls back to an environment variable when omitted from the
+constructor: `LAYLO_USER_ID`, `LAYLO_ACCESS_KEY`, `LAYLO_SECRET_KEY`, and
+`LAYLO_API_KEY`.
 
 Enterprise accounts have a third option for naming the customer. If the
 account you're acting on sits under your integration's own Laylo account, pass
@@ -106,8 +110,9 @@ A request handler serving several customers typically scopes per request:
 import Laylo from "@laylo.com/node";
 
 const laylo = new Laylo({
-  clientId: process.env.LAYLO_CLIENT_ID,
-  clientSecret: process.env.LAYLO_CLIENT_SECRET,
+  userId: process.env.LAYLO_USER_ID,
+  accessKey: process.env.LAYLO_ACCESS_KEY,
+  secretKey: process.env.LAYLO_SECRET_KEY,
 });
 
 const handleRequest = async (customerApiKey: string) => {
@@ -130,8 +135,9 @@ log in to Laylo on the web.
 import Laylo from "@laylo.com/node";
 
 const laylo = new Laylo({
-  clientId: process.env.LAYLO_CLIENT_ID,
-  clientSecret: process.env.LAYLO_CLIENT_SECRET,
+  userId: process.env.LAYLO_USER_ID,
+  accessKey: process.env.LAYLO_ACCESS_KEY,
+  secretKey: process.env.LAYLO_SECRET_KEY,
 });
 
 const artist = laylo.forCustomer({ creatorId: "artist-user-id" });
@@ -162,8 +168,9 @@ is the one exception — it only accepts `signal`).
   import Laylo, { AuthenticationError } from "@laylo.com/node";
 
   const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
+    userId: process.env.LAYLO_USER_ID,
+    accessKey: process.env.LAYLO_ACCESS_KEY,
+    secretKey: process.env.LAYLO_SECRET_KEY,
   });
 
   try {
@@ -193,8 +200,9 @@ is the one exception — it only accepts `signal`).
   import Laylo from "@laylo.com/node";
 
   const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
+    userId: process.env.LAYLO_USER_ID,
+    accessKey: process.env.LAYLO_ACCESS_KEY,
+    secretKey: process.env.LAYLO_SECRET_KEY,
     apiKey: process.env.LAYLO_API_KEY,
   });
 
@@ -216,8 +224,9 @@ is the one exception — it only accepts `signal`).
   import Laylo from "@laylo.com/node";
 
   const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
+    userId: process.env.LAYLO_USER_ID,
+    accessKey: process.env.LAYLO_ACCESS_KEY,
+    secretKey: process.env.LAYLO_SECRET_KEY,
     apiKey: process.env.LAYLO_API_KEY,
   });
 
@@ -237,8 +246,9 @@ is the one exception — it only accepts `signal`).
   import Laylo from "@laylo.com/node";
 
   const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
+    userId: process.env.LAYLO_USER_ID,
+    accessKey: process.env.LAYLO_ACCESS_KEY,
+    secretKey: process.env.LAYLO_SECRET_KEY,
     apiKey: process.env.LAYLO_API_KEY,
   });
 
@@ -258,8 +268,9 @@ is the one exception — it only accepts `signal`).
   import Laylo from "@laylo.com/node";
 
   const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
+    userId: process.env.LAYLO_USER_ID,
+    accessKey: process.env.LAYLO_ACCESS_KEY,
+    secretKey: process.env.LAYLO_SECRET_KEY,
     apiKey: process.env.LAYLO_API_KEY,
   });
 
@@ -281,8 +292,9 @@ is the one exception — it only accepts `signal`).
   import Laylo from "@laylo.com/node";
 
   const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
+    userId: process.env.LAYLO_USER_ID,
+    accessKey: process.env.LAYLO_ACCESS_KEY,
+    secretKey: process.env.LAYLO_SECRET_KEY,
     apiKey: process.env.LAYLO_API_KEY,
   });
 
@@ -308,8 +320,9 @@ is the one exception — it only accepts `signal`).
   import Laylo from "@laylo.com/node";
 
   const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
+    userId: process.env.LAYLO_USER_ID,
+    accessKey: process.env.LAYLO_ACCESS_KEY,
+    secretKey: process.env.LAYLO_SECRET_KEY,
     apiKey: process.env.LAYLO_API_KEY,
   });
 
@@ -324,8 +337,9 @@ is the one exception — it only accepts `signal`).
   import Laylo from "@laylo.com/node";
 
   const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
+    userId: process.env.LAYLO_USER_ID,
+    accessKey: process.env.LAYLO_ACCESS_KEY,
+    secretKey: process.env.LAYLO_SECRET_KEY,
     apiKey: process.env.LAYLO_API_KEY,
   });
 
@@ -346,8 +360,9 @@ is the one exception — it only accepts `signal`).
   import Laylo from "@laylo.com/node";
 
   const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
+    userId: process.env.LAYLO_USER_ID,
+    accessKey: process.env.LAYLO_ACCESS_KEY,
+    secretKey: process.env.LAYLO_SECRET_KEY,
     apiKey: process.env.LAYLO_API_KEY,
   });
 
@@ -372,8 +387,9 @@ is the one exception — it only accepts `signal`).
   import Laylo from "@laylo.com/node";
 
   const laylo = new Laylo({
-    clientId: process.env.LAYLO_CLIENT_ID,
-    clientSecret: process.env.LAYLO_CLIENT_SECRET,
+    userId: process.env.LAYLO_USER_ID,
+    accessKey: process.env.LAYLO_ACCESS_KEY,
+    secretKey: process.env.LAYLO_SECRET_KEY,
     apiKey: process.env.LAYLO_API_KEY,
   });
 
@@ -416,8 +432,9 @@ misconfigured client or call.
 import Laylo, { LayloAPIError, RateLimitError } from "@laylo.com/node";
 
 const laylo = new Laylo({
-  clientId: process.env.LAYLO_CLIENT_ID,
-  clientSecret: process.env.LAYLO_CLIENT_SECRET,
+  userId: process.env.LAYLO_USER_ID,
+  accessKey: process.env.LAYLO_ACCESS_KEY,
+  secretKey: process.env.LAYLO_SECRET_KEY,
   apiKey: process.env.LAYLO_API_KEY,
 });
 
@@ -453,8 +470,9 @@ call, you can override the timeout, disable retries for just that call with
 import Laylo from "@laylo.com/node";
 
 const laylo = new Laylo({
-  clientId: process.env.LAYLO_CLIENT_ID,
-  clientSecret: process.env.LAYLO_CLIENT_SECRET,
+  userId: process.env.LAYLO_USER_ID,
+  accessKey: process.env.LAYLO_ACCESS_KEY,
+  secretKey: process.env.LAYLO_SECRET_KEY,
   apiKey: process.env.LAYLO_API_KEY,
   maxRetries: 5,
   timeoutMs: 10_000,
@@ -476,8 +494,9 @@ Import types alongside the client:
 import Laylo, { type Drop, type Conversion } from "@laylo.com/node";
 
 const laylo = new Laylo({
-  clientId: process.env.LAYLO_CLIENT_ID,
-  clientSecret: process.env.LAYLO_CLIENT_SECRET,
+  userId: process.env.LAYLO_USER_ID,
+  accessKey: process.env.LAYLO_ACCESS_KEY,
+  secretKey: process.env.LAYLO_SECRET_KEY,
   apiKey: process.env.LAYLO_API_KEY,
 });
 

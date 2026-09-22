@@ -55,8 +55,9 @@ export const fakeContext = (
     userAgent: "laylo-node/test",
   });
   const tokens = new TokenProvider({
-    clientId: "user-1.access-key-1",
-    clientSecret: "shh-integrator-secret",
+    userId: "user-1",
+    accessKey: "access-key-1",
+    secretKey: "shh-integrator-secret",
     http,
   });
   const context: ResourceContext = {

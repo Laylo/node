@@ -8,7 +8,13 @@ import { HttpClient } from "../http.js";
 
 type Call = { url: string; init: RequestInit };
 
-const CLIENT_SECRET = "shh-integrator-secret";
+const SECRET_KEY = "shh-integrator-secret";
+
+const CREDENTIALS = {
+  userId: "user-1",
+  accessKey: "access-key-1",
+  secretKey: SECRET_KEY,
+};
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -62,8 +68,7 @@ const setup = (responses: FakeResponse[]) => {
   });
   let now = 0;
   const provider = new TokenProvider({
-    clientId: "user-1.access-key-1",
-    clientSecret: CLIENT_SECRET,
+    ...CREDENTIALS,
     http,
     clock: () => now,
   });
@@ -71,57 +76,37 @@ const setup = (responses: FakeResponse[]) => {
 };
 
 describe("TokenProvider", () => {
-  it("rejects a clientId without a '.' before any request", () => {
+  it("rejects a userId containing a '.' before any request", () => {
     const { http } = setup([]);
-    expect(
-      () =>
-        new TokenProvider({
-          clientId: "missing-access-key",
-          clientSecret: CLIENT_SECRET,
-          http,
-        }),
-    ).toThrow(LayloConfigurationError);
-    expect(
-      () =>
-        new TokenProvider({
-          clientId: "missing-access-key",
-          clientSecret: CLIENT_SECRET,
-          http,
-        }),
-    ).toThrow(/developers\.laylo\.com\/authentication/);
+    const build = () =>
+      new TokenProvider({
+        ...CREDENTIALS,
+        userId: "user-1.access-key-1",
+        http,
+      });
+
+    expect(build).toThrow(LayloConfigurationError);
+    expect(build).toThrow(/accessKey/);
   });
 
-  it("rejects a missing clientId with a configuration error", () => {
-    const { http } = setup([]);
-    expect(
-      () =>
-        new TokenProvider({
-          clientId: undefined as unknown as string,
-          clientSecret: CLIENT_SECRET,
-          http,
-        }),
-    ).toThrow(LayloConfigurationError);
-  });
+  it.each(["userId", "accessKey", "secretKey"] as const)(
+    "rejects a missing or empty %s before any request",
+    (option) => {
+      const { http } = setup([]);
+      for (const value of [undefined, ""]) {
+        const build = () =>
+          new TokenProvider({
+            ...CREDENTIALS,
+            [option]: value as unknown as string,
+            http,
+          });
 
-  it("rejects a missing or empty clientSecret before any request", () => {
-    const { http } = setup([]);
-    expect(
-      () =>
-        new TokenProvider({
-          clientId: "user-1.access-key-1",
-          clientSecret: undefined as unknown as string,
-          http,
-        }),
-    ).toThrow(LayloConfigurationError);
-    expect(
-      () =>
-        new TokenProvider({
-          clientId: "user-1.access-key-1",
-          clientSecret: "",
-          http,
-        }),
-    ).toThrow(/developers\.laylo\.com\/authentication/);
-  });
+        expect(build).toThrow(LayloConfigurationError);
+        expect(build).toThrow(option);
+        expect(build).toThrow(/developers\.laylo\.com\/authentication/);
+      }
+    },
+  );
 
   it("mints on first call and serves the cached token within the TTL", async () => {
     const { calls, provider, setNow } = setup([tokenJson("token-1")]);
@@ -133,7 +118,7 @@ describe("TokenProvider", () => {
     expect(calls).toHaveLength(1);
   });
 
-  it("mints without Authorization or X-Api-Key and with OAuth-style body fields", async () => {
+  it("mints without Authorization or X-Api-Key, joining the user id and access key into client_id", async () => {
     const { calls, provider } = setup([tokenJson("token-1")]);
 
     await provider.getToken();
@@ -144,7 +129,7 @@ describe("TokenProvider", () => {
     expect(headersOf(calls[0] as Call).has("x-api-key")).toBe(false);
     expect(JSON.parse(calls[0]?.init.body as string)).toEqual({
       client_id: "user-1.access-key-1",
-      client_secret: CLIENT_SECRET,
+      client_secret: SECRET_KEY,
     });
   });
 
@@ -237,27 +222,27 @@ describe("TokenProvider", () => {
     expect(calls).toHaveLength(1);
   });
 
-  it("keeps the client secret and token out of JSON serialization", async () => {
+  it("keeps the secret key and token out of JSON serialization", async () => {
     const { provider } = setup([tokenJson("token-1")]);
     await provider.getToken();
 
     const serialized = JSON.stringify(provider);
 
-    expect(serialized).not.toContain(CLIENT_SECRET);
+    expect(serialized).not.toContain(SECRET_KEY);
     expect(serialized).not.toContain("token-1");
   });
 
-  it("keeps the client secret and token out of inspect output", async () => {
+  it("keeps the secret key and token out of inspect output", async () => {
     const { provider } = setup([tokenJson("token-1")]);
     await provider.getToken();
 
     const inspected = inspect(provider);
 
-    expect(inspected).not.toContain(CLIENT_SECRET);
+    expect(inspected).not.toContain(SECRET_KEY);
     expect(inspected).not.toContain("token-1");
   });
 
-  it("keeps the client secret out of stringified mint errors", async () => {
+  it("keeps the secret key out of stringified mint errors", async () => {
     const { provider } = setup([unauthorized("Invalid client credentials.")]);
 
     const error = await provider.getToken().then(
@@ -267,8 +252,8 @@ describe("TokenProvider", () => {
       (thrown: unknown) => thrown,
     );
 
-    expect(String(error)).not.toContain(CLIENT_SECRET);
-    expect(inspect(error)).not.toContain(CLIENT_SECRET);
+    expect(String(error)).not.toContain(SECRET_KEY);
+    expect(inspect(error)).not.toContain(SECRET_KEY);
   });
 
   it("mints a fresh token for every createToken call", async () => {

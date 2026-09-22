@@ -24,8 +24,9 @@ Precedence for naming the customer: per-call options, then
 import Laylo from "@laylo.com/node";
 
 const laylo = new Laylo({
-  clientId, // LAYLO_CLIENT_ID
-  clientSecret, // LAYLO_CLIENT_SECRET
+  userId, // LAYLO_USER_ID
+  accessKey, // LAYLO_ACCESS_KEY
+  secretKey, // LAYLO_SECRET_KEY
   apiKey, // LAYLO_API_KEY, or:
   creatorId, // LAYLO_CREATOR_ID
   source, // optional, identifies your integration (X-Laylo-Source)

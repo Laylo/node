@@ -9,8 +9,11 @@ plus exactly one of `X-Api-Key` or `X-Creator-Id`.
 Body (JSON or `application/x-www-form-urlencoded`):
 
 ```json
-{ "client_id": "…", "client_secret": "…" }
+{ "client_id": "<userId>.<accessKey>", "client_secret": "<secretKey>" }
 ```
+
+`client_id` is the integrator's user id and access key joined with a dot, and
+`client_secret` is the secret key.
 
 `grant_type` is accepted and ignored, so a stock OAuth client-credentials
 helper works unchanged. No customer header is needed.
@@ -286,8 +289,8 @@ async function mint() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      client_id: process.env.LAYLO_CLIENT_ID,
-      client_secret: process.env.LAYLO_CLIENT_SECRET,
+      client_id: `${process.env.LAYLO_USER_ID}.${process.env.LAYLO_ACCESS_KEY}`,
+      client_secret: process.env.LAYLO_SECRET_KEY,
     }),
   });
   if (!res.ok) throw new Error(`token: ${res.status} ${await res.text()}`);
@@ -398,8 +401,8 @@ def _get_token():
     if _token["value"] and time.time() < _token["refresh_at"]:
         return _token["value"]
     res = requests.post(f"{BASE}/v1/auth/token", json={
-        "client_id": os.environ["LAYLO_CLIENT_ID"],
-        "client_secret": os.environ["LAYLO_CLIENT_SECRET"],
+        "client_id": f'{os.environ["LAYLO_USER_ID"]}.{os.environ["LAYLO_ACCESS_KEY"]}',
+        "client_secret": os.environ["LAYLO_SECRET_KEY"],
     }, timeout=30)
     res.raise_for_status()
     data = res.json()

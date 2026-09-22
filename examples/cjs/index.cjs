@@ -8,8 +8,9 @@ assert.equal(
 );
 
 const CREDENTIALS = {
-  clientId: process.env.LAYLO_CLIENT_ID ?? "example-user.example-access-key",
-  clientSecret: process.env.LAYLO_CLIENT_SECRET ?? "example-client-secret",
+  userId: process.env.LAYLO_USER_ID ?? "example-user",
+  accessKey: process.env.LAYLO_ACCESS_KEY ?? "example-access-key",
+  secretKey: process.env.LAYLO_SECRET_KEY ?? "example-secret-key",
   apiKey: process.env.LAYLO_API_KEY ?? "example-customer-api-key",
 };
 
