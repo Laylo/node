@@ -119,7 +119,7 @@ describe("LayloAPIError.fromResponse", () => {
   ])("maps %i to %o", (status, cls) => {
     const body = envelope("SOME_CODE", { details: { field: "x" } });
     const error = LayloAPIError.fromResponse(
-      response(status, body, { "x-amzn-requestid": "req-1" }),
+      response(status, body, { "apigw-requestid": "req-1" }),
       body,
     );
 
@@ -136,14 +136,14 @@ describe("LayloAPIError.fromResponse", () => {
     expect(error.raw).toEqual(body);
   });
 
-  it("falls back to x-request-id and leaves requestId undefined otherwise", () => {
+  it("leaves requestId undefined without an apigw-requestid header", () => {
     const body = envelope("X");
     expect(
       LayloAPIError.fromResponse(
         response(400, body, { "x-request-id": "req-2" }),
         body,
       ).requestId,
-    ).toBe("req-2");
+    ).toBeUndefined();
     expect(
       LayloAPIError.fromResponse(response(400, body), body).requestId,
     ).toBeUndefined();

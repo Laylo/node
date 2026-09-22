@@ -85,7 +85,7 @@ export interface LayloAPIErrorOptions {
   message: string;
   /** Extra context the API attached to the error, if any. */
   details?: unknown;
-  /** Request identifier from the `x-amzn-requestid` or `x-request-id` header. */
+  /** Request identifier from the `apigw-requestid` header. */
   requestId?: string;
   /** Response headers, useful for rate-limit and request-id inspection. */
   headers: Headers;
@@ -184,9 +184,7 @@ export class LayloAPIError extends LayloError {
     if (err?.details !== undefined) {
       options.details = err.details;
     }
-    const requestId =
-      response.headers.get("x-amzn-requestid") ??
-      response.headers.get("x-request-id");
+    const requestId = response.headers.get("apigw-requestid");
     if (requestId !== null) {
       options.requestId = requestId;
     }
