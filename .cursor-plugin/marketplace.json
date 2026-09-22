@@ -1,7 +1,11 @@
 {
   "name": "laylo-skills",
-  "owner": { "name": "Laylo", "url": "https://laylo.com" },
-  "description": "Laylo's public skills for AI coding assistants",
+  "owner": {
+    "name": "Laylo"
+  },
+  "metadata": {
+    "description": "Laylo's public skills for AI coding assistants"
+  },
   "plugins": [
     {
       "name": "laylo",
