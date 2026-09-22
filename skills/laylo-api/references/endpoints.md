@@ -199,11 +199,18 @@ A location is `{"country":"US"}`, `{"country":"US","state":"CA"}`, or
 `{"country":"US","state":"CA","city":"Los Angeles","radius":25}`. Repeated
 values match any of them.
 
+- `country` takes an ISO 3166-1 alpha-2 code such as `US` or `FR`.
+- `state` takes a state or province code for the US, Canada, and Australia
+  (`NY`, `ON`, `NSW`). Elsewhere, use the region's name.
+- `city` takes the city's name. Add `radius` to include everywhere within
+  that many miles of the city.
+
 ```json
 { "numberOfFans": 42 }
 ```
 
 ```sh
+# same command as the token mint in step 3 of SKILL.md
 curl -sS -G https://events.laylo.com/api/v1/fans/segments \
   -H "Authorization: Bearer $TOKEN" -H "X-Api-Key: $LAYLO_API_KEY" \
   --data-urlencode "signUpType=sms" \
@@ -260,17 +267,21 @@ refreshes their record and clears any earlier unsubscribe.
 
 ## Minimal clients
 
-These cache the token, re-mint once on a 401 that doesn't blame the customer
-key, and name the customer by API key.
+These cache the token (sharing one mint between concurrent calls in the JS
+version), re-mint once on a 401 that doesn't blame the customer key, wait out
+a 429 using `Retry-After`, and name the customer by API key or creator id,
+whichever the environment or the call provides. Query values that are
+`undefined` or `null` are left out, dates are sent as ISO 8601, and location
+objects are JSON-encoded.
 
 ### JavaScript (fetch)
 
 ```js
 const BASE = "https://events.laylo.com/api";
 let cached;
+let minting;
 
-async function token() {
-  if (cached && Date.now() < cached.refreshAt) return cached.value;
+async function mint() {
   const res = await fetch(`${BASE}/v1/auth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -289,26 +300,54 @@ async function token() {
   return access_token;
 }
 
+function token() {
+  if (cached && Date.now() < cached.refreshAt)
+    return Promise.resolve(cached.value);
+  minting ??= mint().finally(() => {
+    minting = undefined;
+  });
+  return minting;
+}
+
+function customerHeader({ apiKey, creatorId }) {
+  if (apiKey) return { "X-Api-Key": apiKey };
+  if (creatorId) return { "X-Creator-Id": creatorId };
+  if (process.env.LAYLO_API_KEY)
+    return { "X-Api-Key": process.env.LAYLO_API_KEY };
+  if (process.env.LAYLO_CREATOR_ID)
+    return { "X-Creator-Id": process.env.LAYLO_CREATOR_ID };
+  throw new Error(
+    "Name the customer: set LAYLO_API_KEY or LAYLO_CREATOR_ID, or pass apiKey or creatorId",
+  );
+}
+
+function queryValue(value) {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function laylo(
   method,
   path,
-  { query, body, apiKey = process.env.LAYLO_API_KEY } = {},
+  { query, body, apiKey, creatorId } = {},
 ) {
   const url = new URL(BASE + path);
   for (const [key, value] of Object.entries(query ?? {})) {
     for (const item of [].concat(value)) {
-      url.searchParams.append(
-        key,
-        typeof item === "object" ? JSON.stringify(item) : String(item),
-      );
+      if (item !== undefined && item !== null)
+        url.searchParams.append(key, queryValue(item));
     }
   }
+  let reminted = false;
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(url, {
       method,
       headers: {
         Authorization: `Bearer ${await token()}`,
-        "X-Api-Key": apiKey,
+        ...customerHeader({ apiKey, creatorId }),
         Accept: "application/json",
         ...(body ? { "Content-Type": "application/json" } : {}),
       },
@@ -319,9 +358,16 @@ export async function laylo(
     if (
       res.status === 401 &&
       data?.error?.apiKeyStatus !== "invalid" &&
-      attempt === 0
+      !reminted
     ) {
+      reminted = true;
       cached = undefined;
+      continue;
+    }
+    if (res.status === 429 && attempt < 2) {
+      await sleep(
+        (Number(res.headers.get("retry-after")) || 2 ** attempt) * 1000,
+      );
       continue;
     }
     throw Object.assign(
@@ -329,6 +375,7 @@ export async function laylo(
       {
         status: res.status,
         code: data?.error?.code,
+        requestId: res.headers.get("apigw-requestid"),
       },
     );
   }
@@ -341,6 +388,7 @@ export async function laylo(
 
 ```python
 import json, os, time
+from datetime import datetime
 import requests
 
 BASE = "https://events.laylo.com/api"
@@ -359,16 +407,36 @@ def _get_token():
     _token.update(value=data["access_token"], refresh_at=time.time() + data["expires_in"] - skew)
     return _token["value"]
 
-def laylo(method, path, query=None, body=None, api_key=None):
+def _customer_header(api_key=None, creator_id=None):
+    if api_key:
+        return {"X-Api-Key": api_key}
+    if creator_id:
+        return {"X-Creator-Id": creator_id}
+    if os.environ.get("LAYLO_API_KEY"):
+        return {"X-Api-Key": os.environ["LAYLO_API_KEY"]}
+    if os.environ.get("LAYLO_CREATOR_ID"):
+        return {"X-Creator-Id": os.environ["LAYLO_CREATOR_ID"]}
+    raise RuntimeError("Name the customer: set LAYLO_API_KEY or LAYLO_CREATOR_ID, or pass api_key or creator_id")
+
+def _query_value(value):
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return json.dumps(value)
+    return value
+
+def laylo(method, path, query=None, body=None, api_key=None, creator_id=None):
     params = []
     for key, value in (query or {}).items():
         for item in value if isinstance(value, list) else [value]:
-            params.append((key, json.dumps(item) if isinstance(item, dict) else item))
-    for attempt in range(2):
+            if item is not None:
+                params.append((key, _query_value(item)))
+    reminted = False
+    for attempt in range(3):
         res = requests.request(method, BASE + path, params=params, json=body, timeout=30, headers={
             "Authorization": f"Bearer {_get_token()}",
-            "X-Api-Key": api_key or os.environ["LAYLO_API_KEY"],
             "Accept": "application/json",
+            **_customer_header(api_key, creator_id),
         })
         if res.ok:
             return res.json()
@@ -376,10 +444,19 @@ def laylo(method, path, query=None, body=None, api_key=None):
             err = res.json().get("error") or {}
         except ValueError:
             err = {}
-        if res.status_code == 401 and err.get("apiKeyStatus") != "invalid" and attempt == 0:
+        if res.status_code == 401 and err.get("apiKeyStatus") != "invalid" and not reminted:
+            reminted = True
             _token["value"] = None
             continue
-        raise RuntimeError(f"{res.status_code} {err.get('code')}: {err.get('message')}")
+        if res.status_code == 429 and attempt < 2:
+            time.sleep(float(res.headers.get("Retry-After") or 2 ** attempt))
+            continue
+        raise RuntimeError(f"{res.status_code} {err.get('code')}: {err.get('message')} "
+                           f"(request id {res.headers.get('apigw-requestid')})")
+    raise RuntimeError("gave up after repeated 401/429 responses")
 
 # laylo("GET", "/v1/drops")
 ```
+
+A Python `datetime` must carry a timezone (`datetime(2026, 8, 1, tzinfo=timezone.utc)`),
+because the API rejects timestamps without an offset.

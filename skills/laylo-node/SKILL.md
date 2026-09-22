@@ -30,8 +30,10 @@ trailing `RequestOptions` (`apiKey`, `creatorId`, `signal`, `timeoutMs`,
 | `fans.subscribe(fan)`              | Subscribe a fan with a consent record, optionally RSVP (write) |
 | `auth.createToken()`               | A raw bearer token, only for calling the API outside the SDK   |
 
-If one of these methods is `undefined` on the client, the installed SDK is an
-older release. Upgrade with `npm install @laylo.com/node@latest`.
+If one of these methods is `undefined` on the client, the installed SDK
+predates it. Upgrade with `npm install @laylo.com/node@latest`. If it is still
+missing after that, the release that adds it hasn't been published yet: tell
+the user so, rather than calling the API some other way.
 
 If the user asks for something that isn't in this table, say plainly that the
 SDK doesn't support it and point them to https://developers.laylo.com. Don't
@@ -133,8 +135,9 @@ shell or load them with `dotenv`.
 | `LayloConnectionError` / `LayloTimeoutError`         | Network trouble. The request never got a usable response.                                                      |
 
 Every API error carries `status`, `code`, and `message`. When contacting
-Laylo support, include the request id from the error's response headers:
-`error.headers.get("apigw-requestid")`.
+Laylo support, include the request id:
+`error.requestId ?? error.headers?.get("apigw-requestid")`. Older SDK releases
+leave `requestId` unset, which is what the header fallback covers.
 
 ## Answering questions about an account
 

@@ -179,6 +179,12 @@ both.
 `{ country, state, city, radius? }`. Array filters match any of their values,
 and an empty array turns the filter off.
 
+- `country` takes an ISO 3166-1 alpha-2 code such as `US` or `FR`.
+- `state` takes a state or province code for the US, Canada, and Australia
+  (`NY`, `ON`, `NSW`). Elsewhere, use the region's name.
+- `city` takes the city's name. Add `radius` to include everywhere within
+  that many miles of the city.
+
 Returns a `number`: the count of matching fans.
 
 ## fans.subscribe(fan)

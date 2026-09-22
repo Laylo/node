@@ -113,20 +113,17 @@ to the next.
    `LAYLO_CREATOR_ID`) in a `.env` file themselves, and make sure `.env` is in
    `.gitignore`. The client id has the form `<userId>.<accessKey>`, so it
    always contains a dot.
-3. **Mint a token.** The body can be JSON or form-encoded.
+3. **Mint a token and verify the customer** in one command. The token goes
+   straight into a variable and is never printed, and a failed mint prints the
+   error body instead. The body can be JSON or form-encoded.
 
    ```sh
    set -a; . ./.env; set +a
-   curl -sS -X POST https://events.laylo.com/api/v1/auth/token \
+   RES=$(curl -sS -X POST https://events.laylo.com/api/v1/auth/token \
      --data-urlencode "client_id=$LAYLO_CLIENT_ID" \
-     --data-urlencode "client_secret=$LAYLO_CLIENT_SECRET"
-   # {"access_token":"…","expires_in":3600,"token_type":"Bearer"}
-   ```
-
-4. **Verify the customer.**
-
-   ```sh
-   TOKEN=…   # access_token from step 3
+     --data-urlencode "client_secret=$LAYLO_CLIENT_SECRET")
+   TOKEN=$(printf '%s' "$RES" | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
+   [ -n "$TOKEN" ] || echo "token request failed: $RES"
    curl -sS https://events.laylo.com/api/v1/keys/verify \
      -H "Authorization: Bearer $TOKEN" \
      -H "X-Api-Key: $LAYLO_API_KEY"
@@ -137,8 +134,14 @@ to the next.
    instead. It returns `"apiKeyStatus":"not_provided"`, since there is no key
    to check, which confirms the account is on the roster.
 
-5. **In code**, cache the token and mint a new one about a minute before
-   `expires_in` runs out. Don't mint a token per request, because the token
+   Shell variables don't carry over between separate command runs, which is
+   how most assistants execute commands. Keep the mint and every request that
+   uses `$TOKEN` in the same command. Never print the token or paste its value
+   into a later command.
+
+4. **In code**, cache the token and reuse it until shortly before it expires:
+   refresh a minute early, or halfway through its life when `expires_in` is
+   under two minutes. Don't mint a token per request, because the token
    endpoint is rate limited.
 
 ### When verification fails
@@ -166,6 +169,7 @@ user the exact command. Use curl unless the user is working in a particular
 language.
 
 ```sh
+# same command as the token mint in step 3 of SKILL.md
 curl -sS -G https://events.laylo.com/api/v1/conversions/counts \
   -H "Authorization: Bearer $TOKEN" -H "X-Api-Key: $LAYLO_API_KEY" \
   --data-urlencode "action=RSVP" \
