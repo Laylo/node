@@ -1,6 +1,6 @@
 ---
 name: laylo-node
-description: Helps build with the Laylo Node.js SDK (@laylo.com/node) — setting up and verifying credentials (client id and secret, a customer API key or creator id) and answering questions about a Laylo account's drops, fans, subscriptions, audience segments, and conversions. Use when the user mentions Laylo, @laylo.com/node, a Laylo API key, drops, RSVPs, fan subscriptions, or conversion tracking in a JavaScript or TypeScript project.
+description: Helps build with the Laylo Node.js SDK (@laylo.com/node) — setting up and verifying credentials (integrator user id, access key, and secret key, plus a customer API key or creator id) and answering questions about a Laylo account's drops, fans, subscriptions, audience segments, and conversions. Use when the user mentions Laylo, @laylo.com/node, a Laylo API key, drops, RSVPs, fan subscriptions, or conversion tracking in a JavaScript or TypeScript project.
 ---
 
 # Laylo Node.js SDK
@@ -64,11 +64,11 @@ Walk the user through these steps in order, confirming each one before moving
 to the next.
 
 1. **Install.** `npm install @laylo.com/node` (or pnpm/yarn).
-2. **Integrator credentials.** A `clientId` and `clientSecret` issued to the
-   integration. They come from the user's Laylo account manager and can't be
-   self-served. The client id has the form `<userId>.<accessKey>`, so it always
-   contains a dot. Both are server-side secrets and must never ship to a
-   browser or a mobile app.
+2. **Integrator credentials.** A `userId`, `accessKey`, and `secretKey`
+   issued to the integration. They come from the user's Laylo account manager
+   and can't be self-served. The `userId` is the Laylo user id of the account
+   the credentials were issued under. The secret key is a server-side secret
+   and must never ship to a browser or a mobile app.
 3. **Name the customer.** Every call acts on one Laylo account, named in one of
    two ways. Use one or the other, never both. Ask the user which situation
    they're in rather than assuming an API key (see
@@ -80,8 +80,9 @@ to the next.
      under the integration's own Laylo account. Pass the account's Laylo user
      id instead of collecting a key. `customers.list()` returns the valid ids.
      The SDK sends it as `X-Creator-Id`.
-4. **Store them in the environment.** The SDK reads `LAYLO_CLIENT_ID`,
-   `LAYLO_CLIENT_SECRET`, and one of `LAYLO_API_KEY` or `LAYLO_CREATOR_ID`.
+4. **Store them in the environment.** The SDK reads `LAYLO_USER_ID`,
+   `LAYLO_ACCESS_KEY`, `LAYLO_SECRET_KEY`, and one of `LAYLO_API_KEY` or
+   `LAYLO_CREATOR_ID`.
    Having both of the last two set is a construction error. Have the user
    put these in a `.env` file themselves, and make sure `.env` is in
    `.gitignore`.
@@ -125,14 +126,14 @@ shell or load them with `dotenv`.
 
 ### When verification fails
 
-| Error                                                | Meaning and fix                                                                                                |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `LayloConfigurationError`                            | A credential is missing or malformed. The message names it. Check the env var names and the `.` in `clientId`. |
-| `AuthenticationError` with `apiKeyStatus: "invalid"` | The customer API key is wrong or was revoked. Generate a new key in Laylo settings.                            |
-| `AuthenticationError` otherwise                      | The client id or secret was rejected, or a creator id no longer resolves to an account.                        |
-| `PermissionError`                                    | The account has no paid Laylo plan, or the creator id isn't under the integration's account.                   |
-| `RateLimitError`                                     | Too many requests. Wait `error.retryAfter` seconds.                                                            |
-| `LayloConnectionError` / `LayloTimeoutError`         | Network trouble. The request never got a usable response.                                                      |
+| Error                                                | Meaning and fix                                                                                                                |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `LayloConfigurationError`                            | A credential is missing or malformed. The message names it. Check the env var names, and that `userId` holds only the user id. |
+| `AuthenticationError` with `apiKeyStatus: "invalid"` | The customer API key is wrong or was revoked. Generate a new key in Laylo settings.                                            |
+| `AuthenticationError` otherwise                      | The access key or secret key was rejected, or a creator id no longer resolves to an account.                                   |
+| `PermissionError`                                    | The account has no paid Laylo plan, or the creator id isn't under the integration's account.                                   |
+| `RateLimitError`                                     | Too many requests. Wait `error.retryAfter` seconds.                                                                            |
+| `LayloConnectionError` / `LayloTimeoutError`         | Network trouble. The request never got a usable response.                                                                      |
 
 Every API error carries `status`, `code`, and `message`. When contacting
 Laylo support, include the request id:

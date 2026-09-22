@@ -1,6 +1,6 @@
 ---
 name: laylo-api
-description: Helps call the Laylo public HTTP API directly, from any language or with curl — setting up and verifying credentials (client id and secret, bearer tokens, a customer API key or creator id) and answering questions about a Laylo account's drops, fans, subscriptions, audience segments, and conversions. Use when the user mentions the Laylo API, events.laylo.com, a Laylo API key or access token, drops, RSVPs, fan subscriptions, or conversion tracking outside a Node.js SDK project.
+description: Helps call the Laylo public HTTP API directly, from any language or with curl — setting up and verifying credentials (integrator user id, access key, and secret key, bearer tokens, a customer API key or creator id) and answering questions about a Laylo account's drops, fans, subscriptions, audience segments, and conversions. Use when the user mentions the Laylo API, events.laylo.com, a Laylo API key or access token, drops, RSVPs, fan subscriptions, or conversion tracking outside a Node.js SDK project.
 ---
 
 # Laylo public API
@@ -64,8 +64,11 @@ haven't seen here. The ones that are easiest to get wrong:
 Every request except the token mint carries two things:
 
 1. `Authorization: Bearer <access_token>`, which identifies the
-   **integration**. Mint the token from the integrator `client_id` and
-   `client_secret`, which come from the user's Laylo account manager.
+   **integration**. Mint it from the integrator credentials, a user id,
+   access key, and secret key that come from the user's Laylo account
+   manager. The token endpoint takes them as `client_id`, which is the user id
+   and access key joined with a dot (`<userId>.<accessKey>`), and
+   `client_secret`, which is the secret key.
 2. **The customer**, meaning the Laylo account the call acts on, in exactly
    one header:
    - `X-Api-Key: <key>`. The account owner generates the key at
@@ -97,7 +100,7 @@ Optionally send `X-Laylo-Source: <your integration name>`.
 - **With a mix of both kinds of account,** send whichever header fits each
   customer, per request. Never send both on the same request.
 
-The client id, client secret, and access token are server-side secrets. Never
+The secret key and access token are server-side secrets. Never
 send them from a browser or a mobile app.
 
 ## Setting up authentication
@@ -109,10 +112,9 @@ to the next.
    in rather than assuming an API key (see
    [Choosing between them](#choosing-between-an-api-key-and-a-creator-id)).
 2. **Collect credentials into the environment.** Have the user put
-   `LAYLO_CLIENT_ID`, `LAYLO_CLIENT_SECRET`, and `LAYLO_API_KEY` (or
-   `LAYLO_CREATOR_ID`) in a `.env` file themselves, and make sure `.env` is in
-   `.gitignore`. The client id has the form `<userId>.<accessKey>`, so it
-   always contains a dot.
+   `LAYLO_USER_ID`, `LAYLO_ACCESS_KEY`, `LAYLO_SECRET_KEY`, and
+   `LAYLO_API_KEY` (or `LAYLO_CREATOR_ID`) in a `.env` file themselves, and
+   make sure `.env` is in `.gitignore`.
 3. **Mint a token and verify the customer** in one command. The token goes
    straight into a variable and is never printed, and a failed mint prints the
    error body instead. The body can be JSON or form-encoded.
@@ -120,8 +122,8 @@ to the next.
    ```sh
    set -a; . ./.env; set +a
    RES=$(curl -sS -X POST https://events.laylo.com/api/v1/auth/token \
-     --data-urlencode "client_id=$LAYLO_CLIENT_ID" \
-     --data-urlencode "client_secret=$LAYLO_CLIENT_SECRET")
+     --data-urlencode "client_id=$LAYLO_USER_ID.$LAYLO_ACCESS_KEY" \
+     --data-urlencode "client_secret=$LAYLO_SECRET_KEY")
    TOKEN=$(printf '%s' "$RES" | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
    [ -n "$TOKEN" ] || echo "token request failed: $RES"
    curl -sS https://events.laylo.com/api/v1/keys/verify \

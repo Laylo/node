@@ -25,14 +25,18 @@ const AUTH_DOCS = "https://developers.laylo.com/authentication";
 /** Settings for the Laylo client. */
 export interface ClientOptions {
   /**
-   * Integrator client id in the form `<userId>.<accessKey>`; defaults to
-   * `process.env.LAYLO_CLIENT_ID`.
+   * Laylo user id of the account your integrator credentials were issued
+   * under; defaults to `process.env.LAYLO_USER_ID`.
    */
-  clientId?: string | undefined;
+  userId?: string | undefined;
   /**
-   * Integrator client secret; defaults to `process.env.LAYLO_CLIENT_SECRET`.
+   * Integrator access key; defaults to `process.env.LAYLO_ACCESS_KEY`.
    */
-  clientSecret?: string | undefined;
+  accessKey?: string | undefined;
+  /**
+   * Integrator secret key; defaults to `process.env.LAYLO_SECRET_KEY`.
+   */
+  secretKey?: string | undefined;
   /**
    * Customer API key used by calls that do not name their own customer;
    * defaults to `process.env.LAYLO_API_KEY`. Leave it and `creatorId` unset
@@ -78,20 +82,23 @@ const SHARED = Symbol("laylo.node.shared");
 interface SharedCore {
   http: HttpClient;
   tokens: TokenProvider;
-  clientId: string;
+  userId: string;
+  accessKey: string;
   baseUrl: string;
 }
 
 type ClientInit = ClientOptions & { [SHARED]?: SharedCore };
 
-const missingCredential = (option: "clientId" | "clientSecret", env: string) =>
+type CredentialOption = "userId" | "accessKey" | "secretKey";
+
+const missingCredential = (option: CredentialOption, env: string) =>
   new LayloConfigurationError(
     `${option} is missing — pass it when constructing the client or set ${env}. See ${AUTH_DOCS}`,
   );
 
 const required = (
   value: string | undefined,
-  option: "clientId" | "clientSecret",
+  option: CredentialOption,
   env: string,
 ): string => {
   if (typeof value !== "string" || value.length === 0) {
@@ -175,8 +182,9 @@ const mask = (apiKey: string | undefined) => {
  * @example
  * ```ts
  * const laylo = new Laylo({
- *   clientId: process.env.LAYLO_CLIENT_ID,
- *   clientSecret: process.env.LAYLO_CLIENT_SECRET,
+ *   userId: process.env.LAYLO_USER_ID,
+ *   accessKey: process.env.LAYLO_ACCESS_KEY,
+ *   secretKey: process.env.LAYLO_SECRET_KEY,
  * });
  *
  * const customer = laylo.forCustomer(customerApiKey);
@@ -219,15 +227,20 @@ export class Laylo {
       return;
     }
 
-    const clientId = required(
-      options.clientId ?? process.env.LAYLO_CLIENT_ID,
-      "clientId",
-      "LAYLO_CLIENT_ID",
+    const userId = required(
+      options.userId ?? process.env.LAYLO_USER_ID,
+      "userId",
+      "LAYLO_USER_ID",
     );
-    const clientSecret = required(
-      options.clientSecret ?? process.env.LAYLO_CLIENT_SECRET,
-      "clientSecret",
-      "LAYLO_CLIENT_SECRET",
+    const accessKey = required(
+      options.accessKey ?? process.env.LAYLO_ACCESS_KEY,
+      "accessKey",
+      "LAYLO_ACCESS_KEY",
+    );
+    const secretKey = required(
+      options.secretKey ?? process.env.LAYLO_SECRET_KEY,
+      "secretKey",
+      "LAYLO_SECRET_KEY",
     );
     const customer = customerFromOptionsOrEnv(options);
     const baseUrl = validBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
@@ -253,8 +266,9 @@ export class Laylo {
 
     this.core = {
       http,
-      tokens: new TokenProvider({ clientId, clientSecret, http }),
-      clientId,
+      tokens: new TokenProvider({ userId, accessKey, secretKey, http }),
+      userId,
+      accessKey,
       baseUrl,
     };
     this.baseUrl = baseUrl;
@@ -335,25 +349,27 @@ export class Laylo {
   }
 
   /**
-   * @returns The client id, base URL, creator id, and a masked API key —
-   * `private` fields are enumerable at runtime, so without this a structured
-   * logger serializing the client would emit the customer key and the
-   * integrator secret. A creator id is an account identifier, not a
-   * credential, so it is shown in full.
+   * @returns The user id, access key, base URL, creator id, and a masked API
+   * key — `private` fields are enumerable at runtime, so without this a
+   * structured logger serializing the client would emit the customer key and
+   * the secret key. The user id, access key, and creator id identify accounts
+   * but do not authenticate on their own, so they are shown in full.
    */
   toJSON(): {
-    clientId: string;
+    userId: string;
+    accessKey: string;
     baseUrl: string;
     apiKey: string | undefined;
     creatorId: string | undefined;
-    clientSecret: string;
+    secretKey: string;
   } {
     return {
-      clientId: this.core.clientId,
+      userId: this.core.userId,
+      accessKey: this.core.accessKey,
       baseUrl: this.baseUrl,
       apiKey: mask(this.customer?.apiKey),
       creatorId: this.customer?.creatorId,
-      clientSecret: "[redacted]",
+      secretKey: "[redacted]",
     };
   }
 
@@ -365,6 +381,6 @@ export class Laylo {
     const { apiKey, creatorId } = this.toJSON();
     const show = (value: string | undefined) =>
       value === undefined ? "undefined" : JSON.stringify(value);
-    return `Laylo { clientId: ${JSON.stringify(this.core.clientId)}, baseUrl: ${JSON.stringify(this.baseUrl)}, apiKey: ${show(apiKey)}, creatorId: ${show(creatorId)}, clientSecret: [redacted] }`;
+    return `Laylo { userId: ${JSON.stringify(this.core.userId)}, accessKey: ${JSON.stringify(this.core.accessKey)}, baseUrl: ${JSON.stringify(this.baseUrl)}, apiKey: ${show(apiKey)}, creatorId: ${show(creatorId)}, secretKey: [redacted] }`;
   }
 }

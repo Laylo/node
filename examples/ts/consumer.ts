@@ -7,8 +7,9 @@ import Laylo, {
 } from "@laylo.com/node";
 
 const options: ClientOptions = {
-  clientId: process.env.LAYLO_CLIENT_ID,
-  clientSecret: process.env.LAYLO_CLIENT_SECRET,
+  userId: process.env.LAYLO_USER_ID,
+  accessKey: process.env.LAYLO_ACCESS_KEY,
+  secretKey: process.env.LAYLO_SECRET_KEY,
   source: "laylo-node-examples",
 };
 

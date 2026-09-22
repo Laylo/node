@@ -4,10 +4,12 @@ import type { HttpClient } from "./http.js";
 
 /** Settings for the token provider. */
 export interface TokenProviderOptions {
-  /** Integrator client id in the form `<userId>.<accessKey>`. */
-  clientId: string;
-  /** Integrator client secret. */
-  clientSecret: string;
+  /** Laylo user id of the account your integrator credentials belong to. */
+  userId: string;
+  /** Integrator access key. */
+  accessKey: string;
+  /** Integrator secret key. */
+  secretKey: string;
   /** Transport used to call the token endpoint. */
   http: HttpClient;
   /** Returns the current time in milliseconds; defaults to `Date.now`. */
@@ -17,6 +19,20 @@ export interface TokenProviderOptions {
 }
 
 const DEFAULT_REFRESH_SKEW_MS = 60_000;
+
+const AUTH_DOCS = "https://developers.laylo.com/authentication";
+
+const present = (
+  value: string | undefined,
+  option: "userId" | "accessKey" | "secretKey",
+): string => {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new LayloConfigurationError(
+      `${option} is missing — copy it from your integrator credentials. See ${AUTH_DOCS}`,
+    );
+  }
+  return value;
+};
 
 // A mint is shared by every caller waiting on it, so an abort must eject only
 // that caller: the request itself keeps going and still caches its token.
@@ -51,12 +67,14 @@ interface CachedToken {
 
 /**
  * Mints access tokens from `POST /v1/auth/token` and caches them for their
- * lifetime, so integrators only ever supply `clientId` and `clientSecret`.
+ * lifetime, so integrators only ever supply `userId`, `accessKey`, and
+ * `secretKey`.
  * @see https://developers.laylo.com/authentication
  */
 export class TokenProvider {
-  private readonly clientId: string;
-  private readonly clientSecret: string;
+  private readonly userId: string;
+  private readonly accessKey: string;
+  private readonly secretKey: string;
   private readonly http: HttpClient;
   private readonly clock: () => number;
   private readonly refreshSkewMs: number;
@@ -67,25 +85,18 @@ export class TokenProvider {
    * @param options Credentials, transport, and cache tuning.
    */
   constructor(options: TokenProviderOptions) {
-    if (
-      typeof options.clientId !== "string" ||
-      !options.clientId.includes(".")
-    ) {
+    const userId = present(options.userId, "userId");
+    // The API splits client_id on its first "." to recover the two halves,
+    // which a Laylo user id never contains.
+    if (userId.includes(".")) {
       throw new LayloConfigurationError(
-        'clientId must have the form "<userId>.<accessKey>" — copy it from your integrator credentials. See https://developers.laylo.com/authentication',
-      );
-    }
-    if (
-      typeof options.clientSecret !== "string" ||
-      options.clientSecret.length === 0
-    ) {
-      throw new LayloConfigurationError(
-        "clientSecret is missing — copy it from your integrator credentials. See https://developers.laylo.com/authentication",
+        `userId must not contain a "." — pass the access key separately as accessKey. See ${AUTH_DOCS}`,
       );
     }
 
-    this.clientId = options.clientId;
-    this.clientSecret = options.clientSecret;
+    this.userId = userId;
+    this.accessKey = present(options.accessKey, "accessKey");
+    this.secretKey = present(options.secretKey, "secretKey");
     this.http = options.http;
     this.clock = options.clock ?? Date.now;
     this.refreshSkewMs = options.refreshSkewMs ?? DEFAULT_REFRESH_SKEW_MS;
@@ -151,7 +162,10 @@ export class TokenProvider {
     const { data } = await this.http.request<TokenResponse>({
       method: "POST",
       path: "/v1/auth/token",
-      body: { client_id: this.clientId, client_secret: this.clientSecret },
+      body: {
+        client_id: `${this.userId}.${this.accessKey}`,
+        client_secret: this.secretKey,
+      },
     });
 
     // The skew is capped at half the lifetime so a short-lived token (the
@@ -167,12 +181,12 @@ export class TokenProvider {
   }
 
   /**
-   * @returns Only the client id — `private` fields are enumerable at runtime,
-   * so without this a structured logger serializing the provider would emit
-   * the secret and the cached token.
+   * @returns Only the user id and access key — `private` fields are
+   * enumerable at runtime, so without this a structured logger serializing the
+   * provider would emit the secret key and the cached token.
    */
-  toJSON(): { clientId: string } {
-    return { clientId: this.clientId };
+  toJSON(): { userId: string; accessKey: string } {
+    return { userId: this.userId, accessKey: this.accessKey };
   }
 
   /**
@@ -180,6 +194,6 @@ export class TokenProvider {
    * provider is safe to `console.log` or `util.inspect`.
    */
   [Symbol.for("nodejs.util.inspect.custom")](): string {
-    return `TokenProvider { clientId: ${JSON.stringify(this.clientId)}, clientSecret: [redacted] }`;
+    return `TokenProvider { userId: ${JSON.stringify(this.userId)}, accessKey: ${JSON.stringify(this.accessKey)}, secretKey: [redacted] }`;
   }
 }

@@ -51,8 +51,9 @@ const fakeFetch = () => {
 const isMint = (call: Call) => call.url.endsWith("/v1/auth/token");
 
 const credentials = {
-  clientId: "user-1.access-key-1",
-  clientSecret: "shh-integrator-secret",
+  userId: "user-1",
+  accessKey: "access-key-1",
+  secretKey: "shh-integrator-secret",
 };
 
 const clientWith = (options: Record<string, unknown> = {}) => {
@@ -62,8 +63,9 @@ const clientWith = (options: Record<string, unknown> = {}) => {
 };
 
 beforeEach(() => {
-  vi.stubEnv("LAYLO_CLIENT_ID", undefined);
-  vi.stubEnv("LAYLO_CLIENT_SECRET", undefined);
+  vi.stubEnv("LAYLO_USER_ID", undefined);
+  vi.stubEnv("LAYLO_ACCESS_KEY", undefined);
+  vi.stubEnv("LAYLO_SECRET_KEY", undefined);
   vi.stubEnv("LAYLO_API_KEY", undefined);
   vi.stubEnv("LAYLO_CREATOR_ID", undefined);
 });
@@ -73,9 +75,10 @@ afterEach(() => {
 });
 
 describe("credentials", () => {
-  it("falls back to the environment for all three", async () => {
-    vi.stubEnv("LAYLO_CLIENT_ID", "env-user.env-key");
-    vi.stubEnv("LAYLO_CLIENT_SECRET", "env-secret");
+  it("falls back to the environment for every credential", async () => {
+    vi.stubEnv("LAYLO_USER_ID", "env-user");
+    vi.stubEnv("LAYLO_ACCESS_KEY", "env-key");
+    vi.stubEnv("LAYLO_SECRET_KEY", "env-secret");
     vi.stubEnv("LAYLO_API_KEY", "env-api-key");
     const { fetch, calls, apiCalls } = fakeFetch();
 
@@ -89,8 +92,9 @@ describe("credentials", () => {
   });
 
   it("prefers explicit options over the environment", async () => {
-    vi.stubEnv("LAYLO_CLIENT_ID", "env-user.env-key");
-    vi.stubEnv("LAYLO_CLIENT_SECRET", "env-secret");
+    vi.stubEnv("LAYLO_USER_ID", "env-user");
+    vi.stubEnv("LAYLO_ACCESS_KEY", "env-key");
+    vi.stubEnv("LAYLO_SECRET_KEY", "env-secret");
     vi.stubEnv("LAYLO_API_KEY", "env-api-key");
     const { fetch, calls, apiCalls } = fakeFetch();
 
@@ -101,23 +105,20 @@ describe("credentials", () => {
     }).keys.verify();
 
     expect(bodyOf(calls[0])).toEqual({
-      client_id: credentials.clientId,
-      client_secret: credentials.clientSecret,
+      client_id: "user-1.access-key-1",
+      client_secret: credentials.secretKey,
     });
     expect(headersOf(apiCalls()[0]!).get("X-Api-Key")).toBe("explicit-key");
   });
 
   it.each([
-    ["clientId", "LAYLO_CLIENT_ID"],
-    ["clientSecret", "LAYLO_CLIENT_SECRET"],
-  ])("reports a missing %s", (option, env) => {
+    ["userId", "LAYLO_USER_ID"],
+    ["accessKey", "LAYLO_ACCESS_KEY"],
+    ["secretKey", "LAYLO_SECRET_KEY"],
+  ] as const)("reports a missing %s", (option, env) => {
     let thrown: unknown;
     try {
-      new Laylo(
-        option === "clientId"
-          ? { clientSecret: credentials.clientSecret }
-          : { clientId: credentials.clientId },
-      );
+      new Laylo({ ...credentials, [option]: undefined });
     } catch (error) {
       thrown = error;
     }
@@ -129,10 +130,10 @@ describe("credentials", () => {
     expect(message).toContain("https://developers.laylo.com/authentication");
   });
 
-  it("rejects an empty clientId instead of reading the environment", () => {
-    vi.stubEnv("LAYLO_CLIENT_ID", "env-user.env-key");
+  it("rejects an empty userId instead of reading the environment", () => {
+    vi.stubEnv("LAYLO_USER_ID", "env-user");
 
-    expect(() => new Laylo({ ...credentials, clientId: "" })).toThrow(
+    expect(() => new Laylo({ ...credentials, userId: "" })).toThrow(
       LayloConfigurationError,
     );
   });
@@ -471,12 +472,13 @@ describe("redaction", () => {
     const serialized = JSON.stringify(laylo);
 
     for (const text of [shown, serialized]) {
-      expect(text).not.toContain(credentials.clientSecret);
+      expect(text).not.toContain(credentials.secretKey);
       expect(text).not.toContain("customer-abcd1234");
       expect(text).toContain("[redacted]");
     }
     expect(shown).toContain("…1234");
-    expect(shown).toContain(credentials.clientId);
+    expect(shown).toContain('userId: "user-1"');
+    expect(shown).toContain('accessKey: "access-key-1"');
     expect(shown).toContain("https://events.laylo.com/api");
   });
 
@@ -493,7 +495,7 @@ describe("redaction", () => {
     expect(inspect(laylo)).toContain("apiKey: undefined");
     expect(JSON.parse(JSON.stringify(laylo))).toMatchObject({
       creatorId: "roster-user",
-      clientSecret: "[redacted]",
+      secretKey: "[redacted]",
     });
   });
 });
