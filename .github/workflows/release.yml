@@ -35,7 +35,17 @@ jobs:
       - run: npm run build
       - run: npm run check:package
       - run: npm run verify:pack
-      - run: npm publish --dry-run --provenance
+      # Between releases main still carries the published version, and npm
+      # refuses even a dry run over it, which would stop the changesets step
+      # below from ever opening the Version Packages PR.
+      - name: Dry-run publish
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "$(npm view "@laylo.com/node@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
+            echo "$VERSION is already on npm; skipping the dry run."
+          else
+            npm publish --dry-run --provenance
+          fi
       - uses: changesets/action@v2
         with:
           version-script: npm run version:packages
