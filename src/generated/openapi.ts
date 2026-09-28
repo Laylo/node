@@ -187,6 +187,23 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
+    "/v1/messages/sms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send an SMS message */
+        post: operations["messages.sms.send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 };
 export type webhooks = Record<string, never>;
 export type components = {
@@ -1651,14 +1668,21 @@ export interface operations {
                  *     ]
                  */
                 excludedLocations?: ({
+                    /** @description City name. */
                     city: string;
+                    /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
                     country: string;
+                    /** @description Miles around the city to include. */
                     radius?: number;
+                    /** @description State or province code for the US, Canada, and Australia (e.g. `NY`, `ON`, `NSW`), or the region name elsewhere. */
                     state: string;
                 } | {
+                    /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
                     country: string;
+                    /** @description State or province code for the US, Canada, and Australia (e.g. `NY`, `ON`, `NSW`), or the region name elsewhere. */
                     state: string;
                 } | {
+                    /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
                     country: string;
                 })[];
                 /**
@@ -1670,14 +1694,21 @@ export interface operations {
                  *     ]
                  */
                 locations?: ({
+                    /** @description City name. */
                     city: string;
+                    /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
                     country: string;
+                    /** @description Miles around the city to include. */
                     radius?: number;
+                    /** @description State or province code for the US, Canada, and Australia (e.g. `NY`, `ON`, `NSW`), or the region name elsewhere. */
                     state: string;
                 } | {
+                    /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
                     country: string;
+                    /** @description State or province code for the US, Canada, and Australia (e.g. `NY`, `ON`, `NSW`), or the region name elsewhere. */
                     state: string;
                 } | {
+                    /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
                     country: string;
                 })[];
                 /**
@@ -2748,6 +2779,266 @@ export interface operations {
                      *       "error": {
                      *         "code": "METHOD_NOT_ALLOWED",
                      *         "message": "Method not allowed"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The rate limit for this integrator and customer pair is exceeded. */
+            429: {
+                headers: {
+                    /** @description Seconds until the current rate-limit window resets. */
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "RATE_LIMIT_EXCEEDED",
+                     *         "details": {
+                     *           "retryAfter": 30
+                     *         },
+                     *         "message": "Too many requests. Please try again later."
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INTERNAL_ERROR",
+                     *         "message": "An unexpected error occurred"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "messages.sms.send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description An SMS message and the phone numbers to send it to. Only numbers that currently subscribe to the customer are texted; the rest are reported as skipped. Any invalid number rejects the whole request. */
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "message": "Presale starts now: https://laylo.com/example",
+                 *       "to": [
+                 *         "+12025550100",
+                 *         "+12025550101"
+                 *       ]
+                 *     }
+                 */
+                "application/json": {
+                    /** @description The text to send, up to 1600 characters. Every recipient receives the same body. */
+                    message: string;
+                    /** @description One phone number, or an array of up to 200, in E.164 format. Numbers in countries Laylo does not send SMS to are rejected as invalid. */
+                    to: string | string[];
+                };
+            };
+        };
+        responses: {
+            /** @description How many messages were queued, and which recipients were not texted. Recipients are identified by their position in the request, never by phone number. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "queued": 1,
+                     *       "skipped": [
+                     *         {
+                     *           "index": 1,
+                     *           "reason": "not_subscribed"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": {
+                        /** @description The number of messages accepted for delivery. Each is billed against the customer's message credits per SMS segment, so a long message or one with emoji costs more, and numbers outside the +1 country code bill at the international rate. */
+                        queued: number;
+                        /** @description Recipients that were not texted, sorted by index. Empty when every recipient was queued. */
+                        skipped: {
+                            /** @description The recipient's zero-based position in the request's to array; 0 when to is a single string. */
+                            index: number;
+                            /**
+                             * @description Why the recipient was not texted: not_subscribed when the number does not currently subscribe to the customer, duplicate when it repeats an earlier entry in the request, and queue_failed when the message could not be queued and a retry is safe.
+                             * @enum {string}
+                             */
+                            reason: "duplicate" | "not_subscribed" | "queue_failed";
+                        }[];
+                    };
+                };
+            };
+            /** @description The request body is malformed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "BAD_REQUEST",
+                     *         "message": "Invalid request body"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The integrator credential is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "UNAUTHORIZED",
+                     *         "message": "Invalid Customer API Key"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "FORBIDDEN",
+                     *         "message": "Customer account does not have a paid Laylo plan"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description No route matches the requested path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "NOT_FOUND",
+                     *         "message": "Route not found"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The path exists, but the HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "METHOD_NOT_ALLOWED",
+                     *         "message": "Method not allowed"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The request conflicts with the current resource state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "CONFLICT",
+                     *         "message": "Resource state conflicts with this request"
                      *       }
                      *     }
                      */

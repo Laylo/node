@@ -28,6 +28,7 @@ trailing `RequestOptions` (`apiKey`, `creatorId`, `signal`, `timeoutMs`,
 | `fans.isUnsubscribed(contact)`     | Did this contact subscribe once and later unsubscribe?         |
 | `fans.segments.count(filters)`     | How many fans match a segment (channel, drops, place, date)?   |
 | `fans.subscribe(fan)`              | Subscribe a fan with a consent record, optionally RSVP (write) |
+| `messages.sms.send(sms)`           | Text up to 200 subscribed phone numbers (write)                |
 | `auth.createToken()`               | A raw bearer token, only for calling the API outside the SDK   |
 
 If one of these methods is `undefined` on the client, the installed SDK
@@ -57,6 +58,8 @@ call you haven't seen here. The ones that are easiest to get wrong:
 - `fans.subscribe` takes `email` + `emailMarketingConsent: true`, or `phone` +
   `smsMarketingConsent: true`, plus `consentGrantedAt` and an optional
   `dropId`.
+- `messages.sms.send` takes `message` and `to` (one E.164 number or an array
+  of up to 200), and resolves to `{ queued, skipped: [{ index, reason }] }`.
 
 ## Setting up authentication
 
@@ -134,7 +137,7 @@ shell or load them with `dotenv`.
 | `LayloConfigurationError`                            | A credential is missing or malformed. The message names it. Check the env var names, and that `userId` holds only the user id. |
 | `AuthenticationError` with `apiKeyStatus: "invalid"` | The customer API key is wrong or was revoked. Generate a new key in Laylo settings.                                            |
 | `AuthenticationError` otherwise                      | The access key or secret key was rejected, or a creator id no longer resolves to an account.                                   |
-| `PermissionError`                                    | The account has no paid Laylo plan, or the creator id isn't under the integration's account.                                   |
+| `PermissionError`                                    | The account has no paid Laylo plan, is locked, or the creator id isn't under the integration's account.                        |
 | `RateLimitError`                                     | Too many requests. Wait `error.retryAfter` seconds.                                                                            |
 | `LayloConnectionError` / `LayloTimeoutError`         | Network trouble. The request never got a usable response.                                                                      |
 
@@ -187,9 +190,10 @@ access token, so creating them is cheap.
   a secret or API key back, and never hard-code one in a source file. Logging
   the client itself is safe: its `toJSON` masks the key and redacts the
   secret.
-- **Confirm writes first.** `fans.subscribe` and `conversions.events.track`
-  change real fan data. Show the user exactly what will be sent and get a yes
-  before running either against a live account. Reads can run freely.
+- **Confirm writes first.** `fans.subscribe`, `conversions.events.track`, and
+  `messages.sms.send` change real fan data or text real people. Show the user
+  exactly what will be sent and get a yes before running any of them against
+  a live account. Reads can run freely.
 - **Consent must be real.** Only call `fans.subscribe` for someone who actually
   consented to marketing on that channel, with `consentGrantedAt` set to when
   they did. Subscribing a fan also clears an earlier unsubscribe, so never use

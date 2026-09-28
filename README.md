@@ -434,6 +434,37 @@ is the one exception — it only accepts `signal`).
   });
   ```
 
+### `messages`
+
+- [`messages.sms.send(sms, options?)`](https://developers.laylo.com/api-reference/messages/messages.sms.send) —
+  texts `message` from the customer's Laylo number to `to`, one E.164 phone
+  number or an array of up to 200. Only numbers that currently subscribe to
+  the customer get the text. It resolves to `{ queued, skipped }`, where
+  `skipped` lists each recipient that wasn't texted by its index in `to`,
+  with a reason of `"not_subscribed"`, `"duplicate"`, or `"queue_failed"`.
+  An invalid number rejects the whole request. This is a write, so it isn't
+  retried on a server error.
+
+  ```ts
+  import Laylo from "@laylo.com/node";
+
+  const laylo = new Laylo({
+    userId: process.env.LAYLO_USER_ID,
+    accessKey: process.env.LAYLO_ACCESS_KEY,
+    secretKey: process.env.LAYLO_SECRET_KEY,
+    apiKey: process.env.LAYLO_API_KEY,
+  });
+
+  const to = ["+12025550100", "+12025550101"];
+  const { queued, skipped } = await laylo.messages.sms.send({
+    message: "Presale starts now: https://laylo.com/example",
+    to,
+  });
+  for (const { index, reason } of skipped) {
+    console.log(to[index], reason);
+  }
+  ```
+
 The SDK mints and refreshes access tokens for you, but `laylo.auth.createToken()`
 is available if you need a raw bearer token to call the API outside the SDK.
 

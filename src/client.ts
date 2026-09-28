@@ -10,6 +10,7 @@ import { Customers } from "./resources/customers.js";
 import { Drops } from "./resources/drops.js";
 import { Fans } from "./resources/fans.js";
 import { Keys } from "./resources/keys.js";
+import { Messages } from "./resources/messages.js";
 import { VERSION } from "./version.js";
 
 /** Base URL used when `baseUrl` is not given. */
@@ -207,6 +208,7 @@ export class Laylo {
   private customersResource: Customers | undefined;
   private conversionsResource: Conversions | undefined;
   private fansResource: Fans | undefined;
+  private messagesResource: Messages | undefined;
   private authResource: Auth | undefined;
 
   /**
@@ -331,6 +333,13 @@ export class Laylo {
    */
   get fans(): Fans {
     return (this.fansResource ??= new Fans(this.context()));
+  }
+
+  /**
+   * @returns SMS sends to subscribed fans: `laylo.messages.sms.send()`.
+   */
+  get messages(): Messages {
+    return (this.messagesResource ??= new Messages(this.context()));
   }
 
   /**

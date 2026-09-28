@@ -26,6 +26,7 @@ export type {
   SubscribeFanInput,
 } from "./resources/fans.js";
 export type { Keys } from "./resources/keys.js";
+export type { Messages, SmsMessages } from "./resources/messages.js";
 export {
   AuthenticationError,
   BadRequestError,
@@ -60,6 +61,9 @@ export type {
   SegmentCountResponse,
   SegmentFilters,
   SegmentLocation,
+  SendSmsRequest,
+  SendSmsResponse,
+  SkippedRecipient,
   SubscribeFanRequest,
   SubscribeFanResponse,
   SubscriptionCheckResponse,

@@ -30,6 +30,7 @@ are in [references/endpoints.md](references/endpoints.md).
 | `POST /v1/fans/unsubscribed`  | Did this contact subscribe once and later unsubscribe?         |
 | `GET /v1/fans/segments`       | How many fans match a segment (channel, drops, place, date)?   |
 | `POST /v1/fans/subscriptions` | Subscribe a fan with a consent record, optionally RSVP (write) |
+| `POST /v1/messages/sms`       | Text up to 200 subscribed phone numbers (write)                |
 
 If the user asks for something not in this table, say plainly that it isn't
 available and point them to https://developers.laylo.com. Don't guess at
@@ -58,6 +59,9 @@ haven't seen here. The ones that are easiest to get wrong:
 - `POST /v1/fans/subscriptions` takes `email` + `emailMarketingConsent: true`,
   or `phone` + `smsMarketingConsent: true`, plus `consentGrantedAt` and an
   optional `dropId`.
+- `POST /v1/messages/sms` takes `message` and `to` (one E.164 number or an
+  array of up to 200), and returns `{ "queued": 1, "skipped": [{ "index": 1,
+"reason": "not_subscribed" }] }`.
 
 ## How authentication works
 
@@ -155,7 +159,7 @@ Errors come back as
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 400    | Malformed body or query. The `message` says what's wrong.                                                                                                                       |
 | 401    | If `error.apiKeyStatus` is `"invalid"`, the customer key is wrong or revoked. Otherwise the token expired or the client credentials are bad: mint a fresh token and retry once. |
-| 403    | The account has no paid Laylo plan, or the creator id isn't under the integration's account.                                                                                    |
+| 403    | The account has no paid Laylo plan, is locked, or the creator id isn't under the integration's account.                                                                         |
 | 404    | Unknown path, or a `dropId` that isn't one of the customer's drops.                                                                                                             |
 | 429    | Rate limited. Wait for the `Retry-After` header (seconds), or `error.details.retryAfter`.                                                                                       |
 | 5xx    | Laylo-side failure. Retry reads with backoff. See the retry rules below for writes.                                                                                             |
@@ -202,9 +206,10 @@ Common mappings:
   a secret, key, or token back, and never hard-code one in a source file.
 - **Keep tokens in memory.** Hold the access token in a shell variable or in
   the program. Never write it to a file, including temp files.
-- **Confirm writes first.** `POST /v1/fans/subscriptions` and
-  `POST /v1/conversions/events` change real fan data. Show the user the exact
-  request body and get a yes before sending either to a live account. Reads,
+- **Confirm writes first.** `POST /v1/fans/subscriptions`,
+  `POST /v1/conversions/events`, and `POST /v1/messages/sms` change real fan
+  data or text real people. Show the user the exact request body and get a
+  yes before sending any of them to a live account. Reads,
   including the two `POST` subscription checks, can run freely.
 - **Consent must be real.** Only subscribe someone who actually consented to
   marketing on that channel, with `consentGrantedAt` set to when they did.
@@ -229,7 +234,8 @@ Common mappings:
 - **JSON bodies** need `Content-Type: application/json`.
 - **Retries:** retry 408, 429, and 5xx for `GET`s and for the two subscription
   checks. Retry 429 for anything. Don't automatically replay
-  `POST /v1/fans/subscriptions` or `POST /v1/conversions/events` after a 5xx,
+  `POST /v1/fans/subscriptions`, `POST /v1/conversions/events`, or
+  `POST /v1/messages/sms` after a 5xx,
   because the server may already have applied it. A tracked event with a
   stable `metadata.uniqueId` is merged on repeat, so a deliberate retry of
   that one is safe.
