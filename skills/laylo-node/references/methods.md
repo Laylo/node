@@ -48,7 +48,7 @@ a customer just gave you before you store it.
 
 Returns `{ apiKeyStatus: "valid" | "not_provided", message: string }`. An
 invalid key throws `AuthenticationError` with `apiKeyStatus === "invalid"`. A
-valid key on an account without a paid plan throws `PermissionError`.
+valid key on an account without a paid plan, or on a locked account, throws `PermissionError`.
 
 ## customers.list()
 
@@ -227,6 +227,35 @@ type SubscribeFanResponse = {
   rsvp?: { dropId: string; status: "confirmed" }; // only when dropId was given
 };
 ```
+
+## messages.sms.send(sms)
+
+```ts
+type SendSmsRequest = {
+  message: string; // up to 1,600 characters, same text for every recipient
+  to: string | string[]; // E.164; an array holds 1 to 200 numbers
+};
+```
+
+Only numbers that currently subscribe to the customer are texted. An invalid
+number, or one in a country Laylo doesn't send SMS to, throws
+`BadRequestError` and nothing is sent. An empty `to` array or more than 200
+numbers throws `LayloConfigurationError` before any request. A customer
+without a Laylo phone number throws `ConflictError`.
+
+Returns:
+
+```ts
+type SendSmsResponse = {
+  queued: number; // messages accepted; billed per SMS segment, not per message
+  skipped: {
+    index: number; // position in `to`; 0 when `to` is a string
+    reason: "not_subscribed" | "duplicate" | "queue_failed";
+  }[];
+};
+```
+
+It isn't retried on a 5xx. Retrying only the `queue_failed` recipients is safe.
 
 ## auth.createToken()
 

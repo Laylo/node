@@ -194,3 +194,23 @@ export type SubscribeFanRequest = RequestJson<
 export type SubscribeFanResponse = SuccessJson<
   operations["fans.subscriptions.create"]
 >;
+
+/**
+ * Request body for sending an SMS: the `message` text and `to`, one E.164
+ * phone number or an array of up to 200.
+ * @see https://developers.laylo.com/api-reference/messages/messages.sms.send
+ */
+export type SendSmsRequest = RequestJson<operations["messages.sms.send"]>;
+
+/**
+ * Response reporting how many messages were queued and which recipients were
+ * skipped, by their index in `to`.
+ * @see https://developers.laylo.com/api-reference/messages/messages.sms.send
+ */
+export type SendSmsResponse = SuccessJson<operations["messages.sms.send"]>;
+
+/**
+ * A recipient that was not texted: its zero-based index in `to` and why.
+ * @see https://developers.laylo.com/records/skipped-recipient
+ */
+export type SkippedRecipient = SendSmsResponse["skipped"][number];

@@ -33,7 +33,7 @@ Mint a new one before it expires. Rate limited per caller address.
 
 `apiKeyStatus` is `"not_provided"` when the customer is named by
 `X-Creator-Id`. A bad key returns 401 with `error.apiKeyStatus: "invalid"`.
-A key on an account without a paid plan returns 403.
+A key on an account without a paid plan, or on a locked account, returns 403.
 
 ## GET /v1/customers
 
@@ -258,6 +258,26 @@ refreshes their record and clears any earlier unsubscribe.
 `rsvp` is present only when `dropId` was sent. `fan` may also carry
 `inferredDisplayName`, `joinedAt`, and `location` (`city`, `state`,
 `country`). Contact details are never returned.
+
+## POST /v1/messages/sms
+
+```json
+{ "message": "Presale starts now", "to": ["+12025550100", "+12025550101"] }
+```
+
+`to` is one E.164 number or an array of 1 to 200. `message` is up to 1,600
+characters, and every recipient gets the same text from the customer's Laylo
+number. Only numbers that currently subscribe to the customer are texted.
+
+```json
+{ "queued": 1, "skipped": [{ "index": 1, "reason": "not_subscribed" }] }
+```
+
+`skipped` identifies recipients by their position in `to` (0 when `to` is a
+string), with a reason of `not_subscribed`, `duplicate`, or `queue_failed`.
+Messages are billed per SMS segment (160 plain characters, 70 with emoji), and numbers outside +1 bill at the international rate. An invalid number, or one
+in a country Laylo doesn't send SMS to, returns 400 and sends nothing. 409
+means the customer has no Laylo phone number to send from.
 
 ## Conversion actions
 

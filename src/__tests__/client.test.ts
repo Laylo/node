@@ -18,6 +18,7 @@ import { Customers } from "../resources/customers.js";
 import { Drops } from "../resources/drops.js";
 import { Fans } from "../resources/fans.js";
 import { Keys } from "../resources/keys.js";
+import { Messages } from "../resources/messages.js";
 import type { VerifyKeyResponse } from "../types.js";
 import {
   bodyOf,
@@ -443,6 +444,7 @@ describe("resources", () => {
     expect(laylo.customers).toBe(laylo.customers);
     expect(laylo.conversions).toBe(laylo.conversions);
     expect(laylo.fans).toBe(laylo.fans);
+    expect(laylo.messages).toBe(laylo.messages);
     expect(laylo.auth).toBe(laylo.auth);
   });
 
@@ -454,6 +456,7 @@ describe("resources", () => {
     expect(laylo.customers).toBeInstanceOf(Customers);
     expect(laylo.conversions).toBeInstanceOf(Conversions);
     expect(laylo.fans).toBeInstanceOf(Fans);
+    expect(laylo.messages).toBeInstanceOf(Messages);
     expect(laylo.auth).toBeInstanceOf(Auth);
   });
 
