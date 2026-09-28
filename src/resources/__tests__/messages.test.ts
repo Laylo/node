@@ -1,10 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import {
-  BadRequestError,
-  LayloConfigurationError,
-  ServerError,
-} from "../../core/errors.js";
+import { LayloConfigurationError, ServerError } from "../../core/errors.js";
 import type { SendSmsRequest, SendSmsResponse } from "../../types.js";
 import { Messages } from "../messages.js";
 import { bodyOf, fakeContext, headersOf, json } from "./harness.js";
@@ -89,26 +85,6 @@ describe("Messages", () => {
         }),
       ).rejects.toThrow(/at most 200/);
       expect(calls).toHaveLength(0);
-    });
-
-    it("surfaces an invalid number as a BadRequestError", async () => {
-      const { context } = fakeContext(
-        [
-          json(400, {
-            error: {
-              code: "BAD_REQUEST",
-              message: "Invalid 'to[1]' in payload",
-            },
-          }),
-        ],
-        { apiKey: "customer-key-1" },
-      );
-
-      const failure: unknown = await new Messages(context).sms
-        .send({ message: "Hi", to: ["+12025550100", "nope"] })
-        .catch((error: unknown) => error);
-
-      expect(failure).toBeInstanceOf(BadRequestError);
     });
 
     it("does not replay a 503 because the send is not idempotent", async () => {

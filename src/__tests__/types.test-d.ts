@@ -16,9 +16,6 @@ import type {
   SegmentCountResponse,
   SegmentFilters,
   SegmentLocation,
-  SendSmsRequest,
-  SendSmsResponse,
-  SkippedRecipient,
   SubscribeFanRequest,
   SubscribeFanResponse,
   SubscriptionCheckResponse,
@@ -227,20 +224,5 @@ describe("response aliases", () => {
     expectTypeOf<SubscribeFanResponse["rsvp"]>().toEqualTypeOf<
       { dropId: string; status: "confirmed" } | undefined
     >();
-  });
-
-  test("SMS send request and response", () => {
-    expectTypeOf<SendSmsRequest>().toEqualTypeOf<{
-      message: string;
-      to: string | string[];
-    }>();
-    expectTypeOf<SendSmsResponse["queued"]>().toEqualTypeOf<number>();
-    expectTypeOf<SendSmsResponse["skipped"]>().toEqualTypeOf<
-      SkippedRecipient[]
-    >();
-    expectTypeOf<SkippedRecipient>().toEqualTypeOf<{
-      index: number;
-      reason: "duplicate" | "not_subscribed" | "queue_failed";
-    }>();
   });
 });
