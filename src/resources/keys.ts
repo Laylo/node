@@ -8,8 +8,10 @@ import { APIResource } from "./base.js";
  */
 export class Keys extends APIResource {
   /**
-   * Verifies that a customer API key is valid for your integrator account —
-   * the way to validate a key a customer gives you before storing it. An
+   * Verifies that the client's credentials are valid: a customer API key
+   * with your integrator credentials, the way to validate a key a customer
+   * gives you before storing it, or a key on its own, which needs no
+   * permission to check itself. An
    * invalid key throws `AuthenticationError` with `apiKeyStatus: "invalid"`;
    * a valid key whose account has no paid Laylo plan throws `PermissionError`.
    *
