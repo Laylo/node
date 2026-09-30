@@ -84,7 +84,7 @@ In this mode:
   (`POST /v1/fans/subscriptions`, `POST /v1/conversions/events`,
   `POST /v1/messages/sms`) need "write". Everything else, including the two
   `POST` subscription checks, needs "read". The two are independent: "write"
-  doesn't grant "read". A key with no permissions set has both. A missing one
+  doesn't grant "read". A key with no permissions set can only read. A missing one
   returns 403 `FORBIDDEN` with a message like
   `This API key does not have the "write" permission`. The fix is a key that
   has that permission. Don't suggest integrator credentials for this. If the

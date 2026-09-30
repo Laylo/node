@@ -52,7 +52,7 @@ Setting some but not all of the three is a construction error.
 Each key-only call also needs a permission on the key: "write" for
 `fans.subscribe`, `conversions.events.track`, and `messages.sms.send`, "read"
 for everything else. "write" doesn't grant "read", and a key with none set
-has both. A missing one throws `PermissionError`
+can only read. A missing one throws `PermissionError`
 (`This API key does not have the "write" permission`); use a key that has it.
 
 CommonJS: `const { Laylo } = require("@laylo.com/node");`

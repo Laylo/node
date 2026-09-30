@@ -133,7 +133,7 @@ Laylo. Integrator calls aren't. Writes (`fans.subscribe`,
 `conversions.events.track`, `messages.sms.send`) need "write". Everything
 else, including `fans.isSubscribed` and `fans.isUnsubscribed`, needs "read".
 The two are independent: "write" doesn't grant "read". A key with no
-permissions set has both. A call the key isn't allowed to make throws
+permissions set can only read. A call the key isn't allowed to make throws
 `PermissionError` with a message like
 `This API key does not have the "write" permission`. The fix is a key that
 has that permission. Don't suggest integrator credentials for this.

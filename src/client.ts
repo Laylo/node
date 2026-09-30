@@ -59,7 +59,7 @@ export interface ClientOptions {
    * `forCustomer`. Without integrator credentials, this key alone
    * authenticates the client as its account, and each call needs the key to
    * carry the "read" or "write" permission it requires (a key with none set
-   * has both); a missing one throws `PermissionError`.
+   * can only read); a missing one throws `PermissionError`.
    */
   apiKey?: string | undefined;
   /**
