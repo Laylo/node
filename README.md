@@ -163,8 +163,8 @@ access token. Compared with integrator credentials:
   (`fans.subscribe`, `conversions.events.track`, `messages.sms.send`) need
   "write"; everything else, including
   `fans.isSubscribed` and `fans.isUnsubscribed`, needs "read". The two are
-  independent, so "write" doesn't grant "read". A key with no permissions set
-  can only read. A call the key isn't allowed to make throws `PermissionError`
+  independent, so "write" doesn't grant "read". A key with no permissions stored
+  can only read, and one stored with an empty list can't make any call. A call the key isn't allowed to make throws `PermissionError`
   with a message such as `This API key does not have the "write" permission`.
   The fix is to use a key that has that permission; you don't need
   integrator credentials for it.
