@@ -13,7 +13,9 @@ export class Customers extends APIResource {
    * each entry's `id` being the `creatorId` to pass. The list is scoped to
    * the integrator behind the access token, not to the customer the client
    * or call is otherwise acting as — but a customer must still be named, as
-   * on every call. `createdAt` is Unix epoch milliseconds.
+   * on every call. `createdAt` is Unix epoch milliseconds. Needs integrator
+   * credentials: on a client constructed with only an API key the API answers
+   * with a `PermissionError`.
    * @param options Per-call overrides.
    * @returns The accounts on your roster, sorted by display name.
    * @example

@@ -6,7 +6,7 @@ Every method returns a promise and takes an optional trailing
 ```ts
 type RequestOptions = {
   apiKey?: string; // act as this customer for one call
-  creatorId?: string; // or this roster account; never both
+  creatorId?: string; // or this roster account; never both; integrator only
   signal?: AbortSignal;
   timeoutMs?: number; // default 30000
   retry?: boolean; // false disables retries for this call
@@ -37,7 +37,17 @@ const laylo = new Laylo({
 laylo.forCustomer("customer-api-key");
 laylo.forCustomer({ apiKey: "..." });
 laylo.forCustomer({ creatorId: "..." });
+
+// For an account's own data, the API key alone (or LAYLO_API_KEY with no
+// LAYLO_USER_ID, LAYLO_ACCESS_KEY, or LAYLO_SECRET_KEY set):
+const own = new Laylo({ apiKey });
 ```
+
+With none of `userId`, `accessKey`, and `secretKey` set, the client sends only
+`X-Api-Key`, with no access token. It is limited to 20 requests a minute per
+account, `creatorId` throws `LayloConfigurationError` wherever it's passed,
+`customers.list()` throws `PermissionError`, and `auth.createToken()` rejects.
+Setting some but not all of the three is a construction error.
 
 CommonJS: `const { Laylo } = require("@laylo.com/node");`
 
@@ -66,7 +76,8 @@ type CustomerAccount = {
 ```
 
 `id` is the value `forCustomer({ creatorId })` accepts. `createdAt` is epoch
-milliseconds.
+milliseconds. Needs integrator credentials; with only an API key it throws
+`PermissionError`.
 
 ## drops.list()
 
@@ -268,6 +279,7 @@ It isn't retried on a 5xx. Retrying only the `queue_failed` recipients is safe.
 
 Returns `{ access_token: string; expires_in: number; token_type: "Bearer" }`.
 Only needed to call the HTTP API directly. The SDK handles tokens itself.
+Rejects with `LayloConfigurationError` on a client with only an API key.
 
 ## ConversionAction values
 

@@ -1,13 +1,14 @@
 ---
 name: laylo-node
-description: Helps build with the Laylo Node.js SDK (@laylo.com/node) — setting up and verifying credentials (integrator user id, access key, and secret key, plus a customer API key or creator id) and answering questions about a Laylo account's drops, fans, subscriptions, audience segments, and conversions. Use when the user mentions Laylo, @laylo.com/node, a Laylo API key, drops, RSVPs, fan subscriptions, or conversion tracking in a JavaScript or TypeScript project.
+description: Helps build with the Laylo Node.js SDK (@laylo.com/node) — setting up and verifying credentials (just an API key for an account calling its own data, or integrator user id, access key, and secret key plus a customer API key or creator id) and answering questions about a Laylo account's drops, fans, subscriptions, audience segments, and conversions. Use when the user mentions Laylo, @laylo.com/node, a Laylo API key, drops, RSVPs, fan subscriptions, or conversion tracking in a JavaScript or TypeScript project.
 ---
 
 # Laylo Node.js SDK
 
 `@laylo.com/node` is the official Node.js client for the Laylo public API. It
-mints and refreshes access tokens, retries transient failures, and throws typed
-errors. Requires Node.js 20 or later. Full docs: https://developers.laylo.com
+authenticates with an account's API key alone or with integrator credentials
+(minting and refreshing access tokens for you), retries transient failures,
+and throws typed errors. Requires Node.js 20 or later. Full docs: https://developers.laylo.com
 
 ## What it can do
 
@@ -16,20 +17,24 @@ trailing `RequestOptions` (`apiKey`, `creatorId`, `signal`, `timeoutMs`,
 `retry`). Parameters and response shapes are in
 [references/methods.md](references/methods.md).
 
-| Method                             | Answers                                                        |
-| ---------------------------------- | -------------------------------------------------------------- |
-| `keys.verify()`                    | Is this customer API key valid?                                |
-| `customers.list()`                 | Which accounts sit under my integration's own account?         |
-| `drops.list()`                     | What active public drops does the customer have?               |
-| `conversions.list(params?)`        | What conversion definitions exist (tickets, merch, RSVPs, …)?  |
-| `conversions.counts.list(params?)` | How many conversion events per action over a window, by day?   |
-| `conversions.events.track(event)`  | Record a purchase, check-in, click, etc. for a fan (write)     |
-| `fans.isSubscribed(contact)`       | Does this email or phone currently subscribe?                  |
-| `fans.isUnsubscribed(contact)`     | Did this contact subscribe once and later unsubscribe?         |
-| `fans.segments.count(filters)`     | How many fans match a segment (channel, drops, place, date)?   |
-| `fans.subscribe(fan)`              | Subscribe a fan with a consent record, optionally RSVP (write) |
-| `messages.sms.send(sms)`           | Text up to 200 subscribed phone numbers (write)                |
-| `auth.createToken()`               | A raw bearer token, only for calling the API outside the SDK   |
+| Method                             | Answers                                                           |
+| ---------------------------------- | ----------------------------------------------------------------- |
+| `keys.verify()`                    | Is this customer API key valid?                                   |
+| `customers.list()`                 | Which accounts sit under my integration's own account? (\*)       |
+| `drops.list()`                     | What active public drops does the customer have?                  |
+| `conversions.list(params?)`        | What conversion definitions exist (tickets, merch, RSVPs, …)?     |
+| `conversions.counts.list(params?)` | How many conversion events per action over a window, by day?      |
+| `conversions.events.track(event)`  | Record a purchase, check-in, click, etc. for a fan (write)        |
+| `fans.isSubscribed(contact)`       | Does this email or phone currently subscribe?                     |
+| `fans.isUnsubscribed(contact)`     | Did this contact subscribe once and later unsubscribe?            |
+| `fans.segments.count(filters)`     | How many fans match a segment (channel, drops, place, date)?      |
+| `fans.subscribe(fan)`              | Subscribe a fan with a consent record, optionally RSVP (write)    |
+| `messages.sms.send(sms)`           | Text up to 200 subscribed phone numbers (write)                   |
+| `auth.createToken()`               | A raw bearer token, only for calling the API outside the SDK (\*) |
+
+(\*) Needs integrator credentials. A client with only an API key gets
+`PermissionError` from `customers.list()`, and `auth.createToken()` rejects
+with `LayloConfigurationError`.
 
 If one of these methods is `undefined` on the client, the installed SDK
 predates it. Upgrade with `npm install @laylo.com/node@latest`. If it is still
@@ -70,12 +75,23 @@ to the next.
    needs 0.3.0 or later: older releases take a joined `clientId` and
    `clientSecret` instead of `userId`, `accessKey`, and `secretKey`, so
    upgrade an existing install with `npm install @laylo.com/node@latest`.
-2. **Integrator credentials.** A `userId`, `accessKey`, and `secretKey`
+   Setting up with only an API key needs 0.5.0 or later.
+2. **Pick how to authenticate.** Ask the user which fits:
+   - **Their own account.** An account owner calling their own Laylo data
+     (a script, a report, a backend for their own site) needs only an API
+     key. They generate it at https://laylo.com/settings?tab=Integrations and
+     put it in `.env` as `LAYLO_API_KEY`, with no other Laylo variables set.
+     Skip to step 5. This mode is limited to 20 requests a minute per
+     account, can't use `creatorId` or `customers.list()`, and only acts on
+     the key's own account. The key is a secret: keep it server-side, like
+     the integrator secret key below.
+   - **An integration serving many customers.** Continue with step 3.
+3. **Integrator credentials.** A `userId`, `accessKey`, and `secretKey`
    issued to the integration. They come from the user's Laylo account manager
    and can't be self-served. The `userId` is the Laylo user id of the account
    the credentials were issued under. The secret key is a server-side secret
    and must never ship to a browser or a mobile app.
-3. **Name the customer.** Every call acts on one Laylo account, named in one of
+4. **Name the customer.** Every call acts on one Laylo account, named in one of
    two ways. Use one or the other, never both. Ask the user which situation
    they're in rather than assuming an API key (see
    [Choosing between them](#choosing-between-an-api-key-and-a-creator-id)).
@@ -86,13 +102,14 @@ to the next.
      under the integration's own Laylo account. Pass the account's Laylo user
      id instead of collecting a key. `customers.list()` returns the valid ids.
      The SDK sends it as `X-Creator-Id`.
-4. **Store them in the environment.** The SDK reads `LAYLO_USER_ID`,
+5. **Store them in the environment.** The SDK reads `LAYLO_USER_ID`,
    `LAYLO_ACCESS_KEY`, `LAYLO_SECRET_KEY`, and one of `LAYLO_API_KEY` or
-   `LAYLO_CREATOR_ID`.
-   Having both of the last two set is a construction error. Have the user
-   put these in a `.env` file themselves, and make sure `.env` is in
+   `LAYLO_CREATOR_ID`; for an account's own data, `LAYLO_API_KEY` alone.
+   Having both of the last two set is a construction error, and so is setting
+   some but not all of the three integrator variables. Have the user put
+   these in a `.env` file themselves, and make sure `.env` is in
    `.gitignore`.
-5. **Verify.** Run the check below. Success prints
+6. **Verify.** Run the check below. Success prints
    `apiKeyStatus: "valid"`, or `"not_provided"` for a creator-id customer,
    where no key exists to check.
 
@@ -108,6 +125,9 @@ console.log(await laylo.keys.verify());
 shell or load them with `dotenv`.
 
 ### Choosing between an API key and a creator id
+
+This choice is for integrators. With only an API key, the key is the
+customer, and a creator id isn't accepted.
 
 - **Use an API key** when the account isn't under yours, such as an
   independent artist connecting to your product. A key works for any Laylo
@@ -132,14 +152,14 @@ shell or load them with `dotenv`.
 
 ### When verification fails
 
-| Error                                                | Meaning and fix                                                                                                                |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `LayloConfigurationError`                            | A credential is missing or malformed. The message names it. Check the env var names, and that `userId` holds only the user id. |
-| `AuthenticationError` with `apiKeyStatus: "invalid"` | The customer API key is wrong or was revoked. Generate a new key in Laylo settings.                                            |
-| `AuthenticationError` otherwise                      | The access key or secret key was rejected, or a creator id no longer resolves to an account.                                   |
-| `PermissionError`                                    | The account has no paid Laylo plan, is locked, or the creator id isn't under the integration's account.                        |
-| `RateLimitError`                                     | Too many requests. Wait `error.retryAfter` seconds.                                                                            |
-| `LayloConnectionError` / `LayloTimeoutError`         | Network trouble. The request never got a usable response.                                                                      |
+| Error                                                | Meaning and fix                                                                                                                                                                                  |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `LayloConfigurationError`                            | A credential is missing or malformed. The message names it. Check the env var names, and that `userId` holds only the user id. A `creatorId` set without integrator credentials also lands here. |
+| `AuthenticationError` with `apiKeyStatus: "invalid"` | The customer API key is wrong or was revoked. Generate a new key in Laylo settings.                                                                                                              |
+| `AuthenticationError` otherwise                      | The access key or secret key was rejected, or a creator id no longer resolves to an account.                                                                                                     |
+| `PermissionError`                                    | The account has no paid Laylo plan, is locked, the creator id isn't under the integration's account, or `customers.list()` was called with only an API key.                                      |
+| `RateLimitError`                                     | Too many requests. Wait `error.retryAfter` seconds. With only an API key the limit is 20 a minute per account.                                                                                   |
+| `LayloConnectionError` / `LayloTimeoutError`         | Network trouble. The request never got a usable response.                                                                                                                                        |
 
 Every API error carries `status`, `code`, and `message`. When contacting
 Laylo support, include the request id:
@@ -174,7 +194,8 @@ Common mappings:
 - "Is fan@example.com still subscribed?" → `fans.isSubscribed({ email })`
 - "Ticket sales this week?" → `conversions.counts.list({ action: "TICKET_PURCHASE", startDate })`
 - "Which artists can I act as?" → `customers.list()`, then
-  `laylo.forCustomer({ creatorId: id })` for each
+  `laylo.forCustomer({ creatorId: id })` for each (integrator credentials
+  only)
 
 Several customers in one process: build one client with only the integrator
 credentials, then call `laylo.forCustomer(apiKey)` or
@@ -222,3 +243,7 @@ access token, so creating them is cheap.
   everywhere, are retried up to twice.
 - `customers.list()` is scoped to the integration, but a customer must still
   be named on the call.
+- With only an API key, requests are capped at 20 a minute per account. A
+  script that loops over many calls (one `fans.isSubscribed` per contact, say)
+  will hit it; space the calls out, or prefer one aggregate call such as
+  `fans.segments.count` where it answers the question.

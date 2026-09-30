@@ -1,8 +1,13 @@
 # Endpoint reference
 
 Base URL: `https://events.laylo.com/api`. All responses are JSON. Every
-endpoint except `POST /v1/auth/token` needs `Authorization: Bearer <token>`
-plus exactly one of `X-Api-Key` or `X-Creator-Id`.
+endpoint except `POST /v1/auth/token` needs either:
+
+- **Only an API key:** `X-Api-Key` and no `Authorization` header. The call
+  acts as the key's own account, is limited to 20 requests a minute per
+  account, and can't use `X-Creator-Id`.
+- **Integrator credentials:** `Authorization: Bearer <token>` plus exactly one
+  of `X-Api-Key` or `X-Creator-Id`.
 
 ## POST /v1/auth/token
 
@@ -32,13 +37,15 @@ Mint a new one before it expires. Rate limited per caller address.
 ```
 
 `apiKeyStatus` is `"not_provided"` when the customer is named by
-`X-Creator-Id`. A bad key returns 401 with `error.apiKeyStatus: "invalid"`.
+`X-Creator-Id`, and `"valid"` for a good key sent on its own. A bad key returns 401 with `error.apiKeyStatus: "invalid"`.
 A key on an account without a paid plan, or on a locked account, returns 403.
 
 ## GET /v1/customers
 
 The accounts under the integration's own Laylo account, sorted by display
 name. Scoped to the integration, but a customer header is still required.
+Needs integrator credentials: with only an API key it returns 403
+`FORBIDDEN`.
 
 ```json
 [
@@ -213,9 +220,10 @@ values match any of them.
 ```
 
 ```sh
-# same command as the token mint in step 3 of SKILL.md
+# with integrator credentials, add the token mint from SKILL.md and
+# -H "Authorization: Bearer $TOKEN"
 curl -sS -G https://events.laylo.com/api/v1/fans/segments \
-  -H "Authorization: Bearer $TOKEN" -H "X-Api-Key: $LAYLO_API_KEY" \
+  -H "X-Api-Key: $LAYLO_API_KEY" \
   --data-urlencode "signUpType=sms" \
   --data-urlencode 'locations={"country":"US","state":"CA"}' \
   --data-urlencode "signedUpAfter=2026-01-01T00:00:00Z"
@@ -302,10 +310,12 @@ means the customer has no Laylo phone number to send from.
 
 ## Minimal clients
 
-These cache the token (sharing one mint between concurrent calls in the JS
-version), re-mint once on a 401 that doesn't blame the customer key, wait out
-a 429 using `Retry-After`, and name the customer by API key or creator id,
-whichever the environment or the call provides. Query values that are
+These send only the API key when `LAYLO_USER_ID` isn't set. With integrator
+credentials they cache the token (sharing one mint between concurrent calls
+in the JS version) and re-mint once on a 401 that doesn't blame the customer
+key. Either way they wait out a 429 using `Retry-After`, and name the
+customer by API key or creator id, whichever the environment or the call
+provides. Query values that are
 `undefined` or `null` are left out, dates are sent as ISO 8601, and location
 objects are JSON-encoded.
 
@@ -313,6 +323,8 @@ objects are JSON-encoded.
 
 ```js
 const BASE = "https://events.laylo.com/api";
+// Without integrator credentials, the API key alone authenticates.
+const integrator = Boolean(process.env.LAYLO_USER_ID);
 let cached;
 let minting;
 
@@ -381,7 +393,7 @@ export async function laylo(
     const res = await fetch(url, {
       method,
       headers: {
-        Authorization: `Bearer ${await token()}`,
+        ...(integrator ? { Authorization: `Bearer ${await token()}` } : {}),
         ...customerHeader({ apiKey, creatorId }),
         Accept: "application/json",
         ...(body ? { "Content-Type": "application/json" } : {}),
@@ -391,6 +403,7 @@ export async function laylo(
     const data = await res.json().catch(() => undefined);
     if (res.ok) return data;
     if (
+      integrator &&
       res.status === 401 &&
       data?.error?.apiKeyStatus !== "invalid" &&
       !reminted
@@ -427,6 +440,8 @@ from datetime import datetime
 import requests
 
 BASE = "https://events.laylo.com/api"
+# Without integrator credentials, the API key alone authenticates.
+INTEGRATOR = bool(os.environ.get("LAYLO_USER_ID"))
 _token = {"value": None, "refresh_at": 0}
 
 def _get_token():
@@ -468,18 +483,17 @@ def laylo(method, path, query=None, body=None, api_key=None, creator_id=None):
                 params.append((key, _query_value(item)))
     reminted = False
     for attempt in range(3):
-        res = requests.request(method, BASE + path, params=params, json=body, timeout=30, headers={
-            "Authorization": f"Bearer {_get_token()}",
-            "Accept": "application/json",
-            **_customer_header(api_key, creator_id),
-        })
+        headers = {"Accept": "application/json", **_customer_header(api_key, creator_id)}
+        if INTEGRATOR:
+            headers["Authorization"] = f"Bearer {_get_token()}"
+        res = requests.request(method, BASE + path, params=params, json=body, timeout=30, headers=headers)
         if res.ok:
             return res.json()
         try:
             err = res.json().get("error") or {}
         except ValueError:
             err = {}
-        if res.status_code == 401 and err.get("apiKeyStatus") != "invalid" and not reminted:
+        if INTEGRATOR and res.status_code == 401 and err.get("apiKeyStatus") != "invalid" and not reminted:
             reminted = True
             _token["value"] = None
             continue

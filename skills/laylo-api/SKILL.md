@@ -1,6 +1,6 @@
 ---
 name: laylo-api
-description: Helps call the Laylo public HTTP API directly, from any language or with curl — setting up and verifying credentials (integrator user id, access key, and secret key, bearer tokens, a customer API key or creator id) and answering questions about a Laylo account's drops, fans, subscriptions, audience segments, and conversions. Use when the user mentions the Laylo API, events.laylo.com, a Laylo API key or access token, drops, RSVPs, fan subscriptions, or conversion tracking outside a Node.js SDK project.
+description: Helps call the Laylo public HTTP API directly, from any language or with curl — setting up and verifying credentials (just an API key for an account calling its own data, or integrator user id, access key, and secret key, bearer tokens, and a customer API key or creator id) and answering questions about a Laylo account's drops, fans, subscriptions, audience segments, and conversions. Use when the user mentions the Laylo API, events.laylo.com, a Laylo API key or access token, drops, RSVPs, fan subscriptions, or conversion tracking outside a Node.js SDK project.
 ---
 
 # Laylo public API
@@ -21,7 +21,7 @@ are in [references/endpoints.md](references/endpoints.md).
 | ----------------------------- | -------------------------------------------------------------- |
 | `POST /v1/auth/token`         | Mint a bearer token from the integrator credentials            |
 | `GET /v1/keys/verify`         | Is this customer API key valid?                                |
-| `GET /v1/customers`           | Which accounts sit under my integration's own account?         |
+| `GET /v1/customers`           | Which accounts sit under my integration's own account? (\*)    |
 | `GET /v1/drops`               | What active public drops does the customer have?               |
 | `GET /v1/conversions`         | What conversion definitions exist (tickets, merch, RSVPs, …)?  |
 | `GET /v1/conversions/counts`  | How many conversion events per action over a window, by day?   |
@@ -31,6 +31,8 @@ are in [references/endpoints.md](references/endpoints.md).
 | `GET /v1/fans/segments`       | How many fans match a segment (channel, drops, place, date)?   |
 | `POST /v1/fans/subscriptions` | Subscribe a fan with a consent record, optionally RSVP (write) |
 | `POST /v1/messages/sms`       | Text up to 200 subscribed phone numbers (write)                |
+
+(\*) Needs integrator credentials; with only an API key it returns 403.
 
 If the user asks for something not in this table, say plainly that it isn't
 available and point them to https://developers.laylo.com. Don't guess at
@@ -65,7 +67,22 @@ haven't seen here. The ones that are easiest to get wrong:
 
 ## How authentication works
 
-Every request except the token mint carries two things:
+There are two ways to authenticate. Ask the user which fits.
+
+**Only an API key**, for an account owner calling their own Laylo data (a
+script, a report, a backend for their own site). Send the key as
+`X-Api-Key: <key>` and no `Authorization` header; there's no token to mint.
+The owner generates the key at https://laylo.com/settings?tab=Integrations.
+In this mode:
+
+- Requests are limited to 20 a minute per account. Past that the API returns
+  429 with `Retry-After`.
+- Only the key's own account can be acted on. `X-Creator-Id` isn't accepted.
+- `GET /v1/customers` returns 403, since there's no integrator roster to
+  list, and `POST /v1/auth/token` doesn't apply.
+
+**Integrator credentials**, for an integration serving many customers. Every
+request except the token mint carries two things:
 
 1. `Authorization: Bearer <access_token>`, which identifies the
    **integration**. Mint it from the integrator credentials, a user id,
@@ -81,9 +98,14 @@ Every request except the token mint carries two things:
      customers sit under the integration's own Laylo account.
      `GET /v1/customers` lists the valid ids.
 
-Optionally send `X-Laylo-Source: <your integration name>`.
+Optionally send `X-Laylo-Source: <your integration name>`. If a request
+carries an `Authorization` header, the API treats it as an integrator request:
+a bad or expired bearer is a 401, never a fall back to the key alone.
 
 ### Choosing between an API key and a creator id
+
+This choice is for integrators. With only an API key, the key is the
+customer.
 
 - **Use an API key** when the account isn't under yours, such as an
   independent artist connecting to your product. A key works for any Laylo
@@ -104,22 +126,40 @@ Optionally send `X-Laylo-Source: <your integration name>`.
 - **With a mix of both kinds of account,** send whichever header fits each
   customer, per request. Never send both on the same request.
 
-The secret key and access token are server-side secrets. Never
-send them from a browser or a mobile app.
+The secret key, the access token, and an API key are server-side secrets.
+Never send them from a browser or a mobile app.
 
 ## Setting up authentication
 
 Walk the user through these steps in order, confirming each one before moving
 to the next.
 
-1. **Pick how to name the customer.** Ask the user which situation they're
-   in rather than assuming an API key (see
+1. **Pick how to authenticate.** Ask whether the user is an account owner
+   calling their own data (only an API key) or an integration serving many
+   customers (integrator credentials, see
+   [How authentication works](#how-authentication-works)). For an
+   integration, also ask how to name the customer rather than assuming an
+   API key (see
    [Choosing between them](#choosing-between-an-api-key-and-a-creator-id)).
-2. **Collect credentials into the environment.** Have the user put
-   `LAYLO_USER_ID`, `LAYLO_ACCESS_KEY`, `LAYLO_SECRET_KEY`, and
-   `LAYLO_API_KEY` (or `LAYLO_CREATOR_ID`) in a `.env` file themselves, and
-   make sure `.env` is in `.gitignore`.
-3. **Mint a token and verify the customer** in one command. The token goes
+2. **Collect credentials into the environment.** Have the user put them in a
+   `.env` file themselves, and make sure `.env` is in `.gitignore`. For their
+   own account, that's `LAYLO_API_KEY` alone. For an integration, it's
+   `LAYLO_USER_ID`, `LAYLO_ACCESS_KEY`, `LAYLO_SECRET_KEY`, and `LAYLO_API_KEY`
+   (or `LAYLO_CREATOR_ID`).
+3. **With only an API key, verify it** directly:
+
+   ```sh
+   set -a; . ./.env; set +a
+   curl -sS https://events.laylo.com/api/v1/keys/verify \
+     -H "X-Api-Key: $LAYLO_API_KEY"
+   # {"apiKeyStatus":"valid","message":"API key verified successfully"}
+   ```
+
+   That's the whole setup; skip to
+   [Answering questions](#answering-questions-about-an-account).
+
+4. **With integrator credentials, mint a token and verify the customer** in
+   one command. The token goes
    straight into a variable and is never printed, and a failed mint prints the
    error body instead. The body can be JSON or form-encoded.
 
@@ -145,7 +185,7 @@ to the next.
    uses `$TOKEN` in the same command. Never print the token or paste its value
    into a later command.
 
-4. **In code**, cache the token and reuse it until shortly before it expires:
+5. **In code**, cache the token and reuse it until shortly before it expires:
    refresh a minute early, or halfway through its life when `expires_in` is
    under two minutes. Don't mint a token per request, because the token
    endpoint is rate limited.
@@ -159,9 +199,9 @@ Errors come back as
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 400    | Malformed body or query. The `message` says what's wrong.                                                                                                                       |
 | 401    | If `error.apiKeyStatus` is `"invalid"`, the customer key is wrong or revoked. Otherwise the token expired or the client credentials are bad: mint a fresh token and retry once. |
-| 403    | The account has no paid Laylo plan, is locked, or the creator id isn't under the integration's account.                                                                         |
+| 403    | The account has no paid Laylo plan, is locked, the creator id isn't under the integration's account, or `GET /v1/customers` was called with only an API key.                    |
 | 404    | Unknown path, or a `dropId` that isn't one of the customer's drops.                                                                                                             |
-| 429    | Rate limited. Wait for the `Retry-After` header (seconds), or `error.details.retryAfter`.                                                                                       |
+| 429    | Rate limited. Wait for the `Retry-After` header (seconds), or `error.details.retryAfter`. With only an API key the limit is 20 requests a minute per account.                   |
 | 5xx    | Laylo-side failure. Retry reads with backoff. See the retry rules below for writes.                                                                                             |
 
 Include the `apigw-requestid` response header when
@@ -175,13 +215,15 @@ user the exact command. Use curl unless the user is working in a particular
 language.
 
 ```sh
-# same command as the token mint in step 3 of SKILL.md
 curl -sS -G https://events.laylo.com/api/v1/conversions/counts \
-  -H "Authorization: Bearer $TOKEN" -H "X-Api-Key: $LAYLO_API_KEY" \
+  -H "X-Api-Key: $LAYLO_API_KEY" \
   --data-urlencode "action=RSVP" \
   --data-urlencode "startDate=2026-08-01T00:00:00-07:00" \
   --data-urlencode "endDate=2026-08-31T23:59:59-07:00"
 ```
+
+With integrator credentials, run the token mint from step 4 in the same
+command and add `-H "Authorization: Bearer $TOKEN"`.
 
 Common mappings:
 
@@ -195,7 +237,7 @@ Common mappings:
 - "Ticket sales this week?" → `GET /v1/conversions/counts` with
   `action=TICKET_PURCHASE&startDate=…`
 - "Which artists can I act as?" → `GET /v1/customers`, then send each `id` as
-  `X-Creator-Id`
+  `X-Creator-Id` (integrator credentials only)
 
 ## Rules to follow
 
@@ -242,3 +284,7 @@ Common mappings:
   that one is safe.
 - `POST /v1/conversions/events` can return 200 with `"status":"failure"`, so
   check the body, not just the status code.
+- **With only an API key**, the 20-a-minute limit is easy to hit from a loop
+  (one subscription check per contact, say). Space the calls out, or prefer
+  one aggregate call such as `GET /v1/fans/segments` where it answers the
+  question.

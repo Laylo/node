@@ -119,7 +119,7 @@ describe("credentials", () => {
   ] as const)("reports a missing %s", (option, env) => {
     let thrown: unknown;
     try {
-      new Laylo({ ...credentials, [option]: undefined });
+      new Laylo({ ...credentials, apiKey: "key-1", [option]: undefined });
     } catch (error) {
       thrown = error;
     }
@@ -218,6 +218,100 @@ describe("credentials", () => {
     expect(() => new Laylo({ ...credentials, creatorId: "" })).toThrow(
       LayloConfigurationError,
     );
+  });
+});
+
+describe("api key only", () => {
+  const keyOnly = (options: Record<string, unknown> = {}) => {
+    const { fetch, calls } = fakeFetch();
+    const laylo = new Laylo({ apiKey: "own-key", fetch, ...options });
+    return { laylo, calls };
+  };
+
+  it("sends the key without minting or sending a bearer", async () => {
+    const { laylo, calls } = keyOnly();
+
+    await laylo.keys.verify();
+
+    expect(calls).toHaveLength(1);
+    const headers = headersOf(calls[0]!);
+    expect(headers.get("X-Api-Key")).toBe("own-key");
+    expect(headers.has("Authorization")).toBe(false);
+  });
+
+  it("reads the key from LAYLO_API_KEY", async () => {
+    vi.stubEnv("LAYLO_API_KEY", "env-api-key");
+    const { fetch, calls } = fakeFetch();
+
+    await new Laylo({ fetch }).keys.verify();
+
+    expect(calls).toHaveLength(1);
+    expect(headersOf(calls[0]!).get("X-Api-Key")).toBe("env-api-key");
+  });
+
+  it("lets a per-call apiKey replace the constructor's", async () => {
+    const { laylo, calls } = keyOnly();
+
+    await laylo.keys.verify({ apiKey: "call-key" });
+
+    expect(headersOf(calls[0]!).get("X-Api-Key")).toBe("call-key");
+  });
+
+  it.each([
+    ["a constructor option", () => new Laylo({ creatorId: "roster-user" })],
+    [
+      "LAYLO_CREATOR_ID",
+      () => {
+        vi.stubEnv("LAYLO_CREATOR_ID", "roster-user");
+        return new Laylo();
+      },
+    ],
+    [
+      "a forCustomer scope",
+      () => keyOnly().laylo.forCustomer({ creatorId: "roster-user" }),
+    ],
+  ])("rejects a creatorId from %s", (_label, construct) => {
+    expect(construct).toThrow(/creatorId needs integrator credentials/);
+  });
+
+  it("rejects a per-call creatorId before any fetch", async () => {
+    const { laylo, calls } = keyOnly();
+
+    await expect(
+      laylo.drops.list({ creatorId: "roster-user" }),
+    ).rejects.toThrow(/creatorId needs integrator credentials/);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("refuses to mint a token", async () => {
+    const { laylo, calls } = keyOnly();
+
+    await expect(laylo.auth.createToken()).rejects.toBeInstanceOf(
+      LayloConfigurationError,
+    );
+    expect(calls).toHaveLength(0);
+  });
+
+  it("explains both ways to authenticate when nothing is set", () => {
+    expect(() => new Laylo()).toThrow(LayloConfigurationError);
+    expect(() => new Laylo()).toThrow(
+      /userId, accessKey, and secretKey.*only a customer apiKey/,
+    );
+  });
+
+  it("serializes without integrator fields", () => {
+    const { laylo } = keyOnly({ apiKey: "customer-abcd1234" });
+
+    expect(laylo.toJSON()).toEqual({
+      userId: undefined,
+      accessKey: undefined,
+      baseUrl: "https://events.laylo.com/api",
+      apiKey: "…1234",
+      creatorId: undefined,
+      secretKey: undefined,
+    });
+    expect(inspect(laylo)).toContain("userId: undefined");
+    expect(inspect(laylo)).not.toContain("customer-abcd1234");
   });
 });
 
