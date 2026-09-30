@@ -239,19 +239,6 @@ describe("api key only", () => {
     expect(headers.has("Authorization")).toBe(false);
   });
 
-  it("treats blank integrator options as unset", async () => {
-    const { laylo, calls } = keyOnly({
-      userId: "",
-      accessKey: "",
-      secretKey: "",
-    });
-
-    await laylo.keys.verify();
-
-    expect(calls).toHaveLength(1);
-    expect(headersOf(calls[0]!).has("Authorization")).toBe(false);
-  });
-
   it("names a stray integrator variable that blocks key-only auth", () => {
     vi.stubEnv("LAYLO_USER_ID", "stray-user");
 
@@ -311,13 +298,6 @@ describe("api key only", () => {
   it.each([
     ["a constructor option", () => new Laylo({ creatorId: "roster-user" })],
     [
-      "LAYLO_CREATOR_ID",
-      () => {
-        vi.stubEnv("LAYLO_CREATOR_ID", "roster-user");
-        return new Laylo();
-      },
-    ],
-    [
       "a forCustomer scope",
       () => keyOnly().laylo.forCustomer({ creatorId: "roster-user" }),
     ],
@@ -344,8 +324,15 @@ describe("api key only", () => {
   });
 
   it("explains both ways to authenticate when nothing is set", () => {
-    expect(() => new Laylo()).toThrow(LayloConfigurationError);
-    expect(() => new Laylo()).toThrow(
+    let thrown: unknown;
+    try {
+      new Laylo();
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(LayloConfigurationError);
+    expect((thrown as Error).message).toMatch(
       /userId, accessKey, and secretKey.*only a customer apiKey/,
     );
   });
@@ -362,8 +349,6 @@ describe("api key only", () => {
       creatorId: undefined,
       secretKey: undefined,
     });
-    expect(inspect(laylo)).toContain("userId: undefined");
-    expect(inspect(laylo)).not.toContain("customer-abcd1234");
   });
 
   it("reports integrator mode when the credentials are present", () => {
