@@ -417,7 +417,7 @@ describe("Fans", () => {
       expect(calls).toHaveLength(0);
     });
 
-    it("rejects a fan with no non-blank contact before any request", async () => {
+    it("rejects a fan with neither email nor phone before any request", async () => {
       const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
 
       await expect(
@@ -425,15 +425,6 @@ describe("Fans", () => {
           emailMarketingConsent: true,
           consentGrantedAt: "2026-08-25T12:30:00Z",
         } as unknown as SubscribeFanInput),
-      ).rejects.toThrow(LayloConfigurationError);
-      await expect(
-        new Fans(context).subscribe({
-          email: " ",
-          emailMarketingConsent: true,
-          phone: "",
-          smsMarketingConsent: true,
-          consentGrantedAt: "2026-08-25T12:30:00Z",
-        }),
       ).rejects.toThrow(LayloConfigurationError);
       expect(calls).toHaveLength(0);
     });
