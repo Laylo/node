@@ -84,7 +84,9 @@ to the next.
      Skip to step 5. This mode is limited to 20 requests a minute per
      account, can't use `creatorId` or `customers.list()`, and only acts on
      the key's own account. The key is a secret: keep it server-side, like
-     the integrator secret key below.
+     the integrator secret key below. The key can also be read-only (see
+     [Key permissions](#key-permissions)); if the user will write, ask them
+     to make sure it has the "write" permission.
    - **An integration serving many customers.** Continue with step 3.
 3. **Integrator credentials.** A `userId`, `accessKey`, and `secretKey`
    issued to the integration. They come from the user's Laylo account manager
@@ -124,6 +126,18 @@ console.log(await laylo.keys.verify());
 `--env-file` needs Node 20.6+. On older versions, export the variables in the
 shell or load them with `dotenv`.
 
+### Key permissions
+
+With only an API key, each call is checked against the key's permissions in
+Laylo. Integrator calls aren't. Writes (`fans.subscribe`,
+`conversions.events.track`, `messages.sms.send`) need "write". Everything
+else, including `fans.isSubscribed` and `fans.isUnsubscribed`, needs "read".
+The two are independent: "write" doesn't grant "read". A key with no
+permissions set has both. A call the key isn't allowed to make throws
+`PermissionError` with a message like
+`This API key does not have the "write" permission`. The fix is a key that
+has that permission. Don't suggest integrator credentials for this.
+
 ### Choosing between an API key and a creator id
 
 This choice is for integrators. With only an API key, the key is the
@@ -152,14 +166,14 @@ customer, and a creator id isn't accepted.
 
 ### When verification fails
 
-| Error                                                | Meaning and fix                                                                                                                                                                                  |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `LayloConfigurationError`                            | A credential is missing or malformed. The message names it. Check the env var names, and that `userId` holds only the user id. A `creatorId` set without integrator credentials also lands here. |
-| `AuthenticationError` with `apiKeyStatus: "invalid"` | The customer API key is wrong or was revoked. Generate a new key in Laylo settings.                                                                                                              |
-| `AuthenticationError` otherwise                      | The access key or secret key was rejected, or a creator id no longer resolves to an account.                                                                                                     |
-| `PermissionError`                                    | The account has no paid Laylo plan, is locked, the creator id isn't under the integration's account, or `customers.list()` was called with only an API key.                                      |
-| `RateLimitError`                                     | Too many requests. Wait `error.retryAfter` seconds. With only an API key the limit is 20 a minute per account.                                                                                   |
-| `LayloConnectionError` / `LayloTimeoutError`         | Network trouble. The request never got a usable response.                                                                                                                                        |
+| Error                                                | Meaning and fix                                                                                                                                                                                                                                   |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LayloConfigurationError`                            | A credential is missing or malformed. The message names it. Check the env var names, and that `userId` holds only the user id. A `creatorId` set without integrator credentials also lands here.                                                  |
+| `AuthenticationError` with `apiKeyStatus: "invalid"` | The customer API key is wrong or was revoked. Generate a new key in Laylo settings.                                                                                                                                                               |
+| `AuthenticationError` otherwise                      | The access key or secret key was rejected, or a creator id no longer resolves to an account.                                                                                                                                                      |
+| `PermissionError`                                    | The account has no paid Laylo plan, is locked, the creator id isn't under the integration's account, `customers.list()` was called with only an API key, or the key lacks the "read" or "write" permission the call needs (the message names it). |
+| `RateLimitError`                                     | Too many requests. Wait `error.retryAfter` seconds. With only an API key the limit is 20 a minute per account.                                                                                                                                    |
+| `LayloConnectionError` / `LayloTimeoutError`         | Network trouble. The request never got a usable response.                                                                                                                                                                                         |
 
 Every API error carries `status`, `code`, and `message`. When contacting
 Laylo support, include the request id:

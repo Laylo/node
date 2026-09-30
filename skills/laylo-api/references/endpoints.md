@@ -5,7 +5,12 @@ endpoint except `POST /v1/auth/token` needs either:
 
 - **Only an API key:** `X-Api-Key` and no `Authorization` header. The call
   acts as the key's own account, is limited to 20 requests a minute per
-  account, and can't use `X-Creator-Id`.
+  account, and can't use `X-Creator-Id`. It also needs the key to have the
+  endpoint's permission: "write" for `POST /v1/fans/subscriptions`,
+  `POST /v1/conversions/events`, and `POST /v1/messages/sms`, "read" for the
+  rest. "write" doesn't grant "read", and a key with none set has both. A
+  missing one returns 403 `FORBIDDEN`
+  (`This API key does not have the "write" permission`).
 - **Integrator credentials:** `Authorization: Bearer <token>` plus exactly one
   of `X-Api-Key` or `X-Creator-Id`.
 

@@ -33,7 +33,9 @@ const AUTH_DOCS = "https://developers.laylo.com/authentication";
  * many customers, or with a customer `apiKey` on its own, to act as that one
  * account. An API-key-only client sends no access token, is limited to 20
  * requests a minute per account, cannot name customers by `creatorId`, and
- * cannot call `customers.list()`.
+ * cannot call `customers.list()`. Its calls are also bound by the key's own
+ * permissions: a read-only key gets a `PermissionError` on writes such as
+ * `fans.subscribe`, and the fix is a key with the "write" permission.
  */
 export interface ClientOptions {
   /**
@@ -55,7 +57,9 @@ export interface ClientOptions {
    * defaults to `process.env.LAYLO_API_KEY`. Leave it and `creatorId` unset
    * when one process serves several customers and scope each with
    * `forCustomer`. Without integrator credentials, this key alone
-   * authenticates the client as its account.
+   * authenticates the client as its account, and each call needs the key to
+   * carry the "read" or "write" permission it requires (a key with none set
+   * has both); a missing one throws `PermissionError`.
    */
   apiKey?: string | undefined;
   /**

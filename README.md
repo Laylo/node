@@ -159,6 +159,15 @@ access token. Compared with integrator credentials:
 - `customers.list()` throws `PermissionError`, since there's no integrator
   roster to list, and `auth.createToken()` rejects with
   `LayloConfigurationError`.
+- The key's own permissions apply, and each call needs one of them. Writes
+  (`fans.subscribe`, `conversions.events.track`, `messages.sms.send`) need
+  "write"; everything else, including
+  `fans.isSubscribed` and `fans.isUnsubscribed`, needs "read". The two are
+  independent, so "write" doesn't grant "read". A key with no permissions set
+  has both. A call the key isn't allowed to make throws `PermissionError`
+  with a message such as `This API key does not have the "write" permission`.
+  The fix is to use a key that has that permission; you don't need
+  integrator credentials for it.
 
 If you're building an integration that serves many customers, use integrator
 credentials instead.

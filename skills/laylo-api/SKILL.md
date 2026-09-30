@@ -80,6 +80,15 @@ In this mode:
 - Only the key's own account can be acted on. `X-Creator-Id` isn't accepted.
 - `GET /v1/customers` returns 403, since there's no integrator roster to
   list, and `POST /v1/auth/token` doesn't apply.
+- The key's permissions in Laylo apply. The writes
+  (`POST /v1/fans/subscriptions`, `POST /v1/conversions/events`,
+  `POST /v1/messages/sms`) need "write". Everything else, including the two
+  `POST` subscription checks, needs "read". The two are independent: "write"
+  doesn't grant "read". A key with no permissions set has both. A missing one
+  returns 403 `FORBIDDEN` with a message like
+  `This API key does not have the "write" permission`. The fix is a key that
+  has that permission. Don't suggest integrator credentials for this. If the
+  user will write, ask them to make sure the key has "write".
 
 **Integrator credentials**, for an integration serving many customers. Every
 request except the token mint carries two things:
@@ -195,14 +204,14 @@ to the next.
 Errors come back as
 `{ "error": { "code": "...", "message": "...", ... } }`.
 
-| Status | Meaning and fix                                                                                                                                                                 |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 400    | Malformed body or query. The `message` says what's wrong.                                                                                                                       |
-| 401    | If `error.apiKeyStatus` is `"invalid"`, the customer key is wrong or revoked. Otherwise the token expired or the client credentials are bad: mint a fresh token and retry once. |
-| 403    | The account has no paid Laylo plan, is locked, the creator id isn't under the integration's account, or `GET /v1/customers` was called with only an API key.                    |
-| 404    | Unknown path, or a `dropId` that isn't one of the customer's drops.                                                                                                             |
-| 429    | Rate limited. Wait for the `Retry-After` header (seconds), or `error.details.retryAfter`. With only an API key the limit is 20 requests a minute per account.                   |
-| 5xx    | Laylo-side failure. Retry reads with backoff. See the retry rules below for writes.                                                                                             |
+| Status | Meaning and fix                                                                                                                                                                                                                                    |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 400    | Malformed body or query. The `message` says what's wrong.                                                                                                                                                                                          |
+| 401    | If `error.apiKeyStatus` is `"invalid"`, the customer key is wrong or revoked. Otherwise the token expired or the client credentials are bad: mint a fresh token and retry once.                                                                    |
+| 403    | The account has no paid Laylo plan, is locked, the creator id isn't under the integration's account, `GET /v1/customers` was called with only an API key, or the key lacks the "read" or "write" permission the call needs (the message names it). |
+| 404    | Unknown path, or a `dropId` that isn't one of the customer's drops.                                                                                                                                                                                |
+| 429    | Rate limited. Wait for the `Retry-After` header (seconds), or `error.details.retryAfter`. With only an API key the limit is 20 requests a minute per account.                                                                                      |
+| 5xx    | Laylo-side failure. Retry reads with backoff. See the retry rules below for writes.                                                                                                                                                                |
 
 Include the `apigw-requestid` response header when
 contacting Laylo support.
