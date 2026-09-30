@@ -32,9 +32,8 @@ trailing `RequestOptions` (`apiKey`, `creatorId`, `signal`, `timeoutMs`,
 | `messages.sms.send(sms)`           | Text up to 200 subscribed phone numbers (write)                   |
 | `auth.createToken()`               | A raw bearer token, only for calling the API outside the SDK (\*) |
 
-(\*) Needs integrator credentials. A client with only an API key gets
-`PermissionError` from `customers.list()`, and `auth.createToken()` rejects
-with `LayloConfigurationError`.
+(\*) Needs integrator credentials. On a client with only an API key, both
+reject with `LayloConfigurationError` before sending anything.
 
 If one of these methods is `undefined` on the client, the installed SDK
 predates it. Upgrade with `npm install @laylo.com/node@latest`. If it is still
@@ -167,14 +166,14 @@ customer, and a creator id isn't accepted.
 
 ### When verification fails
 
-| Error                                                | Meaning and fix                                                                                                                                                                                                                                   |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LayloConfigurationError`                            | A credential is missing or malformed. The message names it. Check the env var names, and that `userId` holds only the user id. A `creatorId` set without integrator credentials also lands here.                                                  |
-| `AuthenticationError` with `apiKeyStatus: "invalid"` | The customer API key is wrong or was revoked. Generate a new key in Laylo settings.                                                                                                                                                               |
-| `AuthenticationError` otherwise                      | The access key or secret key was rejected, or a creator id no longer resolves to an account.                                                                                                                                                      |
-| `PermissionError`                                    | The account has no paid Laylo plan, is locked, the creator id isn't under the integration's account, `customers.list()` was called with only an API key, or the key lacks the "read" or "write" permission the call needs (the message names it). |
-| `RateLimitError`                                     | Too many requests. Wait `error.retryAfter` seconds. With only an API key the limit is 20 a minute per account.                                                                                                                                    |
-| `LayloConnectionError` / `LayloTimeoutError`         | Network trouble. The request never got a usable response.                                                                                                                                                                                         |
+| Error                                                | Meaning and fix                                                                                                                                                                                  |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `LayloConfigurationError`                            | A credential is missing or malformed. The message names it. Check the env var names, and that `userId` holds only the user id. A `creatorId` set without integrator credentials also lands here. |
+| `AuthenticationError` with `apiKeyStatus: "invalid"` | The customer API key is wrong or was revoked. Generate a new key in Laylo settings.                                                                                                              |
+| `AuthenticationError` otherwise                      | The access key or secret key was rejected, or a creator id no longer resolves to an account.                                                                                                     |
+| `PermissionError`                                    | The account has no paid Laylo plan, is locked, the creator id isn't under the integration's account, or the key lacks the "read" or "write" permission the call needs (the message names it).    |
+| `RateLimitError`                                     | Too many requests. Wait `error.retryAfter` seconds. With only an API key the limit is 20 a minute per account.                                                                                   |
+| `LayloConnectionError` / `LayloTimeoutError`         | Network trouble. The request never got a usable response.                                                                                                                                        |
 
 Every API error carries `status`, `code`, and `message`. When contacting
 Laylo support, include the request id:

@@ -1,6 +1,6 @@
 import type { TokenProvider } from "../core/auth.js";
 import {
-  creatorIdNeedsIntegrator,
+  assertCustomerAllowed,
   customerFrom,
   type Customer,
 } from "../core/customer.js";
@@ -36,6 +36,11 @@ export interface EndpointRequest {
    * retried like a GET. Only for reads that happen to use a write verb.
    */
   idempotent?: boolean;
+  /**
+   * Refuses the call before it is sent on a client constructed with only an
+   * API key, for endpoints the API only serves to integrators.
+   */
+  integratorOnly?: boolean;
 }
 
 /**
@@ -66,16 +71,19 @@ export abstract class APIResource {
     endpoint: EndpointRequest,
     options: RequestOptions = {},
   ): Promise<T> {
+    const { tokens } = this.context;
+    if (endpoint.integratorOnly === true && tokens === undefined) {
+      throw new LayloConfigurationError(
+        `${endpoint.method} ${endpoint.path} needs integrator credentials — a client constructed with only an apiKey can't call it. See https://developers.laylo.com/authentication`,
+      );
+    }
     const customer = customerFrom(options) ?? this.context.customer;
     if (customer === undefined) {
       throw new LayloConfigurationError(
         `${endpoint.method} ${endpoint.path} needs a customer — pass apiKey or creatorId in this call's options, scope a client with forCustomer(…), or set apiKey or creatorId when constructing the client.`,
       );
     }
-    const { tokens } = this.context;
-    if (tokens === undefined && customer.creatorId !== undefined) {
-      throw creatorIdNeedsIntegrator();
-    }
+    assertCustomerAllowed(customer, tokens !== undefined);
 
     const { data } = await this.context.http.request<T>({
       method: endpoint.method,

@@ -256,8 +256,38 @@ describe("api key only", () => {
     vi.stubEnv("LAYLO_USER_ID", "stray-user");
 
     expect(() => keyOnly()).toThrow(
-      /accessKey is missing.*LAYLO_USER_ID is set.*unset it to authenticate with the API key alone/,
+      /accessKey is missing.*LAYLO_USER_ID is set.*unset it, or pass userId: "", to authenticate with the API key alone/,
     );
+  });
+
+  it("ignores stray integrator variables once one is named in code", async () => {
+    vi.stubEnv("LAYLO_USER_ID", "stray-user");
+    vi.stubEnv("LAYLO_ACCESS_KEY", "stray-access");
+    const { laylo, calls } = keyOnly({ userId: "" });
+
+    await laylo.keys.verify();
+
+    expect(calls).toHaveLength(1);
+    expect(headersOf(calls[0]!).has("Authorization")).toBe(false);
+  });
+
+  it("throws instead of going key-only when integrator options are passed as undefined", () => {
+    expect(() =>
+      keyOnly({
+        userId: undefined,
+        accessKey: undefined,
+        secretKey: undefined,
+      }),
+    ).toThrow(/userId is missing.*passed as undefined/);
+  });
+
+  it("rejects customers.list() before any fetch", async () => {
+    const { laylo, calls } = keyOnly();
+
+    await expect(laylo.customers.list()).rejects.toThrow(
+      /GET \/v1\/customers needs integrator credentials/,
+    );
+    expect(calls).toHaveLength(0);
   });
 
   it("reads the key from LAYLO_API_KEY", async () => {

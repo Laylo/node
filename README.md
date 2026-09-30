@@ -147,7 +147,13 @@ const drops = await laylo.drops.list();
 
 The client works this way whenever none of `userId`, `accessKey`, and
 `secretKey` is set; setting some but not all of them still fails at
-construction. Every request carries just the `X-Api-Key` header, with no
+construction. Naming any of the three in code, even as `""`, turns their
+environment variables off for all three, so `new Laylo({ apiKey, userId: "" })`
+ignores a stray `LAYLO_USER_ID`. Passing them as `undefined`, as in the
+quickstart, counts as expecting integrator credentials: if none turn up in the
+environment either, construction fails rather than falling back to the API key
+alone. To act for several accounts this way, construct with one account's key
+and scope to the others with `forCustomer(apiKey)`. Every request carries just the `X-Api-Key` header, with no
 access token. Compared with integrator credentials:
 
 - Requests are limited to 20 a minute per account. Past that, a call throws
@@ -156,9 +162,9 @@ access token. Compared with integrator credentials:
   not in the constructor, `LAYLO_CREATOR_ID`, `forCustomer`, or a call's
   options — and throws `LayloConfigurationError`. Another customer's key
   still works through `forCustomer(apiKey)` or a call's `apiKey`.
-- `customers.list()` throws `PermissionError`, since there's no integrator
-  roster to list, and `auth.createToken()` rejects with
-  `LayloConfigurationError`.
+- `customers.list()` and `auth.createToken()` reject with
+  `LayloConfigurationError` without sending a request, since there's no
+  integrator roster to list or token to mint.
 - The key's own permissions apply, and each call needs one of them. Writes
   (`fans.subscribe`, `conversions.events.track`, `messages.sms.send`) need
   "write"; everything else, including

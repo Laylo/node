@@ -19,15 +19,22 @@ export type Customer =
     };
 
 /**
- * The error for a customer named by creator id on a client that has only an
- * API key: `X-Creator-Id` is honoured only alongside an integrator access
- * token, so the request would fail at the API anyway.
- * @returns The configuration error to throw.
+ * Refuses a customer named by creator id on a client that has only an API key:
+ * `X-Creator-Id` is honoured only alongside an integrator access token, so the
+ * request would fail at the API anyway.
+ * @param customer The customer a client or call names, if any.
+ * @param hasIntegrator Whether the client holds integrator credentials.
  */
-export const creatorIdNeedsIntegrator = (): LayloConfigurationError =>
-  new LayloConfigurationError(
-    "creatorId needs integrator credentials — pass userId, accessKey, and secretKey when constructing the client, or name the customer by apiKey instead. See https://developers.laylo.com/authentication",
-  );
+export const assertCustomerAllowed = (
+  customer: Customer | undefined,
+  hasIntegrator: boolean,
+): void => {
+  if (!hasIntegrator && customer?.creatorId !== undefined) {
+    throw new LayloConfigurationError(
+      "creatorId needs integrator credentials — pass userId, accessKey, and secretKey when constructing the client, or name the customer by apiKey instead. See https://developers.laylo.com/authentication",
+    );
+  }
+};
 
 /** Anything a customer can be read out of: client options or per-call options. */
 export interface CustomerFields {

@@ -1,6 +1,6 @@
 import { TokenProvider } from "./core/auth.js";
 import {
-  creatorIdNeedsIntegrator,
+  assertCustomerAllowed,
   customerFrom,
   type Customer,
 } from "./core/customer.js";
@@ -33,7 +33,7 @@ const AUTH_DOCS = "https://developers.laylo.com/authentication";
  * many customers, or with a customer `apiKey` on its own, to act as that one
  * account. An API-key-only client sends no access token, is limited to 20
  * requests a minute per account, cannot name customers by `creatorId`, and
- * cannot call `customers.list()`. Its calls are also bound by the key's own
+ * cannot call `customers.list()` or `auth.createToken()`. Its calls are also bound by the key's own
  * permissions: a read-only key gets a `PermissionError` on writes such as
  * `fans.subscribe`, and the fix is a key with the "write" permission.
  */
@@ -41,7 +41,12 @@ export interface ClientOptions {
   /**
    * Laylo user id of the account your integrator credentials were issued
    * under; defaults to `process.env.LAYLO_USER_ID`. Leave it, `accessKey`, and
-   * `secretKey` all unset to authenticate with `apiKey` alone.
+   * `secretKey` all unset to authenticate with `apiKey` alone. Passing any of
+   * the three with a value, even `""`, turns their environment variables off
+   * for all three, so `userId: ""` authenticates with `apiKey` alone despite a
+   * stray `LAYLO_USER_ID`. Passing one as `undefined` falls back to its
+   * environment variable and counts as asking for integrator credentials, so
+   * the client throws rather than using `apiKey` alone when none is found.
    */
   userId?: string | undefined;
   /**
@@ -54,12 +59,15 @@ export interface ClientOptions {
   secretKey?: string | undefined;
   /**
    * Customer API key used by calls that do not name their own customer;
-   * defaults to `process.env.LAYLO_API_KEY`. Leave it and `creatorId` unset
-   * when one process serves several customers and scope each with
-   * `forCustomer`. Without integrator credentials, this key alone
-   * authenticates the client as its account, and each call needs the key to
-   * carry the "read" or "write" permission it requires (a key with none stored
-   * can only read, and an empty list allows nothing); a missing one throws `PermissionError`.
+   * defaults to `process.env.LAYLO_API_KEY`. With integrator credentials,
+   * leave it and `creatorId` unset when one process serves several customers
+   * and scope each with `forCustomer`. Without them, this key alone
+   * authenticates the client as its account and is required; to act for
+   * several accounts that way, construct with one account's key and scope to
+   * the others with `forCustomer(apiKey)`, which shares the connections. Each
+   * call needs the key to carry the "read" or "write" permission it requires
+   * (a key with none stored can only read, and an empty list allows nothing);
+   * a missing one throws `PermissionError`.
    */
   apiKey?: string | undefined;
   /**
@@ -186,25 +194,45 @@ interface IntegratorCredentials {
 
 // With none of the three set the client authenticates by API key alone; with
 // some but not all, the missing one is reported rather than falling back.
+// Naming any of them in code turns the environment off for all three, the
+// same rule the customer fields follow, and blank counts as unset wherever it
+// comes from. One passed as undefined still reads the environment but marks
+// the caller as expecting integrator credentials, so losing all three from a
+// deploy fails here instead of quietly becoming a key-only client.
 const integratorFromOptionsOrEnv = (
   options: ClientOptions,
 ): IntegratorCredentials | undefined => {
-  const userId = options.userId ?? envOrUnset("LAYLO_USER_ID");
-  const accessKey = options.accessKey ?? envOrUnset("LAYLO_ACCESS_KEY");
-  const secretKey = options.secretKey ?? envOrUnset("LAYLO_SECRET_KEY");
+  const inCode = INTEGRATOR_CREDENTIALS.some(
+    ([option]) => options[option] !== undefined,
+  );
+  const [userId, accessKey, secretKey] = INTEGRATOR_CREDENTIALS.map(
+    ([option, env]) => {
+      const value = inCode ? options[option] : envOrUnset(env);
+      return value === "" ? undefined : value;
+    },
+  );
   const values = { userId, accessKey, secretKey };
-  // Blank options count as unset here so passing process.env.LAYLO_USER_ID
-  // straight through from a .env with blank lines still gives a key-only client.
   const supplied = INTEGRATOR_CREDENTIALS.filter(
-    ([option]) => values[option] !== undefined && values[option] !== "",
+    ([option]) => values[option] !== undefined,
   );
   if (supplied.length === 0) {
-    return undefined;
+    const expected = INTEGRATOR_CREDENTIALS.find(([option]) =>
+      Object.hasOwn(options, option),
+    );
+    if (inCode || expected === undefined) {
+      return undefined;
+    }
+    throw missingCredential(
+      expected[0],
+      expected[1],
+      `It was passed as undefined, so integrator credentials are expected; leave all three out, or pass them as "", to authenticate with the API key alone.`,
+    );
   }
-  const sources = supplied.map(([option, env]) =>
-    options[option] === undefined ? env : option,
-  );
-  const cause = `${sources.join(" and ")} ${sources.length === 1 ? "is" : "are"} set, so all three integrator credentials are needed; unset ${sources.length === 1 ? "it" : "them"} to authenticate with the API key alone.`;
+  const sources = supplied.map(([option, env]) => (inCode ? option : env));
+  const unset = inCode
+    ? `pass ${sources.length === 1 ? "it" : "them"} as "" or leave ${sources.length === 1 ? "it" : "them"} out`
+    : `unset ${sources.length === 1 ? "it" : "them"}, or pass userId: "",`;
+  const cause = `${sources.join(" and ")} ${sources.length === 1 ? "is" : "are"} set, so all three integrator credentials are needed; ${unset} to authenticate with the API key alone.`;
   return {
     userId: required(userId, "userId", "LAYLO_USER_ID", cause),
     accessKey: required(accessKey, "accessKey", "LAYLO_ACCESS_KEY", cause),
@@ -300,12 +328,7 @@ export class Laylo {
           "forCustomer needs an apiKey or a creatorId",
         );
       }
-      if (
-        shared.tokens === undefined &&
-        this.customer.creatorId !== undefined
-      ) {
-        throw creatorIdNeedsIntegrator();
-      }
+      assertCustomerAllowed(this.customer, shared.tokens !== undefined);
       return;
     }
 
@@ -314,9 +337,7 @@ export class Laylo {
     if (integrator === undefined && customer === undefined) {
       throw noCredentials();
     }
-    if (integrator === undefined && customer?.creatorId !== undefined) {
-      throw creatorIdNeedsIntegrator();
-    }
+    assertCustomerAllowed(customer, integrator !== undefined);
     const baseUrl = validBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
     const timeoutMs = wholeNumber(
       options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
