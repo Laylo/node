@@ -57,8 +57,8 @@ haven't seen here. The ones that are easiest to get wrong:
 - `POST /v1/fans/subscribed` returns `{ "isSubscribed": true }`, and
   `POST /v1/fans/unsubscribed` returns `{ "isUnsubscribed": false }`.
 - `POST /v1/fans/subscriptions` takes `email` + `emailMarketingConsent: true`,
-  or `phone` + `smsMarketingConsent: true`, plus `consentGrantedAt` and an
-  optional `dropId`.
+  `phone` + `smsMarketingConsent: true`, or both, plus `consentGrantedAt` and
+  an optional `dropId`. Given both, the two records are linked as the same person and each keeps its own id.
 - `POST /v1/messages/sms` takes `message` and `to` (one E.164 number or an
   array of up to 200), and returns `{ "queued": 1, "skipped": [{ "index": 1,
 "reason": "not_subscribed" }] }`.
@@ -229,8 +229,9 @@ Common mappings:
 - **Timestamps you send** are ISO 8601 with an explicit offset (`Z` or
   `-07:00`). Dates in drop and customer responses (`createdAt`, `endDate`) are
   Unix epoch **milliseconds**.
-- **Phone numbers** are E.164, like `+12025550100`. Contact bodies carry
-  exactly one of `email` or `phone`.
+- **Phone numbers** are E.164, like `+12025550100`. The subscription checks
+  take exactly one of `email` or `phone`; `POST /v1/fans/subscriptions` takes
+  either or both.
 - **JSON bodies** need `Content-Type: application/json`.
 - **Retries:** retry 408, 429, and 5xx for `GET`s and for the two subscription
   checks. Retry 429 for anything. Don't automatically replay

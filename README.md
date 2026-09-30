@@ -383,10 +383,13 @@ is the one exception — it only accepts `signal`).
 
 - [`fans.subscribe(fan, options?)`](https://developers.laylo.com/api-reference/fans/fans.subscriptions.create) —
   subscribes a fan to the customer with an explicit marketing-consent record:
-  an `email` with `emailMarketingConsent: true`, or an E.164 `phone` with
-  `smsMarketingConsent: true`, plus `consentGrantedAt` as a `Date` or an ISO
-  8601 string carrying an explicit UTC offset. Pass `dropId` to also RSVP
-  them to one of the customer's drops. This is a write, so it isn't retried
+  an `email` with `emailMarketingConsent: true`, an E.164 `phone` with
+  `smsMarketingConsent: true`, or both, plus `consentGrantedAt` as a `Date` or
+  an ISO 8601 string carrying an explicit UTC offset. Given both, each is
+  subscribed and the two records are linked as the same person; the result
+  carries a separate `emailFanId` and `phoneFanId`. A blank `email` or
+  `phone` throws rather than being skipped. Pass `dropId` to also
+  RSVP them to one of the customer's drops. This is a write, so it isn't retried
   on a server error.
 
   ```ts
@@ -399,13 +402,13 @@ is the one exception — it only accepts `signal`).
     apiKey: process.env.LAYLO_API_KEY,
   });
 
-  const { fan, rsvp } = await laylo.fans.subscribe({
+  const { emailFanId, rsvp } = await laylo.fans.subscribe({
     email: "fan@example.com",
     emailMarketingConsent: true,
     consentGrantedAt: new Date(),
     dropId: "drop_123",
   });
-  console.log(fan.id, rsvp?.status);
+  console.log(emailFanId, rsvp?.status);
   ```
 
 - [`fans.segments.count(filters, options?)`](https://developers.laylo.com/api-reference/fans/fans.segments.list) —

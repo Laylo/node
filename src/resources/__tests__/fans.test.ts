@@ -344,7 +344,7 @@ describe("Fans", () => {
 
   describe("subscribe", () => {
     const subscribed: SubscribeFanResponse = {
-      fan: { id: "fan_123" },
+      emailFanId: "fan_123",
       subscribed: true,
     };
 
@@ -379,8 +379,9 @@ describe("Fans", () => {
 
     it("serializes a Date consentGrantedAt as an ISO string and passes dropId through", async () => {
       const withRsvp: SubscribeFanResponse = {
-        ...subscribed,
+        phoneFanId: "fan_456",
         rsvp: { dropId: "drop_123", status: "confirmed" },
+        subscribed: true,
       };
       const { context, apiCalls } = fakeContext([json(200, withRsvp)], {
         apiKey: "customer-key-1",
@@ -416,24 +417,88 @@ describe("Fans", () => {
       expect(calls).toHaveLength(0);
     });
 
-    it("rejects a fan with both or neither channel before any request", async () => {
+    it("rejects a fan with no non-blank contact before any request", async () => {
       const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
 
-      await expect(
-        new Fans(context).subscribe({
-          email: "fan@example.invalid",
-          phone: "+12025550100",
-          emailMarketingConsent: true,
-          consentGrantedAt: "2026-08-25T12:30:00Z",
-        } as unknown as SubscribeFanInput),
-      ).rejects.toThrow(/exactly one/i);
       await expect(
         new Fans(context).subscribe({
           emailMarketingConsent: true,
           consentGrantedAt: "2026-08-25T12:30:00Z",
         } as unknown as SubscribeFanInput),
       ).rejects.toThrow(LayloConfigurationError);
+      await expect(
+        new Fans(context).subscribe({
+          email: " ",
+          emailMarketingConsent: true,
+          phone: "",
+          smsMarketingConsent: true,
+          consentGrantedAt: "2026-08-25T12:30:00Z",
+        }),
+      ).rejects.toThrow(LayloConfigurationError);
       expect(calls).toHaveLength(0);
+    });
+
+    it("sends email and phone together and returns both fan ids", async () => {
+      const both: SubscribeFanResponse = {
+        emailFanId: "fan_123",
+        phoneFanId: "fan_456",
+        subscribed: true,
+      };
+      const { context, apiCalls } = fakeContext([json(200, both)], {
+        apiKey: "customer-key-1",
+      });
+
+      const result = await new Fans(context).subscribe({
+        email: "fan@example.invalid",
+        emailMarketingConsent: true,
+        phone: "+12025550100",
+        smsMarketingConsent: true,
+        consentGrantedAt: "2026-08-25T12:30:00Z",
+      });
+
+      expect(bodyOf(apiCalls()[0])).toEqual({
+        email: "fan@example.invalid",
+        emailMarketingConsent: true,
+        phone: "+12025550100",
+        smsMarketingConsent: true,
+        consentGrantedAt: "2026-08-25T12:30:00Z",
+      });
+      expect(result).toEqual(both);
+    });
+
+    it("rejects a blank contact next to a real one before any request", async () => {
+      const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
+
+      await expect(
+        new Fans(context).subscribe({
+          email: "fan@example.invalid",
+          emailMarketingConsent: true,
+          phone: "  ",
+          smsMarketingConsent: true,
+          consentGrantedAt: "2026-08-25T12:30:00Z",
+        }),
+      ).rejects.toThrow(/phone must not be blank/);
+      expect(calls).toHaveLength(0);
+    });
+
+    it("leaves a non-string contact for the API to reject", async () => {
+      const { context, apiCalls } = fakeContext(
+        [
+          json(400, {
+            error: { code: "BAD_REQUEST", message: "Invalid 'phone'" },
+          }),
+        ],
+        { apiKey: "customer-key-1" },
+      );
+
+      await expect(
+        new Fans(context).subscribe({
+          phone: 12025550100,
+          smsMarketingConsent: true,
+          consentGrantedAt: "2026-08-25T12:30:00Z",
+        } as unknown as SubscribeFanInput),
+      ).rejects.toBeInstanceOf(BadRequestError);
+      expect(apiCalls()).toHaveLength(1);
     });
 
     it("accepts the other channel explicitly null", async () => {

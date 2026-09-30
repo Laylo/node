@@ -205,8 +205,19 @@ type SubscribeFanInput =
       smsMarketingConsent: true;
       consentGrantedAt: Date | string;
       dropId?: string;
+    }
+  | {
+      email: string;
+      emailMarketingConsent: true;
+      phone: string;
+      smsMarketingConsent: true;
+      consentGrantedAt: Date | string;
+      dropId?: string;
     };
 ```
+
+With both, each channel is subscribed and the two records are linked as the
+same person. Each keeps its own id, returned as `emailFanId` and `phoneFanId`.
 
 `consentGrantedAt` becomes the sign-up time and can't be in the future.
 `dropId` also RSVPs the fan. It must be one of the customer's drops, or the
@@ -218,12 +229,8 @@ Returns:
 ```ts
 type SubscribeFanResponse = {
   subscribed: boolean;
-  fan: {
-    id: string;
-    inferredDisplayName?: string;
-    joinedAt?: string;
-    location?: { city?: string; state?: string; country?: string };
-  };
+  emailFanId?: string; // only when email was given
+  phoneFanId?: string; // only when phone was given
   rsvp?: { dropId: string; status: "confirmed" }; // only when dropId was given
 };
 ```

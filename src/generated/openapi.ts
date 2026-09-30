@@ -488,7 +488,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
+            /** @description The named customer account has no paid Laylo plan or is locked, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -767,7 +767,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
+            /** @description The named customer account has no paid Laylo plan or is locked, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1110,7 +1110,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
+            /** @description The named customer account has no paid Laylo plan or is locked, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1298,7 +1298,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
+            /** @description The named customer account has no paid Laylo plan or is locked, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1501,7 +1501,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
+            /** @description The named customer account has no paid Laylo plan or is locked, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1797,7 +1797,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
+            /** @description The named customer account has no paid Laylo plan or is locked, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2021,7 +2021,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
+            /** @description The named customer account has no paid Laylo plan or is locked, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2155,7 +2155,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        /** @description A fan contact and an explicit marketing-consent record for that channel. Consent is required to subscribe a fan. Add dropId to also RSVP the fan to one of the customer's drops. */
+        /** @description A fan contact and an explicit marketing-consent record for that channel. Consent is required to subscribe a fan. Send both email and phone to subscribe both and link them as one fan. Add dropId to also RSVP the fan to one of the customer's drops. */
         requestBody: {
             content: {
                 /**
@@ -2207,11 +2207,36 @@ export interface operations {
                      * @constant
                      */
                     smsMarketingConsent: true;
+                } | {
+                    /**
+                     * Format: date-time
+                     * @description When the fan granted marketing consent, in ISO 8601 with an explicit UTC offset. Recorded as the sign-up time and must not be in the future.
+                     */
+                    consentGrantedAt: string;
+                    /** @description Optional drop to RSVP the fan to as part of subscribing. Must be one of the customer's drops (see GET /v1/drops); otherwise the request fails with 404 and nothing is written. */
+                    dropId?: string | null;
+                    /**
+                     * Format: email
+                     * @description Fan email address to subscribe.
+                     */
+                    email: string;
+                    /**
+                     * @description Must be true: the fan consented to email marketing.
+                     * @constant
+                     */
+                    emailMarketingConsent: true;
+                    /** @description E.164 phone number including the national code, for example +12025550100. */
+                    phone: string;
+                    /**
+                     * @description Must be true: the fan consented to SMS marketing.
+                     * @constant
+                     */
+                    smsMarketingConsent: true;
                 };
             };
         };
         responses: {
-            /** @description The resulting subscription state. rsvp is present only when dropId was supplied. */
+            /** @description The resulting subscription state. emailFanId and phoneFanId are present for the contacts supplied. rsvp is present only when dropId was supplied. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2219,9 +2244,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
-                     *       "fan": {
-                     *         "id": "fan_123"
-                     *       },
+                     *       "emailFanId": "fan_123",
                      *       "rsvp": {
                      *         "dropId": "drop_123",
                      *         "status": "confirmed"
@@ -2230,30 +2253,10 @@ export interface operations {
                      *     }
                      */
                     "application/json": {
-                        /**
-                         * Fan
-                         * @description A customer-scoped fan representation. Contact information is never returned by the public API.
-                         */
-                        fan: {
-                            /** @description Opaque Laylo fan identifier. */
-                            id: string;
-                            /** @description Optional non-contact display name inferred by Laylo. */
-                            inferredDisplayName?: string;
-                            /**
-                             * Format: date-time
-                             * @description When the fan first joined, in ISO 8601 with an explicit UTC offset.
-                             */
-                            joinedAt?: string;
-                            /** @description Optional non-contact location. */
-                            location?: {
-                                /** @description City name. */
-                                city?: string;
-                                /** @description Country name or code. */
-                                country?: string;
-                                /** @description State or region. */
-                                state?: string;
-                            };
-                        };
+                        /** @description Opaque Laylo fan identifier for the email subscribed. Present only when 'email' was supplied. */
+                        emailFanId?: string;
+                        /** @description Opaque Laylo fan identifier for the phone number subscribed. Present only when 'phone' was supplied. */
+                        phoneFanId?: string;
                         /** @description The RSVP recorded for dropId, when one was supplied. */
                         rsvp?: {
                             /** @description Opaque Laylo drop identifier. */
@@ -2317,7 +2320,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
+            /** @description The named customer account has no paid Laylo plan or is locked, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2541,7 +2544,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
+            /** @description The named customer account has no paid Laylo plan or is locked, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2720,7 +2723,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
+            /** @description The named customer account has no paid Laylo plan or is locked, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2956,7 +2959,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description The named customer account has no paid Laylo plan, or the integrator sent an X-Creator-Id for an account outside its roster. */
+            /** @description The named customer account has no paid Laylo plan or is locked, or the integrator sent an X-Creator-Id for an account outside its roster. */
             403: {
                 headers: {
                     [name: string]: unknown;

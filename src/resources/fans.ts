@@ -21,8 +21,8 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
 /**
  * A fan to subscribe. Identical to the API's request body except
  * `consentGrantedAt` also accepts a `Date`, which is sent as its ISO 8601
- * string. Exactly one of `email` (with `emailMarketingConsent: true`) or
- * `phone` (with `smsMarketingConsent: true`) is given.
+ * string. Gives `email` (with `emailMarketingConsent: true`), `phone` (with
+ * `smsMarketingConsent: true`), or both.
  * @see https://developers.laylo.com/api-reference/fans/fans.subscriptions.create
  */
 export type SubscribeFanInput = DistributiveOmit<
@@ -59,18 +59,46 @@ export type CountFansInput = Omit<
   signedUpBefore?: string | Date;
 };
 
+// Statically-typed callers serialize an absent optional field as null, so null
+// means "not given" just like undefined.
+const isGiven = (value: unknown) => value !== undefined && value !== null;
+
 // Enforced for JS callers; TS callers already get this from the union types.
 const assertExactlyOneChannel = (contact: {
   email?: string | null | undefined;
   phone?: string | null | undefined;
 }) => {
   const { email, phone } = contact ?? {};
-  const hasEmail = email !== undefined && email !== null;
-  const hasPhone = phone !== undefined && phone !== null;
-  if (hasEmail === hasPhone) {
+  if (isGiven(email) === isGiven(phone)) {
     throw new LayloConfigurationError(
       "A contact must carry exactly one of email or phone — pass { email } or { phone }, not both and not neither.",
     );
+  }
+};
+
+// The API silently drops an empty-string contact, so a fan sent with a real
+// email and phone: "" would come back 200 with only the email subscribed.
+// Rejecting a blank contact here keeps a both-channels call from quietly
+// becoming a one-channel one. Non-strings are left for the API to reject.
+const assertAtLeastOneChannel = (fan: {
+  email?: string | null | undefined;
+  phone?: string | null | undefined;
+}) => {
+  const { email, phone } = fan ?? {};
+  if (!isGiven(email) && !isGiven(phone)) {
+    throw new LayloConfigurationError(
+      "A fan to subscribe must carry an email, a phone, or both.",
+    );
+  }
+  for (const [field, value] of [
+    ["email", email],
+    ["phone", phone],
+  ] as const) {
+    if (typeof value === "string" && value.trim() === "") {
+      throw new LayloConfigurationError(
+        `A fan's ${field} must not be blank. Leave it out instead.`,
+      );
+    }
   }
 };
 
@@ -221,22 +249,24 @@ export class Fans extends APIResource {
 
   /**
    * Subscribes a fan to the customer, recording their marketing consent for
-   * the channel given. The fan is exactly one of an email address with
-   * `emailMarketingConsent: true` or an E.164 phone number with
-   * `smsMarketingConsent: true`; `consentGrantedAt` is when they consented
+   * each channel given. The fan is an email address with
+   * `emailMarketingConsent: true`, an E.164 phone number with
+   * `smsMarketingConsent: true`, or both. Given both, each is subscribed and
+   * the two records are linked as the same person, each keeping its own id.
+   * `consentGrantedAt` is when they consented
    * and becomes their sign-up time. Pass `dropId` to also RSVP them to one of
    * the customer's drops; an unknown drop fails with `NotFoundError` and
-   * writes nothing. Subscribing an already-subscribed fan only refreshes
-   * their record, and clears any earlier unsubscribe.
+   * writes nothing. Subscribing an already-subscribed fan only refreshes their
+   * record, and clears any earlier unsubscribe.
    *
    * This is a write, so a `5xx` response is not retried automatically.
    * @param fan The contact, their consent, and optionally a drop to RSVP to.
    * @param options Per-call overrides.
-   * @returns The fan's opaque id, the subscription state, and the RSVP when
-   * a `dropId` was given.
+   * @returns `emailFanId` and `phoneFanId` for the contacts given, the
+   * subscription state, and the RSVP when a `dropId` was given.
    * @example
    * ```ts
-   * const { fan, rsvp } = await laylo.fans.subscribe({
+   * const { emailFanId, rsvp } = await laylo.fans.subscribe({
    *   email: "fan@example.com",
    *   emailMarketingConsent: true,
    *   consentGrantedAt: new Date(),
@@ -250,7 +280,7 @@ export class Fans extends APIResource {
     fan: SubscribeFanInput,
     options?: RequestOptions,
   ): Promise<SubscribeFanResponse> {
-    assertExactlyOneChannel(fan);
+    assertAtLeastOneChannel(fan);
     const consentGrantedAt = isoTimestamp(
       fan.consentGrantedAt,
       "consentGrantedAt",

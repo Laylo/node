@@ -177,9 +177,9 @@ export type SegmentCountResponse = SuccessJson<
 >;
 
 /**
- * Request body for subscribing a fan: exactly one of an email address with
- * `emailMarketingConsent: true` or an E.164 phone number with
- * `smsMarketingConsent: true`, plus when the consent was granted.
+ * Request body for subscribing a fan: an email address with
+ * `emailMarketingConsent: true`, an E.164 phone number with
+ * `smsMarketingConsent: true`, or both, plus when the consent was granted.
  * @see https://developers.laylo.com/api-reference/fans/fans.subscriptions.create
  */
 export type SubscribeFanRequest = RequestJson<
@@ -187,8 +187,9 @@ export type SubscribeFanRequest = RequestJson<
 >;
 
 /**
- * Response acknowledging a subscribed fan. `rsvp` is present only when the
- * request named a `dropId`.
+ * Response acknowledging a subscribed fan. `emailFanId` and `phoneFanId` are
+ * each present only when the request sent that contact, and `rsvp` only when
+ * it named a `dropId`.
  * @see https://developers.laylo.com/api-reference/fans/fans.subscriptions.create
  */
 export type SubscribeFanResponse = SuccessJson<
