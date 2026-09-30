@@ -354,6 +354,7 @@ describe("api key only", () => {
     const { laylo } = keyOnly({ apiKey: "customer-abcd1234" });
 
     expect(laylo.toJSON()).toEqual({
+      mode: "apiKey",
       userId: undefined,
       accessKey: undefined,
       baseUrl: "https://events.laylo.com/api",
@@ -363,6 +364,12 @@ describe("api key only", () => {
     });
     expect(inspect(laylo)).toContain("userId: undefined");
     expect(inspect(laylo)).not.toContain("customer-abcd1234");
+  });
+
+  it("reports integrator mode when the credentials are present", () => {
+    expect(new Laylo({ ...credentials, apiKey: "k" }).toJSON().mode).toBe(
+      "integrator",
+    );
   });
 });
 

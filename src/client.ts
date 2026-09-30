@@ -33,9 +33,10 @@ const AUTH_DOCS = "https://developers.laylo.com/authentication";
  * many customers, or with a customer `apiKey` on its own, to act as that one
  * account. An API-key-only client sends no access token, is limited to 20
  * requests a minute per account, cannot name customers by `creatorId`, and
- * cannot call `customers.list()` or `auth.createToken()`. Its calls are also bound by the key's own
- * permissions: a read-only key gets a `PermissionError` on writes such as
- * `fans.subscribe`, and the fix is a key with the "write" permission.
+ * cannot call `customers.list()` or `auth.createToken()`. Its calls are also
+ * bound by the key's own permissions. Keys can't be granted "write" yet, so
+ * for now these clients are read-only and writes such as `fans.subscribe`
+ * get a `PermissionError`.
  */
 export interface ClientOptions {
   /**
@@ -65,9 +66,10 @@ export interface ClientOptions {
    * authenticates the client as its account and is required; to act for
    * several accounts that way, construct with one account's key and scope to
    * the others with `forCustomer(apiKey)`, which shares the connections. Each
-   * call needs the key to carry the "read" or "write" permission it requires
-   * (a key with none stored can only read, and an empty list allows nothing);
-   * a missing one throws `PermissionError`.
+   * call except `keys.verify()` needs the key to carry the "read" or "write"
+   * permission it requires (a key with none stored can only read, and an
+   * empty list allows nothing); a missing one throws `PermissionError`. Keys
+   * can't be granted "write" yet, so writes aren't available this way for now.
    */
   apiKey?: string | undefined;
   /**
@@ -466,6 +468,7 @@ export class Laylo {
    * with only an API key.
    */
   toJSON(): {
+    mode: "integrator" | "apiKey";
     userId: string | undefined;
     accessKey: string | undefined;
     baseUrl: string;
@@ -474,6 +477,7 @@ export class Laylo {
     secretKey: "[redacted]" | undefined;
   } {
     return {
+      mode: this.core.tokens === undefined ? "apiKey" : "integrator",
       userId: this.core.userId,
       accessKey: this.core.accessKey,
       baseUrl: this.baseUrl,
@@ -488,9 +492,10 @@ export class Laylo {
    * masked, so the client is safe to `console.log` or `util.inspect`.
    */
   [Symbol.for("nodejs.util.inspect.custom")](): string {
-    const { userId, accessKey, apiKey, creatorId, secretKey } = this.toJSON();
+    const { mode, userId, accessKey, apiKey, creatorId, secretKey } =
+      this.toJSON();
     const show = (value: string | undefined) =>
       value === undefined ? "undefined" : JSON.stringify(value);
-    return `Laylo { userId: ${show(userId)}, accessKey: ${show(accessKey)}, baseUrl: ${JSON.stringify(this.baseUrl)}, apiKey: ${show(apiKey)}, creatorId: ${show(creatorId)}, secretKey: ${secretKey ?? "undefined"} }`;
+    return `Laylo { mode: ${JSON.stringify(mode)}, userId: ${show(userId)}, accessKey: ${show(accessKey)}, baseUrl: ${JSON.stringify(this.baseUrl)}, apiKey: ${show(apiKey)}, creatorId: ${show(creatorId)}, secretKey: ${secretKey ?? "undefined"} }`;
   }
 }

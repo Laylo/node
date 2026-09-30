@@ -8,9 +8,11 @@ endpoint except `POST /v1/auth/token` needs either:
   account, and can't use `X-Creator-Id`. It also needs the key to have the
   endpoint's permission: "write" for `POST /v1/fans/subscriptions`,
   `POST /v1/conversions/events`, and `POST /v1/messages/sms`, "read" for the
-  rest. "write" doesn't grant "read", and a key with none stored can only read (an empty list allows nothing). A
-  missing one returns 403 `FORBIDDEN`
-  (`This API key does not have the "write" permission`).
+  rest except `GET /v1/keys/verify`, which needs none. "write" doesn't grant
+  "read", and a key with none stored can only read (an empty list allows only
+  key verification). A missing one returns 403 `FORBIDDEN`
+  (`This API key does not have the "write" permission`). Keys can't be
+  granted "write" yet, so key-only writes aren't available for now.
 - **Integrator credentials:** `Authorization: Bearer <token>` plus exactly one
   of `X-Api-Key` or `X-Creator-Id`.
 

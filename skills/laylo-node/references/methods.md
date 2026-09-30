@@ -54,9 +54,11 @@ with none in the environment is also a construction error.
 
 Each key-only call also needs a permission on the key: "write" for
 `fans.subscribe`, `conversions.events.track`, and `messages.sms.send`, "read"
-for everything else. "write" doesn't grant "read", and a key with none stored
-can only read (an empty list allows nothing). A missing one throws `PermissionError`
-(`This API key does not have the "write" permission`); use a key that has it.
+for everything else except `keys.verify()`, which needs none. "write" doesn't
+grant "read", and a key with none stored can only read (an empty list allows
+only `keys.verify()`). A missing one throws `PermissionError`
+(`This API key does not have the "write" permission`). Keys can't be granted
+"write" yet, so key-only writes aren't available for now.
 
 CommonJS: `const { Laylo } = require("@laylo.com/node");`
 

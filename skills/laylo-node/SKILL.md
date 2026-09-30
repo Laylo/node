@@ -84,8 +84,9 @@ to the next.
      account, can't use `creatorId` or `customers.list()`, and only acts on
      the key's own account. The key is a secret: keep it server-side, like
      the integrator secret key below. The key can also be read-only (see
-     [Key permissions](#key-permissions)); if the user will write, ask them
-     to make sure it has the "write" permission.
+     [Key permissions](#key-permissions)). Keys can't be granted "write"
+     yet, so if the user needs to write, tell them that isn't available with
+     only an API key yet.
    - **An integration serving many customers.** Continue with step 3.
 3. **Integrator credentials.** A `userId`, `accessKey`, and `secretKey`
    issued to the integration. They come from the user's Laylo account manager
@@ -130,13 +131,20 @@ shell or load them with `dotenv`.
 With only an API key, each call is checked against the key's permissions in
 Laylo. Integrator calls aren't. Writes (`fans.subscribe`,
 `conversions.events.track`, `messages.sms.send`) need "write". Everything
-else, including `fans.isSubscribed` and `fans.isUnsubscribed`, needs "read".
-The two are independent: "write" doesn't grant "read". A key with no
-permissions stored can only read; one stored with an empty list can't make
-any call. A call the key isn't allowed to make throws
-`PermissionError` with a message like
-`This API key does not have the "write" permission`. The fix is a key that
-has that permission. Don't suggest integrator credentials for this.
+else, including `fans.isSubscribed` and `fans.isUnsubscribed`, needs "read",
+except `keys.verify()`, which any valid key can call. The two are
+independent: "write" doesn't grant "read". A key with no permissions stored
+can only read; one stored with an empty list can only verify itself. A call
+the key isn't allowed to make throws `PermissionError` with a message like
+`This API key does not have the "write" permission`.
+
+Keys can't be granted "write" yet, so for now a key-only client is
+read-only. If the user needs to write, tell them that isn't available with
+only an API key yet. Don't suggest integrator credentials as a workaround;
+they're for integrations serving many customers.
+
+`laylo.toJSON().mode` is `"integrator"` or `"apiKey"`, for a startup check
+that the client authenticated the way the deploy intended.
 
 ### Choosing between an API key and a creator id
 

@@ -83,12 +83,16 @@ In this mode:
 - The key's permissions in Laylo apply. The writes
   (`POST /v1/fans/subscriptions`, `POST /v1/conversions/events`,
   `POST /v1/messages/sms`) need "write". Everything else, including the two
-  `POST` subscription checks, needs "read". The two are independent: "write"
-  doesn't grant "read". A key with no permissions stored can only read; one stored with an empty list can't make any call. A missing one
-  returns 403 `FORBIDDEN` with a message like
-  `This API key does not have the "write" permission`. The fix is a key that
-  has that permission. Don't suggest integrator credentials for this. If the
-  user will write, ask them to make sure the key has "write".
+  `POST` subscription checks, needs "read", except `GET /v1/keys/verify`,
+  which any valid key can call. The two are independent: "write" doesn't
+  grant "read". A key with no permissions stored can only read; one stored
+  with an empty list can only verify itself. A missing one returns 403
+  `FORBIDDEN` with a message like
+  `This API key does not have the "write" permission`.
+- Keys can't be granted "write" yet, so for now API-key-only access is
+  read-only. If the user needs to write, tell them that isn't available with
+  only an API key yet. Don't suggest integrator credentials as a workaround;
+  they're for integrations serving many customers.
 
 **Integrator credentials**, for an integration serving many customers. Every
 request except the token mint carries two things:
