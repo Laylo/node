@@ -242,6 +242,19 @@ One of:
 }
 ```
 
+```json
+{
+  "email": "fan@example.com",
+  "emailMarketingConsent": true,
+  "phone": "+12025550100",
+  "smsMarketingConsent": true,
+  "consentGrantedAt": "2026-08-25T12:30:00-07:00"
+}
+```
+
+With both, each channel is subscribed and the two records are linked as the
+same person. Each keeps its own id, returned as `emailFanId` and `phoneFanId`.
+
 `consentGrantedAt` becomes the sign-up time and can't be in the future.
 `dropId` is optional and also RSVPs the fan. An id that isn't one of the
 customer's drops returns 404 and writes nothing. Subscribing an existing fan
@@ -250,14 +263,13 @@ refreshes their record and clears any earlier unsubscribe.
 ```json
 {
   "subscribed": true,
-  "fan": { "id": "fan_123" },
+  "emailFanId": "fan_123",
   "rsvp": { "dropId": "drop_123", "status": "confirmed" }
 }
 ```
 
-`rsvp` is present only when `dropId` was sent. `fan` may also carry
-`inferredDisplayName`, `joinedAt`, and `location` (`city`, `state`,
-`country`). Contact details are never returned.
+`emailFanId` and `phoneFanId` are present for the contacts sent, and `rsvp`
+only when `dropId` was sent. Contact details are never returned.
 
 ## POST /v1/messages/sms
 

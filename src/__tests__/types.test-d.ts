@@ -133,7 +133,7 @@ describe("request aliases", () => {
     }>().not.toMatchTypeOf<SegmentFilters>();
   });
 
-  test("SubscribeFanRequest requires exactly one channel with its consent", () => {
+  test("SubscribeFanRequest requires each channel sent to carry its consent", () => {
     expectTypeOf<{
       email: string;
       emailMarketingConsent: true;
@@ -156,6 +156,12 @@ describe("request aliases", () => {
       emailMarketingConsent: true;
       smsMarketingConsent: true;
       consentGrantedAt: string;
+    }>().toMatchTypeOf<SubscribeFanRequest>();
+    expectTypeOf<{
+      email: string;
+      phone: string;
+      emailMarketingConsent: true;
+      consentGrantedAt: string;
     }>().not.toMatchTypeOf<SubscribeFanRequest>();
     expectTypeOf<{
       email: string;
@@ -163,7 +169,7 @@ describe("request aliases", () => {
     }>().not.toMatchTypeOf<SubscribeFanRequest>();
   });
 
-  test("SubscribeFanInput keeps the channel union while accepting a Date", () => {
+  test("SubscribeFanInput keeps the channel union, including both channels, while accepting a Date", () => {
     expectTypeOf<{
       email: string;
       emailMarketingConsent: true;
@@ -183,6 +189,12 @@ describe("request aliases", () => {
       phone: string;
       emailMarketingConsent: true;
       smsMarketingConsent: true;
+      consentGrantedAt: Date;
+    }>().toMatchTypeOf<SubscribeFanInput>();
+    expectTypeOf<{
+      email: string;
+      phone: string;
+      emailMarketingConsent: true;
       consentGrantedAt: Date;
     }>().not.toMatchTypeOf<SubscribeFanInput>();
   });
@@ -219,7 +231,12 @@ describe("response aliases", () => {
     expectTypeOf<SegmentCountResponse>().toEqualTypeOf<{
       numberOfFans: number;
     }>();
-    expectTypeOf<SubscribeFanResponse["fan"]["id"]>().toEqualTypeOf<string>();
+    expectTypeOf<SubscribeFanResponse["emailFanId"]>().toEqualTypeOf<
+      string | undefined
+    >();
+    expectTypeOf<SubscribeFanResponse["phoneFanId"]>().toEqualTypeOf<
+      string | undefined
+    >();
     expectTypeOf<SubscribeFanResponse["subscribed"]>().toEqualTypeOf<boolean>();
     expectTypeOf<SubscribeFanResponse["rsvp"]>().toEqualTypeOf<
       { dropId: string; status: "confirmed" } | undefined

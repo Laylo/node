@@ -55,9 +55,9 @@ call you haven't seen here. The ones that are easiest to get wrong:
 - `conversions.counts.list` takes `action`, `startDate`, `endDate`, and
   resolves to `{ startDate, endDate, counts: [{ action, total, series }] }`.
 - `fans.isSubscribed` and `fans.isUnsubscribed` resolve to a plain `boolean`.
-- `fans.subscribe` takes `email` + `emailMarketingConsent: true`, or `phone` +
-  `smsMarketingConsent: true`, plus `consentGrantedAt` and an optional
-  `dropId`.
+- `fans.subscribe` takes `email` + `emailMarketingConsent: true`, `phone` +
+  `smsMarketingConsent: true`, or both, plus `consentGrantedAt` and an
+  optional `dropId`. Given both, the two records are linked as the same person and each keeps its own id.
 - `messages.sms.send` takes `message` and `to` (one E.164 number or an array
   of up to 200), and resolves to `{ queued, skipped: [{ index, reason }] }`.
 
