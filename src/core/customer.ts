@@ -19,9 +19,8 @@ export type Customer =
     };
 
 /**
- * Refuses a customer named by creator id on a client that has only an API key:
- * `X-Creator-Id` is honoured only alongside an integrator access token, so the
- * request would fail at the API anyway.
+ * Refuses a creator id on a client with only an API key: the API honours
+ * `X-Creator-Id` only alongside an integrator access token.
  * @param customer The customer a client or call names, if any.
  * @param hasIntegrator Whether the client holds integrator credentials.
  */

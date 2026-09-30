@@ -12,10 +12,7 @@ import type { RequestOptions } from "../core/request-options.js";
 export interface ResourceContext {
   /** Transport every call goes through. */
   http: HttpClient;
-  /**
-   * Mints and refreshes the access token sent as the bearer; `undefined` on a
-   * client constructed with only an API key, whose calls carry no bearer.
-   */
+  /** Mints and refreshes the access token sent as the bearer. */
   tokens: TokenProvider | undefined;
   /**
    * Customer used when a call does not name its own: the `forCustomer`
@@ -36,10 +33,6 @@ export interface EndpointRequest {
    * retried like a GET. Only for reads that happen to use a write verb.
    */
   idempotent?: boolean;
-  /**
-   * Refuses the call before it is sent on a client constructed with only an
-   * API key, for endpoints the API only serves to integrators.
-   */
   integratorOnly?: boolean;
 }
 

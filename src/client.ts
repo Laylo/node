@@ -107,7 +107,6 @@ export interface ClientOptions {
 // cache without widening the public `ClientOptions`.
 const SHARED = Symbol("laylo.node.shared");
 
-// The integrator fields are all undefined on an API-key-only client.
 interface SharedCore {
   http: HttpClient;
   tokens: TokenProvider | undefined;
@@ -194,13 +193,8 @@ interface IntegratorCredentials {
   secretKey: string;
 }
 
-// With none of the three set the client authenticates by API key alone; with
-// some but not all, the missing one is reported rather than falling back.
-// Naming any of them in code turns the environment off for all three, the
-// same rule the customer fields follow, and blank counts as unset wherever it
-// comes from. One passed as undefined still reads the environment but marks
-// the caller as expecting integrator credentials, so losing all three from a
-// deploy fails here instead of quietly becoming a key-only client.
+// A deploy that loses all three must fail here, not quietly become a key-only
+// client; passing one as undefined marks the caller as expecting them.
 const integratorFromOptionsOrEnv = (
   options: ClientOptions,
 ): IntegratorCredentials | undefined => {
