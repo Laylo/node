@@ -58,8 +58,8 @@ export interface ClientOptions {
    * when one process serves several customers and scope each with
    * `forCustomer`. Without integrator credentials, this key alone
    * authenticates the client as its account, and each call needs the key to
-   * carry the "read" or "write" permission it requires (a key with none set
-   * can only read); a missing one throws `PermissionError`.
+   * carry the "read" or "write" permission it requires (a key with none stored
+   * can only read, and an empty list allows nothing); a missing one throws `PermissionError`.
    */
   apiKey?: string | undefined;
   /**
@@ -110,18 +110,23 @@ type ClientInit = ClientOptions & { [SHARED]?: SharedCore };
 
 type CredentialOption = "userId" | "accessKey" | "secretKey";
 
-const missingCredential = (option: CredentialOption, env: string) =>
+const missingCredential = (
+  option: CredentialOption,
+  env: string,
+  cause: string,
+) =>
   new LayloConfigurationError(
-    `${option} is missing — pass it when constructing the client or set ${env}. See ${AUTH_DOCS}`,
+    `${option} is missing — pass it when constructing the client or set ${env}. ${cause} See ${AUTH_DOCS}`,
   );
 
 const required = (
   value: string | undefined,
   option: CredentialOption,
   env: string,
+  cause: string,
 ): string => {
   if (typeof value !== "string" || value.length === 0) {
-    throw missingCredential(option, env);
+    throw missingCredential(option, env, cause);
   }
   return value;
 };
@@ -167,6 +172,12 @@ const envOrUnset = (name: string): string | undefined => {
   return value === undefined || value === "" ? undefined : value;
 };
 
+const INTEGRATOR_CREDENTIALS = [
+  ["userId", "LAYLO_USER_ID"],
+  ["accessKey", "LAYLO_ACCESS_KEY"],
+  ["secretKey", "LAYLO_SECRET_KEY"],
+] as const;
+
 interface IntegratorCredentials {
   userId: string;
   accessKey: string;
@@ -181,17 +192,23 @@ const integratorFromOptionsOrEnv = (
   const userId = options.userId ?? envOrUnset("LAYLO_USER_ID");
   const accessKey = options.accessKey ?? envOrUnset("LAYLO_ACCESS_KEY");
   const secretKey = options.secretKey ?? envOrUnset("LAYLO_SECRET_KEY");
-  if (
-    userId === undefined &&
-    accessKey === undefined &&
-    secretKey === undefined
-  ) {
+  const values = { userId, accessKey, secretKey };
+  // Blank options count as unset here so passing process.env.LAYLO_USER_ID
+  // straight through from a .env with blank lines still gives a key-only client.
+  const supplied = INTEGRATOR_CREDENTIALS.filter(
+    ([option]) => values[option] !== undefined && values[option] !== "",
+  );
+  if (supplied.length === 0) {
     return undefined;
   }
+  const sources = supplied.map(([option, env]) =>
+    options[option] === undefined ? env : option,
+  );
+  const cause = `${sources.join(" and ")} ${sources.length === 1 ? "is" : "are"} set, so all three integrator credentials are needed; unset ${sources.length === 1 ? "it" : "them"} to authenticate with the API key alone.`;
   return {
-    userId: required(userId, "userId", "LAYLO_USER_ID"),
-    accessKey: required(accessKey, "accessKey", "LAYLO_ACCESS_KEY"),
-    secretKey: required(secretKey, "secretKey", "LAYLO_SECRET_KEY"),
+    userId: required(userId, "userId", "LAYLO_USER_ID", cause),
+    accessKey: required(accessKey, "accessKey", "LAYLO_ACCESS_KEY", cause),
+    secretKey: required(secretKey, "secretKey", "LAYLO_SECRET_KEY", cause),
   };
 };
 

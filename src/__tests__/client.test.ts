@@ -239,6 +239,27 @@ describe("api key only", () => {
     expect(headers.has("Authorization")).toBe(false);
   });
 
+  it("treats blank integrator options as unset", async () => {
+    const { laylo, calls } = keyOnly({
+      userId: "",
+      accessKey: "",
+      secretKey: "",
+    });
+
+    await laylo.keys.verify();
+
+    expect(calls).toHaveLength(1);
+    expect(headersOf(calls[0]!).has("Authorization")).toBe(false);
+  });
+
+  it("names a stray integrator variable that blocks key-only auth", () => {
+    vi.stubEnv("LAYLO_USER_ID", "stray-user");
+
+    expect(() => keyOnly()).toThrow(
+      /accessKey is missing.*LAYLO_USER_ID is set.*unset it to authenticate with the API key alone/,
+    );
+  });
+
   it("reads the key from LAYLO_API_KEY", async () => {
     vi.stubEnv("LAYLO_API_KEY", "env-api-key");
     const { fetch, calls } = fakeFetch();
