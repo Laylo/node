@@ -1,5 +1,9 @@
 import type { TokenProvider } from "../core/auth.js";
-import { customerFrom, type Customer } from "../core/customer.js";
+import {
+  assertCustomerAllowed,
+  customerFrom,
+  type Customer,
+} from "../core/customer.js";
 import { LayloConfigurationError } from "../core/errors.js";
 import type { HttpClient, HttpMethod } from "../core/http.js";
 import type { RequestOptions } from "../core/request-options.js";
@@ -9,7 +13,7 @@ export interface ResourceContext {
   /** Transport every call goes through. */
   http: HttpClient;
   /** Mints and refreshes the access token sent as the bearer. */
-  tokens: TokenProvider;
+  tokens: TokenProvider | undefined;
   /**
    * Customer used when a call does not name its own: the `forCustomer`
    * scope's, else the one the client was constructed with.
@@ -29,6 +33,7 @@ export interface EndpointRequest {
    * retried like a GET. Only for reads that happen to use a write verb.
    */
   idempotent?: boolean;
+  integratorOnly?: boolean;
 }
 
 /**
@@ -49,8 +54,8 @@ export abstract class APIResource {
 
   /**
    * Performs one endpoint call: resolves the customer (per-request over the
-   * context's), attaches the bearer from the token provider, and returns the
-   * parsed body.
+   * context's), attaches the bearer from the token provider when there is
+   * one, and returns the parsed body.
    * @param endpoint The endpoint to call.
    * @param options Per-call overrides from the method's trailing argument.
    * @returns The parsed response body.
@@ -59,12 +64,19 @@ export abstract class APIResource {
     endpoint: EndpointRequest,
     options: RequestOptions = {},
   ): Promise<T> {
+    const { tokens } = this.context;
+    if (endpoint.integratorOnly === true && tokens === undefined) {
+      throw new LayloConfigurationError(
+        `${endpoint.method} ${endpoint.path} needs integrator credentials — a client constructed with only an apiKey can't call it. See https://developers.laylo.com/authentication`,
+      );
+    }
     const customer = customerFrom(options) ?? this.context.customer;
     if (customer === undefined) {
       throw new LayloConfigurationError(
         `${endpoint.method} ${endpoint.path} needs a customer — pass apiKey or creatorId in this call's options, scope a client with forCustomer(…), or set apiKey or creatorId when constructing the client.`,
       );
     }
+    assertCustomerAllowed(customer, tokens !== undefined);
 
     const { data } = await this.context.http.request<T>({
       method: endpoint.method,
@@ -72,7 +84,7 @@ export abstract class APIResource {
       query: endpoint.query,
       body: endpoint.body,
       idempotent: endpoint.idempotent,
-      auth: { bearer: this.context.tokens, ...customer },
+      auth: tokens === undefined ? customer : { bearer: tokens, ...customer },
       signal: options.signal,
       timeoutMs: options.timeoutMs,
       retry: options.retry,

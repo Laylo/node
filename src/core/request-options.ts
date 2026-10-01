@@ -18,8 +18,8 @@ export interface RequestOptions {
   apiKey?: string;
   /**
    * Laylo user id of a customer on your roster to act as on this call, in place
-   * of an API key, replacing whichever customer the client is scoped to. Pass
-   * either this or `apiKey`, not both.
+   * of an API key, replacing whichever customer the client is scoped to. Needs
+   * integrator credentials. Pass either this or `apiKey`, not both.
    */
   creatorId?: string;
   /** Aborts the request when signalled. */

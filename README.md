@@ -35,6 +35,9 @@ const drops = await laylo.drops.list();
 console.log(drops.map((drop) => drop.title));
 ```
 
+Calling only your own account's data? The API key on its own is enough; see
+[Using only an API key](#using-only-an-api-key).
+
 ## Using an AI assistant
 
 This repo is also a plugin for AI coding assistants. It carries two
@@ -102,12 +105,15 @@ The SDK uses two kinds of credentials:
 
 Each falls back to an environment variable when omitted from the
 constructor: `LAYLO_USER_ID`, `LAYLO_ACCESS_KEY`, `LAYLO_SECRET_KEY`, and
-`LAYLO_API_KEY`.
+`LAYLO_API_KEY`. An integration acting for many customers needs the
+integrator credentials; a single account calling its own data can skip them
+and [use only an API key](#using-only-an-api-key).
 
 Enterprise accounts have a third option for naming the customer. If the
 account you're acting on sits under your integration's own Laylo account, pass
 its user id as `creatorId` instead of collecting an API key from it. It's sent
-as the `X-Creator-Id` header, and falls back to `LAYLO_CREATOR_ID`. Set one of
+as the `X-Creator-Id` header, falls back to `LAYLO_CREATOR_ID`, and needs
+integrator credentials. Set one of
 `apiKey` or `creatorId`, not both — including in the environment, where having
 `LAYLO_API_KEY` and `LAYLO_CREATOR_ID` both set fails at construction rather
 than picking one. See
@@ -123,6 +129,56 @@ await laylo.keys.verify();
 
 See [developers.laylo.com/authentication](https://developers.laylo.com/authentication)
 for the full model.
+
+### Using only an API key
+
+If you're a Laylo account calling your own data — a script, a backend for your
+own site — you don't need integrator credentials. Generate an API key at
+[laylo.com/settings?tab=Integrations](https://laylo.com/settings?tab=Integrations)
+and pass it on its own, or set only `LAYLO_API_KEY` and call `new Laylo()`:
+
+```ts
+import Laylo from "@laylo.com/node";
+
+const laylo = new Laylo({ apiKey: process.env.LAYLO_API_KEY });
+
+const drops = await laylo.drops.list();
+```
+
+The client works this way whenever none of `userId`, `accessKey`, and
+`secretKey` is set; setting some but not all of them still fails at
+construction. Naming any of the three in code, even as `""`, turns their
+environment variables off for all three, so `new Laylo({ apiKey, userId: "" })`
+ignores a stray `LAYLO_USER_ID`. Passing them as `undefined`, as in the
+quickstart, counts as expecting integrator credentials: if none turn up in the
+environment either, construction fails rather than falling back to the API key
+alone. To act for several accounts this way, construct with one account's key
+and scope to the others with `forCustomer(apiKey)`. Every request carries just the `X-Api-Key` header, with no
+access token. Compared with integrator credentials:
+
+- Requests are limited to 20 a minute per account. Past that, a call throws
+  `RateLimitError`, whose `retryAfter` says when to try again.
+- Only the key's own account can be acted on. `creatorId` isn't accepted —
+  not in the constructor, `LAYLO_CREATOR_ID`, `forCustomer`, or a call's
+  options — and throws `LayloConfigurationError`. Another customer's key
+  still works through `forCustomer(apiKey)` or a call's `apiKey`.
+- `customers.list()` and `auth.createToken()` reject with
+  `LayloConfigurationError` without sending a request, since there's no
+  integrator roster to list or token to mint.
+- The key's own permissions apply. Writes (`fans.subscribe`,
+  `conversions.events.track`, `messages.sms.send`) need "write"; everything
+  else, including `fans.isSubscribed` and `fans.isUnsubscribed`, needs "read",
+  except `keys.verify()`, which any valid key can call. The two are
+  independent, so "write" doesn't grant "read". A key with no permissions
+  stored can only read, and one stored with an empty list can't make any call
+  but `keys.verify()`. A call the key isn't allowed to make throws
+  `PermissionError` with a message such as
+  `This API key does not have the "write" permission`.
+- Keys can't be granted "write" yet, so for now a client with only an API key
+  is read-only: the three writes above throw `PermissionError`.
+
+If you're building an integration that serves many customers, use integrator
+credentials instead.
 
 ## Working with multiple customers
 
@@ -227,7 +283,8 @@ is the one exception — it only accepts `signal`).
   `id` is the `creatorId` that `forCustomer({ creatorId })` accepts, so one
   customer is enough to discover the rest. The list is scoped to your
   integration, not to the customer the client is acting as, but a customer
-  must still be named like on every other call.
+  must still be named like on every other call. It needs integrator
+  credentials; a client with only an API key gets `PermissionError`.
 
   ```ts
   import Laylo from "@laylo.com/node";
@@ -470,6 +527,8 @@ is the one exception — it only accepts `signal`).
 
 The SDK mints and refreshes access tokens for you, but `laylo.auth.createToken()`
 is available if you need a raw bearer token to call the API outside the SDK.
+It needs integrator credentials; with only an API key, send the key as
+`X-Api-Key` and no token.
 
 ## Errors
 

@@ -1,5 +1,9 @@
 import { TokenProvider } from "./core/auth.js";
-import { customerFrom, type Customer } from "./core/customer.js";
+import {
+  assertCustomerAllowed,
+  customerFrom,
+  type Customer,
+} from "./core/customer.js";
 import { LayloConfigurationError } from "./core/errors.js";
 import { HttpClient } from "./core/http.js";
 import { DEFAULT_MAX_RETRIES } from "./core/retry.js";
@@ -23,11 +27,27 @@ export { DEFAULT_MAX_RETRIES } from "./core/retry.js";
 
 const AUTH_DOCS = "https://developers.laylo.com/authentication";
 
-/** Settings for the Laylo client. */
+/**
+ * Settings for the Laylo client. Authenticate one of two ways: with integrator
+ * credentials (`userId`, `accessKey`, and `secretKey`), to act on behalf of
+ * many customers, or with a customer `apiKey` on its own, to act as that one
+ * account. An API-key-only client sends no access token, is limited to 20
+ * requests a minute per account, cannot name customers by `creatorId`, and
+ * cannot call `customers.list()` or `auth.createToken()`. Its calls are also
+ * bound by the key's own permissions. Keys can't be granted "write" yet, so
+ * for now these clients are read-only and writes such as `fans.subscribe`
+ * get a `PermissionError`.
+ */
 export interface ClientOptions {
   /**
    * Laylo user id of the account your integrator credentials were issued
-   * under; defaults to `process.env.LAYLO_USER_ID`.
+   * under; defaults to `process.env.LAYLO_USER_ID`. Leave it, `accessKey`, and
+   * `secretKey` all unset to authenticate with `apiKey` alone. Passing any of
+   * the three with a value, even `""`, turns their environment variables off
+   * for all three, so `userId: ""` authenticates with `apiKey` alone despite a
+   * stray `LAYLO_USER_ID`. Passing one as `undefined` falls back to its
+   * environment variable and counts as asking for integrator credentials, so
+   * the client throws rather than using `apiKey` alone when none is found.
    */
   userId?: string | undefined;
   /**
@@ -40,17 +60,24 @@ export interface ClientOptions {
   secretKey?: string | undefined;
   /**
    * Customer API key used by calls that do not name their own customer;
-   * defaults to `process.env.LAYLO_API_KEY`. Leave it and `creatorId` unset
-   * when one process serves several customers and scope each with
-   * `forCustomer`.
+   * defaults to `process.env.LAYLO_API_KEY`. With integrator credentials,
+   * leave it and `creatorId` unset when one process serves several customers
+   * and scope each with `forCustomer`. Without them, this key alone
+   * authenticates the client as its account and is required; to act for
+   * several accounts that way, construct with one account's key and scope to
+   * the others with `forCustomer(apiKey)`, which shares the connections. Each
+   * call except `keys.verify()` needs the key to carry the "read" or "write"
+   * permission it requires (a key with none stored can only read, and an
+   * empty list allows nothing); a missing one throws `PermissionError`. Keys
+   * can't be granted "write" yet, so writes aren't available this way for now.
    */
   apiKey?: string | undefined;
   /**
    * Laylo user id of an account on your roster, used in place of an API key by
    * calls that do not name their own customer; defaults to
    * `process.env.LAYLO_CREATOR_ID`. Only accounts that sit under your
-   * integration's own Laylo account can be named this way. Set either this or
-   * `apiKey`, not both.
+   * integration's own Laylo account can be named this way, and only with
+   * integrator credentials. Set either this or `apiKey`, not both.
    */
   creatorId?: string | undefined;
   /**
@@ -82,9 +109,9 @@ const SHARED = Symbol("laylo.node.shared");
 
 interface SharedCore {
   http: HttpClient;
-  tokens: TokenProvider;
-  userId: string;
-  accessKey: string;
+  tokens: TokenProvider | undefined;
+  userId: string | undefined;
+  accessKey: string | undefined;
   baseUrl: string;
 }
 
@@ -92,18 +119,23 @@ type ClientInit = ClientOptions & { [SHARED]?: SharedCore };
 
 type CredentialOption = "userId" | "accessKey" | "secretKey";
 
-const missingCredential = (option: CredentialOption, env: string) =>
+const missingCredential = (
+  option: CredentialOption,
+  env: string,
+  cause: string,
+) =>
   new LayloConfigurationError(
-    `${option} is missing — pass it when constructing the client or set ${env}. See ${AUTH_DOCS}`,
+    `${option} is missing — pass it when constructing the client or set ${env}. ${cause} See ${AUTH_DOCS}`,
   );
 
 const required = (
   value: string | undefined,
   option: CredentialOption,
   env: string,
+  cause: string,
 ): string => {
   if (typeof value !== "string" || value.length === 0) {
-    throw missingCredential(option, env);
+    throw missingCredential(option, env, cause);
   }
   return value;
 };
@@ -149,6 +181,66 @@ const envOrUnset = (name: string): string | undefined => {
   return value === undefined || value === "" ? undefined : value;
 };
 
+const INTEGRATOR_CREDENTIALS = [
+  ["userId", "LAYLO_USER_ID"],
+  ["accessKey", "LAYLO_ACCESS_KEY"],
+  ["secretKey", "LAYLO_SECRET_KEY"],
+] as const;
+
+interface IntegratorCredentials {
+  userId: string;
+  accessKey: string;
+  secretKey: string;
+}
+
+// A deploy that loses all three must fail here, not quietly become a key-only
+// client; passing one as undefined marks the caller as expecting them.
+const integratorFromOptionsOrEnv = (
+  options: ClientOptions,
+): IntegratorCredentials | undefined => {
+  const inCode = INTEGRATOR_CREDENTIALS.some(
+    ([option]) => options[option] !== undefined,
+  );
+  const [userId, accessKey, secretKey] = INTEGRATOR_CREDENTIALS.map(
+    ([option, env]) => {
+      const value = inCode ? options[option] : envOrUnset(env);
+      return value === "" ? undefined : value;
+    },
+  );
+  const values = { userId, accessKey, secretKey };
+  const supplied = INTEGRATOR_CREDENTIALS.filter(
+    ([option]) => values[option] !== undefined,
+  );
+  if (supplied.length === 0) {
+    const expected = INTEGRATOR_CREDENTIALS.find(([option]) =>
+      Object.hasOwn(options, option),
+    );
+    if (inCode || expected === undefined) {
+      return undefined;
+    }
+    throw missingCredential(
+      expected[0],
+      expected[1],
+      `It was passed as undefined, so integrator credentials are expected; leave all three out, or pass them as "", to authenticate with the API key alone.`,
+    );
+  }
+  const sources = supplied.map(([option, env]) => (inCode ? option : env));
+  const unset = inCode
+    ? `pass ${sources.length === 1 ? "it" : "them"} as "" or leave ${sources.length === 1 ? "it" : "them"} out`
+    : `unset ${sources.length === 1 ? "it" : "them"}, or pass userId: "",`;
+  const cause = `${sources.join(" and ")} ${sources.length === 1 ? "is" : "are"} set, so all three integrator credentials are needed; ${unset} to authenticate with the API key alone.`;
+  return {
+    userId: required(userId, "userId", "LAYLO_USER_ID", cause),
+    accessKey: required(accessKey, "accessKey", "LAYLO_ACCESS_KEY", cause),
+    secretKey: required(secretKey, "secretKey", "LAYLO_SECRET_KEY", cause),
+  };
+};
+
+const noCredentials = () =>
+  new LayloConfigurationError(
+    `No credentials found — pass userId, accessKey, and secretKey (or set LAYLO_USER_ID, LAYLO_ACCESS_KEY, and LAYLO_SECRET_KEY) to act for your customers as an integrator, or pass only a customer apiKey (or set LAYLO_API_KEY) to act as that one account. See ${AUTH_DOCS}`,
+  );
+
 // Naming either half of the customer in code turns the environment off for
 // both, so an explicit creatorId is not refused for clashing with a
 // LAYLO_API_KEY that happens to be set.
@@ -179,7 +271,9 @@ const mask = (apiKey: string | undefined) => {
 /**
  * The Laylo API client. Construct it once with your integrator credentials and
  * reach every endpoint through its resources; access tokens are minted and
- * refreshed for you.
+ * refreshed for you. An account calling its own data can instead construct
+ * it with only that account's API key, which is sent on every request in
+ * place of an access token and is limited to 20 requests a minute.
  * @example
  * ```ts
  * const laylo = new Laylo({
@@ -194,6 +288,10 @@ const mask = (apiKey: string | undefined) => {
  * // Or, for an account on your own roster, name it by id instead of a key:
  * const rosterAccount = laylo.forCustomer({ creatorId: customerUserId });
  * await rosterAccount.drops.list();
+ *
+ * // Or, for your own account alone, with just its API key:
+ * const own = new Laylo({ apiKey: process.env.LAYLO_API_KEY });
+ * await own.drops.list();
  * ```
  * @see https://developers.laylo.com
  */
@@ -226,25 +324,16 @@ export class Laylo {
           "forCustomer needs an apiKey or a creatorId",
         );
       }
+      assertCustomerAllowed(this.customer, shared.tokens !== undefined);
       return;
     }
 
-    const userId = required(
-      options.userId ?? process.env.LAYLO_USER_ID,
-      "userId",
-      "LAYLO_USER_ID",
-    );
-    const accessKey = required(
-      options.accessKey ?? process.env.LAYLO_ACCESS_KEY,
-      "accessKey",
-      "LAYLO_ACCESS_KEY",
-    );
-    const secretKey = required(
-      options.secretKey ?? process.env.LAYLO_SECRET_KEY,
-      "secretKey",
-      "LAYLO_SECRET_KEY",
-    );
+    const integrator = integratorFromOptionsOrEnv(options);
     const customer = customerFromOptionsOrEnv(options);
+    if (integrator === undefined && customer === undefined) {
+      throw noCredentials();
+    }
+    assertCustomerAllowed(customer, integrator !== undefined);
     const baseUrl = validBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
     const timeoutMs = wholeNumber(
       options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
@@ -268,9 +357,12 @@ export class Laylo {
 
     this.core = {
       http,
-      tokens: new TokenProvider({ userId, accessKey, secretKey, http }),
-      userId,
-      accessKey,
+      tokens:
+        integrator === undefined
+          ? undefined
+          : new TokenProvider({ ...integrator, http }),
+      userId: integrator?.userId,
+      accessKey: integrator?.accessKey,
       baseUrl,
     };
     this.baseUrl = baseUrl;
@@ -282,7 +374,8 @@ export class Laylo {
    * Laylo accounts. Name the customer by the API key they gave you, or, when
    * their account sits under your integration's own Laylo account, by their
    * user id. The view shares this client's connections and access token, so
-   * making one per request is cheap.
+   * making one per request is cheap. A client constructed with only an API
+   * key can scope to another API key but not to a `creatorId`.
    * @param customer The customer's API key, or `{ apiKey }` or `{ creatorId }`.
    * @returns A client whose calls act as that customer unless a call names its
    * own.
@@ -316,6 +409,7 @@ export class Laylo {
 
   /**
    * @returns The roster of accounts under your own: `laylo.customers.list()`.
+   * Needs integrator credentials.
    */
   get customers(): Customers {
     return (this.customersResource ??= new Customers(this.context()));
@@ -343,7 +437,8 @@ export class Laylo {
   }
 
   /**
-   * @returns Access tokens, for calling the API outside the SDK.
+   * @returns Access tokens, for calling the API outside the SDK. Needs
+   * integrator credentials.
    */
   get auth(): Auth {
     return (this.authResource ??= new Auth(this.core.tokens));
@@ -362,23 +457,27 @@ export class Laylo {
    * key — `private` fields are enumerable at runtime, so without this a
    * structured logger serializing the client would emit the customer key and
    * the secret key. The user id, access key, and creator id identify accounts
-   * but do not authenticate on their own, so they are shown in full.
+   * but do not authenticate on their own, so they are shown in full. The user
+   * id, access key, and secret key are `undefined` on a client constructed
+   * with only an API key.
    */
   toJSON(): {
-    userId: string;
-    accessKey: string;
+    mode: "integrator" | "apiKey";
+    userId: string | undefined;
+    accessKey: string | undefined;
     baseUrl: string;
     apiKey: string | undefined;
     creatorId: string | undefined;
-    secretKey: string;
+    secretKey: "[redacted]" | undefined;
   } {
     return {
+      mode: this.core.tokens === undefined ? "apiKey" : "integrator",
       userId: this.core.userId,
       accessKey: this.core.accessKey,
       baseUrl: this.baseUrl,
       apiKey: mask(this.customer?.apiKey),
       creatorId: this.customer?.creatorId,
-      secretKey: "[redacted]",
+      secretKey: this.core.tokens === undefined ? undefined : "[redacted]",
     };
   }
 
@@ -387,9 +486,10 @@ export class Laylo {
    * masked, so the client is safe to `console.log` or `util.inspect`.
    */
   [Symbol.for("nodejs.util.inspect.custom")](): string {
-    const { apiKey, creatorId } = this.toJSON();
+    const { mode, userId, accessKey, apiKey, creatorId, secretKey } =
+      this.toJSON();
     const show = (value: string | undefined) =>
       value === undefined ? "undefined" : JSON.stringify(value);
-    return `Laylo { userId: ${JSON.stringify(this.core.userId)}, accessKey: ${JSON.stringify(this.core.accessKey)}, baseUrl: ${JSON.stringify(this.baseUrl)}, apiKey: ${show(apiKey)}, creatorId: ${show(creatorId)}, secretKey: [redacted] }`;
+    return `Laylo { mode: ${JSON.stringify(mode)}, userId: ${show(userId)}, accessKey: ${show(accessKey)}, baseUrl: ${JSON.stringify(this.baseUrl)}, apiKey: ${show(apiKey)}, creatorId: ${show(creatorId)}, secretKey: ${secretKey ?? "undefined"} }`;
   }
 }

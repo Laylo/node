@@ -3,6 +3,7 @@ import { LayloConfigurationError } from "./errors.js";
 /**
  * The Laylo account a call acts on: named by the API key that account gave
  * you, or, when the account sits under your own Laylo account, by its user id.
+ * Naming it by user id needs integrator credentials.
  * @see https://developers.laylo.com/authentication
  */
 export type Customer =
@@ -16,6 +17,23 @@ export type Customer =
       creatorId: string;
       apiKey?: undefined;
     };
+
+/**
+ * Refuses a creator id on a client with only an API key: the API honours
+ * `X-Creator-Id` only alongside an integrator access token.
+ * @param customer The customer a client or call names, if any.
+ * @param hasIntegrator Whether the client holds integrator credentials.
+ */
+export const assertCustomerAllowed = (
+  customer: Customer | undefined,
+  hasIntegrator: boolean,
+): void => {
+  if (!hasIntegrator && customer?.creatorId !== undefined) {
+    throw new LayloConfigurationError(
+      "creatorId needs integrator credentials — pass userId, accessKey, and secretKey when constructing the client, or name the customer by apiKey instead. See https://developers.laylo.com/authentication",
+    );
+  }
+};
 
 /** Anything a customer can be read out of: client options or per-call options. */
 export interface CustomerFields {
