@@ -33,10 +33,8 @@ project, or into `.claude/skills/` inside one project:
 cp -r skills/laylo-node ~/.claude/skills/
 ```
 
-**Claude desktop and claude.ai.** Download
-[`laylo-node.zip`](./laylo-node.zip) or [`laylo-api.zip`](./laylo-api.zip)
-and upload it under **Settings → Capabilities → Skills**. To build the zip
-yourself after editing a skill, keep `SKILL.md` inside the skill's folder:
+**Claude desktop and claude.ai.** Zip the skill's folder, keeping `SKILL.md`
+inside it, and upload the zip under **Settings → Capabilities → Skills**:
 
 ```sh
 cd skills && zip -rX laylo-node.zip laylo-node -x '*.DS_Store'
