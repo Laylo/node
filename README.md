@@ -93,13 +93,13 @@ claude.ai, and copying the folders by hand.
 The SDK uses two kinds of credentials:
 
 - **Integrator credentials** — a `userId`, `accessKey`, and `secretKey`
-  issued to your integration. Request these from your account manager. The
-  `userId` is the Laylo user id of the account the credentials were issued
-  under.
+  issued to your integration. The `userId` is the Laylo user id of the
+  account the credentials were issued under.
   The SDK uses them to mint and refresh a bearer access token for you; you
   never handle the token directly.
 - **Customer API key** — the `apiKey` of the Laylo account you're acting on
-  behalf of. Each customer generates their own at
+  behalf of. Each customer generates their own under **Settings →
+  Integrations → API Keyring** at
   [laylo.com/settings?tab=Integrations](https://laylo.com/settings?tab=Integrations)
   and gives it to you. It's sent as the `X-Api-Key` header on every request.
 
@@ -129,6 +129,28 @@ await laylo.keys.verify();
 
 See [developers.laylo.com/authentication](https://developers.laylo.com/authentication)
 for the full model.
+
+### Getting your keys
+
+1. Ask your Laylo account manager to turn on integrator access for your
+   Laylo account. This is the one step you can't do yourself.
+2. Open
+   [laylo.com/settings?tab=Integrations](https://laylo.com/settings?tab=Integrations)
+   and scroll to **Integrator API Keys**. The card shows your user ID; that's
+   your `userId`.
+3. Create a key. The dialog shows your user ID, access key, and secret key
+   together. Copy them into your `.env` now as `LAYLO_USER_ID`,
+   `LAYLO_ACCESS_KEY`, and `LAYLO_SECRET_KEY`: the secret key is shown only
+   once, and losing it means deleting the key and creating a new one.
+4. To test before you have a customer, generate a key in the **API Keyring**
+   card on the same page and set it as `LAYLO_API_KEY`. Your integration
+   then acts on your own Laylo account, so you can try it against your own
+   drops and fans before onboarding anyone else.
+
+Writes made this way are live. Integrator calls aren't limited by the key's
+permissions, so `messages.sms.send` texts your real fans and
+`fans.subscribe` and `conversions.events.track` create real records. Stick
+to reads, or send only to your own number, until you mean it.
 
 ### Using only an API key
 
