@@ -92,7 +92,9 @@ In this mode:
 - Keys can't be granted "write" yet, so for now API-key-only access is
   read-only. If the user needs to write, tell them that isn't available with
   only an API key yet. Don't suggest integrator credentials as a workaround;
-  they're for integrations serving many customers.
+  they're for integrations serving many customers. Testing an integration
+  against the integrator's own account is not a way for an account owner to
+  get writes without building one.
 
 **Integrator credentials**, for an integration serving many customers. Every
 request except the token mint carries two things:
@@ -104,7 +106,11 @@ request except the token mint carries two things:
    https://laylo.com/settings?tab=Integrations; the secret key is shown only
    once. The token endpoint takes them as `client_id`, which is the user id
    and access key joined with a dot (`<userId>.<accessKey>`), and
-   `client_secret`, which is the secret key.
+   `client_secret`, which is the secret key. To test before onboarding a
+   customer, the integrator can generate an API key in the **API Keyring**
+   card on the same page and send it as `X-Api-Key`, so calls act on their
+   own account. Warn them that writes made this way are live and not limited
+   by the key's permissions: `POST /v1/messages/sms` texts their real fans.
 2. **The customer**, meaning the Laylo account the call acts on, in exactly
    one header:
    - `X-Api-Key: <key>`. The account owner generates the key at

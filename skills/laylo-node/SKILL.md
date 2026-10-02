@@ -95,10 +95,12 @@ to the next.
    https://laylo.com/settings?tab=Integrations. The dialog shows the user ID,
    access key, and secret key, and the secret key is shown only once. The
    `userId` is the Laylo user id of the account the credentials were issued
-   under. For testing, they can generate an API key in the **API Keyring**
-   card on the same page and use it as the customer, so the integration acts
-   on their own account. The secret key is a server-side secret
-   and must never ship to a browser or a mobile app.
+   under. The secret key is a server-side secret and must never ship to a
+   browser or a mobile app. To test the integration before onboarding a
+   customer, they can generate an API key in the **API Keyring** card on the
+   same page and use it as the customer, so the integration acts on their own
+   account. Warn them that writes made this way are live and not limited by
+   the key's permissions: `messages.sms.send` texts their real fans.
 4. **Name the customer.** Every call acts on one Laylo account, named in one of
    two ways. Use one or the other, never both. Ask the user which situation
    they're in rather than assuming an API key (see
@@ -147,7 +149,9 @@ the key isn't allowed to make throws `PermissionError` with a message like
 Keys can't be granted "write" yet, so for now a key-only client is
 read-only. If the user needs to write, tell them that isn't available with
 only an API key yet. Don't suggest integrator credentials as a workaround;
-they're for integrations serving many customers.
+they're for integrations serving many customers. Testing an integration
+against the integrator's own account is not a way for an account owner to
+get writes without building one.
 
 `laylo.toJSON().mode` is `"integrator"` or `"apiKey"`, for a startup check
 that the client authenticated the way the deploy intended.
