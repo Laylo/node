@@ -99,8 +99,10 @@ request except the token mint carries two things:
 
 1. `Authorization: Bearer <access_token>`, which identifies the
    **integration**. Mint it from the integrator credentials, a user id,
-   access key, and secret key that come from the user's Laylo account
-   manager. The token endpoint takes them as `client_id`, which is the user id
+   access key, and secret key. Once the user's Laylo account manager turns on
+   integrator access, the user creates these under **Integrator API Keys** at
+   https://laylo.com/settings?tab=Integrations; the secret key is shown only
+   once. The token endpoint takes them as `client_id`, which is the user id
    and access key joined with a dot (`<userId>.<accessKey>`), and
    `client_secret`, which is the secret key.
 2. **The customer**, meaning the Laylo account the call acts on, in exactly
