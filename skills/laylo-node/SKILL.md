@@ -149,9 +149,7 @@ the key isn't allowed to make throws `PermissionError` with a message like
 Keys can't be granted "write" yet, so for now a key-only client is
 read-only. If the user needs to write, tell them that isn't available with
 only an API key yet. Don't suggest integrator credentials as a workaround;
-they're for integrations serving many customers. Testing an integration
-against the integrator's own account is not a way for an account owner to
-get writes without building one.
+they're for integrations serving many customers.
 
 `laylo.toJSON().mode` is `"integrator"` or `"apiKey"`, for a startup check
 that the client authenticated the way the deploy intended.

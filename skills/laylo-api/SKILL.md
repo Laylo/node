@@ -92,9 +92,7 @@ In this mode:
 - Keys can't be granted "write" yet, so for now API-key-only access is
   read-only. If the user needs to write, tell them that isn't available with
   only an API key yet. Don't suggest integrator credentials as a workaround;
-  they're for integrations serving many customers. Testing an integration
-  against the integrator's own account is not a way for an account owner to
-  get writes without building one.
+  they're for integrations serving many customers.
 
 **Integrator credentials**, for an integration serving many customers. Every
 request except the token mint carries two things:
