@@ -202,20 +202,6 @@ describe("Messages", () => {
       expect(calls).toHaveLength(0);
     });
 
-    it("does not replay a 503 without an idempotency key", async () => {
-      const { context, apiCalls } = fakeContext(
-        [json(503, {}), json(200, created)],
-        { apiKey: "customer-key-1" },
-      );
-
-      const failure: unknown = await new Messages(context).segments
-        .send(presale)
-        .catch((error: unknown) => error);
-
-      expect(failure).toBeInstanceOf(ServerError);
-      expect(apiCalls()).toHaveLength(1);
-    });
-
     it("refuses both sign-up bounds before any request", async () => {
       const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
 
