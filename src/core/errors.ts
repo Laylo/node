@@ -313,9 +313,9 @@ brand(NotImplementedError, "NotImplementedError");
 
 /**
  * 5xx — something went wrong on Laylo's side. Retried automatically for
- * idempotent requests (GET, PUT, DELETE, or a POST/PATCH marked
- * `idempotent`) before giving up; other writes are not replayed since the
- * server may already have applied them.
+ * idempotent requests (GET, PUT, DELETE, a POST/PATCH marked `idempotent`,
+ * or a write sent with an idempotency key) before giving up; other writes
+ * are not replayed since the server may already have applied them.
  * @see https://developers.laylo.com/errors
  */
 export class ServerError extends LayloAPIError {}

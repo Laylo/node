@@ -654,9 +654,11 @@ A response with status `408`, `429`, `500`, `502`, `503`, or `504` is retried
 automatically with exponential backoff, up to `DEFAULT_MAX_RETRIES` (2)
 times. A `429` is retried regardless of method; the other statuses are only
 retried for idempotent requests — reads, and writes the SDK itself marks
-idempotent, such as `fans.isSubscribed` and `fans.isUnsubscribed`. A
-non-idempotent write like `conversions.events.track` or `fans.subscribe` is
-not replayed on a `5xx`, since the server may already have applied it. Each
+idempotent, such as `fans.isSubscribed` and `fans.isUnsubscribed`, and
+`messages.segments` calls given an `idempotencyKey` (which also retry a `409`
+from an attempt that hasn't finished). A non-idempotent write like
+`conversions.events.track` or `fans.subscribe` is not replayed on a `5xx`,
+since the server may already have applied it. Each
 request also has a `DEFAULT_TIMEOUT_MS` (30,000ms) timeout.
 
 `maxRetries` and the default `timeoutMs` are set once, on the client. Per
