@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -23,33 +23,17 @@ const toSpecUrl = (specSource: string) => {
   return pathToFileURL(resolve(specSource));
 };
 
-const readCommitted = async () => {
-  try {
-    return await readFile(outputPath, "utf8");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return null;
-    }
-
-    throw error;
-  }
-};
-
 const run = async () => {
   const cliArguments = process.argv.slice(2);
-  const unknownOptions = cliArguments.filter(
-    (argument) => argument.startsWith("--") && argument !== "--check",
+  const unknownOptions = cliArguments.filter((argument) =>
+    argument.startsWith("--"),
   );
   if (unknownOptions.length > 0) {
     console.error(`Unknown option: ${unknownOptions.join(" ")}`);
     return 1;
   }
 
-  const checkOnly = cliArguments.includes("--check");
-  const sourceArgument = cliArguments.find(
-    (argument) => argument !== "--check",
-  );
-  const source = sourceArgument ?? process.env.LAYLO_OPENAPI_SOURCE;
+  const source = cliArguments[0] ?? process.env.LAYLO_OPENAPI_SOURCE;
   if (!source) {
     console.error(`No OpenAPI spec source given. ${SOURCE_HELP}`);
     return 1;
@@ -61,19 +45,6 @@ const run = async () => {
     exportType: true,
   });
   const generated = BANNER + astToString(ast);
-
-  if (checkOnly) {
-    const committed = await readCommitted();
-    if (committed !== generated) {
-      console.error(
-        `src/generated/openapi.ts is out of date with ${source}; run npm run generate`,
-      );
-      return 1;
-    }
-
-    console.log(`src/generated/openapi.ts matches ${source}`);
-    return 0;
-  }
 
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, generated);
