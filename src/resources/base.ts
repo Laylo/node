@@ -41,17 +41,17 @@ export interface EndpointRequest {
   integratorOnly?: boolean;
 }
 
-const IDEMPOTENCY_KEY = /^[\x20-\x7e]{1,255}$/;
-
-// The API rejects anything else with a 400; a control character would make
-// Headers throw a TypeError before the request is even sent.
+// Printable ASCII with no space at either end. The API rejects anything else
+// with a 400, a control character would make Headers throw a TypeError, and
+// Headers trims surrounding spaces, so the key on the wire would differ.
+const IDEMPOTENCY_KEY = /^[\x21-\x7e](?:[\x20-\x7e]{0,253}[\x21-\x7e])?$/;
 const idempotencyKeyFrom = (value: unknown): string | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
   if (typeof value !== "string" || !IDEMPOTENCY_KEY.test(value)) {
     throw new LayloConfigurationError(
-      "idempotencyKey must be 1 to 255 printable ASCII characters",
+      "idempotencyKey must be 1 to 255 printable ASCII characters, with no space at either end",
     );
   }
   return value;

@@ -80,7 +80,8 @@ export interface HttpRequest {
   idempotent?: boolean | undefined;
   /**
    * Sent as the `Idempotency-Key` header. The server answers a replay with
-   * the first response, so a keyed write is retried like a GET.
+   * the first response, so a keyed write is retried like a GET, plus on a
+   * 409 from an earlier attempt that hasn't finished.
    */
   idempotencyKey?: string | undefined;
 }

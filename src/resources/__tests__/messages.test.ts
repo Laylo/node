@@ -236,7 +236,13 @@ describe("Messages", () => {
       const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
       const segments = new Messages(context).segments;
 
-      for (const idempotencyKey of ["", "line\nbreak", "x".repeat(256)]) {
+      for (const idempotencyKey of [
+        "",
+        " ",
+        "presale ",
+        "line\nbreak",
+        "x".repeat(256),
+      ]) {
         await expect(
           segments.send(presale, { idempotencyKey }),
         ).rejects.toThrow(LayloConfigurationError);
@@ -283,6 +289,27 @@ describe("Messages", () => {
         await vi.runAllTimersAsync();
 
         await expect(result).resolves.toEqual(created);
+        expect(apiCalls()).toHaveLength(2);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("replays a 503 on a dry run without a key", async () => {
+      vi.useFakeTimers();
+      try {
+        const { context, apiCalls } = fakeContext(
+          [json(503, {}), json(200, { ...created, dryRun: true, id: null })],
+          { apiKey: "customer-key-1" },
+        );
+        const result = new Messages(context).segments.send({
+          ...presale,
+          dryRun: true,
+        });
+
+        await vi.runAllTimersAsync();
+
+        await expect(result).resolves.toMatchObject({ dryRun: true, id: null });
         expect(apiCalls()).toHaveLength(2);
       } finally {
         vi.useRealTimers();

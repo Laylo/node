@@ -121,13 +121,16 @@ export type ScheduleSegmentMessageInput = Omit<
 export interface SegmentMessageOptions extends RequestOptions {
   /**
    * Makes the call safe to retry, sent as the `Idempotency-Key` header: 1 to
-   * 255 printable ASCII characters, unique to this message. A repeat with the
-   * same key and body within 24 hours returns the first response instead of
-   * creating another message, so with a key the SDK retries a `5xx`, a
-   * dropped connection, and a `409` from an earlier attempt that hasn't
-   * finished yet. A `ConflictError` after those retries means that attempt
-   * is still running and the message may well be created: call again later
-   * with the same key to get its response. A timeout is never retried
+   * 255 printable ASCII characters with no space at either end, unique to
+   * this message. A repeat with the same key and body within 24 hours of the
+   * first attempt finishing returns its response instead of creating another
+   * message, so with a key the SDK retries a `5xx`, a dropped connection,
+   * and a `409` from an earlier attempt that hasn't finished yet. A
+   * `ConflictError` after those retries means that attempt is still running
+   * and will probably create the message: don't send it under a new key.
+   * Calling again with the same key returns its response once it finishes,
+   * but if it never finishes, Laylo frees the key after a minute and the
+   * next call sends the message again. A timeout is never retried
    * automatically; retry it yourself with the same key. The same key with a
    * different body throws a `LayloAPIError` with status `422`. A dry run
    * ignores the key, so the real send can reuse it.
@@ -146,8 +149,9 @@ export class SegmentMessages extends APIResource {
    * Recipients are worked out when the message sends, and only fans
    * currently subscribed by SMS are texted. `timezone` is the IANA zone the
    * message is written in, used to read a time it mentions, like "tomorrow
-   * at 2pm". Pass `dryRun: true` to validate the message and get its cost
-   * `estimate` without sending anything.
+   * at 2pm". Only the zones in `SegmentMessageTimezone` are accepted.
+   * Pass `dryRun: true` to validate the message and get its cost `estimate`
+   * without sending anything; a dry run is retried like a read.
    *
    * This is a write, so a `5xx` response is not retried automatically unless
    * you pass an `idempotencyKey`.
@@ -237,6 +241,8 @@ export class SegmentMessages extends APIResource {
           segment: { ...segment, ...isoSignUpBounds(segment, "segment.") },
         },
         idempotencyKey: options.idempotencyKey,
+        // A dry run creates nothing, so it's as safe to retry as a read.
+        ...(input.dryRun === true && { idempotent: true }),
       },
       options,
     );

@@ -430,7 +430,9 @@ export class Laylo {
   }
 
   /**
-   * @returns SMS sends to subscribed fans: `laylo.messages.sms.send()`.
+   * @returns SMS sends to subscribed fans, `laylo.messages.sms.send()`, and
+   * messages to a fan segment, `laylo.messages.segments.send()` and
+   * `.schedule()`.
    */
   get messages(): Messages {
     return (this.messagesResource ??= new Messages(this.context()));

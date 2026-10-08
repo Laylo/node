@@ -309,12 +309,12 @@ Common mappings:
 - **JSON bodies** need `Content-Type: application/json`.
 - **Retries:** retry 408, 429, and 5xx for `GET`s and for the two subscription
   checks. Retry 429 for anything. Don't automatically replay
-  `POST /v1/fans/subscriptions`, `POST /v1/conversions/events`, or
-  `POST /v1/messages/sms` after a 5xx,
-  because the server may already have applied it. The
-  `POST /v1/messages/segments` routes take an `Idempotency-Key` header; with
-  one, replaying the same body within 24 hours returns the first response, so
-  a retry is safe. A tracked event with a
+  `POST /v1/fans/subscriptions`, `POST /v1/conversions/events`,
+  `POST /v1/messages/sms`, or a `POST /v1/messages/segments` route sent
+  without an `Idempotency-Key` after a 5xx, because the server may already
+  have applied it. With an `Idempotency-Key`, replaying the same segment
+  message body within 24 hours returns the first response, so a retry is
+  safe. A dry run sends nothing and can be retried freely. A tracked event with a
   stable `metadata.uniqueId` is merged on repeat, so a deliberate retry of
   that one is safe.
 - `POST /v1/conversions/events` can return 200 with `"status":"failure"`, so

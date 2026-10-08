@@ -327,7 +327,8 @@ plain objects, but `signUpType` must be `sms`, only one of `signedUpAfter`
 and `signedUpBefore` can be sent, and at most 30 locations and excluded
 locations are allowed combined. The segment matches the same fans as the
 count. Every drop and conversion id must belong to the customer. `timezone`
-is an IANA zone used to read a time the message mentions. Recipients are
+is an IANA zone used to read a time the message mentions; only the 57 zones
+in the API reference's enum are accepted. Recipients are
 worked out when the message sends.
 
 ```json
@@ -391,7 +392,10 @@ one uses the first occurrence. The response matches the send-now route.
 Both routes take an optional `Idempotency-Key` header (1 to 255 printable
 ASCII characters). A repeat with the same key and body within 24 hours
 returns the first response, the same key with a different body returns 422,
-and a repeat while the first is still running returns 409. A message flagged
+and a repeat while the first is still running returns 409. Don't resend under
+a new key after a 409: the first attempt will probably send. If it never
+finishes, the key frees up after a minute and the next request with it sends
+again. A message flagged
 as possible phishing or scam content returns 403, isn't sent, and locks the
 account for review.
 

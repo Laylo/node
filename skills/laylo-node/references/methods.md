@@ -303,7 +303,7 @@ type SendSegmentMessageInput = {
     signedUpAfter?: Date | string; // send at most one of these two
     signedUpBefore?: Date | string;
   };
-  timezone: string; // IANA zone, like "America/New_York"
+  timezone: SegmentMessageTimezone; // one of 57 IANA zones, like "America/New_York"
   dryRun?: boolean; // true: validate and estimate the cost, send nothing
 };
 
@@ -359,12 +359,15 @@ type EstimateChannel = {
 };
 ```
 
-Pass `{ idempotencyKey }` (1 to 255 printable ASCII characters) in the options
-to make it safe to retry: a repeat with the same key and body within 24 hours
-returns the first response. With a key the SDK retries a 5xx, a dropped
-connection, and a 409 from an attempt that hasn't finished. A `ConflictError`
-after that means the first attempt is still running and the message may well
-go out; call again later with the same key. A timeout is never retried
+Pass `{ idempotencyKey }` (1 to 255 printable ASCII characters, no space at
+either end) in the options to make it safe to retry: a repeat with the same
+key and body within 24 hours returns the first response. With a key the SDK
+retries a 5xx, a dropped connection, and a 409 from an attempt that hasn't
+finished. A `ConflictError` after that means the first attempt is still
+running and will probably send; don't retry under a new key. Calling again
+with the same key returns its response once it finishes, but if it never
+finishes the key frees up after a minute and the next call sends again. A
+dry run is retried like a read, with or without a key. A timeout is never retried
 automatically, so retry it with the same key. The same key with a different
 body throws a 422 `LayloAPIError`, and a malformed key throws
 `LayloConfigurationError` before any request. Without a key it isn't retried

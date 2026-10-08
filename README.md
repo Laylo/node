@@ -552,7 +552,7 @@ is the one exception — it only accepts `signal`).
   texts `message` to every fan in `segment` within the next few minutes. The
   segment takes the same filters as `fans.segments.count`, as long as
   `signUpType` is `"sms"`. `timezone` is the IANA zone the message is
-  written in. Recipients are worked out when the message sends, and only
+  written in, one of the zones in `SegmentMessageTimezone`. Recipients are worked out when the message sends, and only
   fans currently subscribed by SMS are texted. It resolves to
   `{ id, note, sendAt, dryRun, estimate }`, with `sendAt` in UTC and
   `estimate` giving the recipients, credits, and `costUsd` from the fans who
@@ -568,8 +568,10 @@ is the one exception — it only accepts `signal`).
   returns the first response instead of sending the message twice, and the
   SDK retries server errors and dropped connections itself. A timeout isn't
   retried; call again with the same key. A `ConflictError` with a key means
-  the first attempt is still running. A dry run ignores the key, so the real
-  send can reuse it. `signedUpAfter` and `signedUpBefore` can't be combined
+  the first attempt is still running and will probably send, so don't retry
+  under a new key. If that attempt never finishes, the key frees up after a
+  minute and a call with it sends again. A dry run ignores the key, so the
+  real send can reuse it, and is retried like a read. `signedUpAfter` and `signedUpBefore` can't be combined
   when messaging.
 
   ```ts
