@@ -61,7 +61,7 @@ export interface HttpRequest {
   path: string;
   query?: Record<string, unknown> | undefined;
   body?: unknown;
-  headers?: Record<string, string> | undefined;
+  headers?: Record<string, string>;
   auth?: RequestAuth;
   /** Caller-owned signal; aborting it rejects with the caller's `AbortError`. */
   signal?: AbortSignal | undefined;
@@ -75,10 +75,14 @@ export interface HttpRequest {
   retry?: boolean | undefined;
   /**
    * Marks a POST or PATCH as safe to replay so transient failures are
-   * retried like a GET: a read that happens to use a write verb, or a write
-   * carrying an idempotency key.
+   * retried like a GET. Only for reads that happen to use a write verb.
    */
   idempotent?: boolean | undefined;
+  /**
+   * Sent as the `Idempotency-Key` header. The server answers a replay with
+   * the first response, so a keyed write is retried like a GET.
+   */
+  idempotencyKey?: string | undefined;
 }
 
 /** A successful API response. */
@@ -113,9 +117,8 @@ const parseBody = async (response: Response): Promise<unknown> => {
 
 // Replaying a write the server may already have committed can duplicate it,
 // and most write endpoints take no idempotency key to guard against that. So
-// a POST or PATCH is only retried when the server never processed it: the
-// request got no response at all, or was turned away with a 429. A request
-// marked `idempotent` opts out of this.
+// an unkeyed POST or PATCH is only retried when the server never processed
+// it: the request got no response at all, or was turned away with a 429.
 const isIdempotent = (method: HttpMethod) =>
   method !== "POST" && method !== "PATCH";
 
@@ -255,7 +258,9 @@ export class HttpClient {
     const body =
       request.body === undefined ? undefined : JSON.stringify(request.body);
     const maxRetries = request.retry === false ? 0 : this.options.maxRetries;
-    const idempotent = request.idempotent ?? isIdempotent(request.method);
+    const keyed = request.idempotencyKey !== undefined;
+    const idempotent =
+      request.idempotent ?? (keyed || isIdempotent(request.method));
 
     for (let attempt = 0; ; attempt += 1) {
       const outcome = await this.send(url, request, headers, body);
@@ -274,9 +279,15 @@ export class HttpClient {
         return { data: outcome.body as T, response };
       }
       const retryAfter = parseRetryAfter(response.headers.get("retry-after"));
+      // A keyed replay that lands while the first attempt still holds its
+      // claim, or just after it released it, gets a 409 that clears once the
+      // first attempt settles.
+      const retryableStatus =
+        isRetryableStatus(response.status) ||
+        (keyed && response.status === 409);
       if (
         canRetry &&
-        isRetryableStatus(response.status) &&
+        retryableStatus &&
         (idempotent || response.status === 429) &&
         (retryAfter === undefined || retryAfter * 1000 <= MAX_DELAY_MS)
       ) {
@@ -297,6 +308,9 @@ export class HttpClient {
     });
     for (const [name, value] of Object.entries(request.headers ?? {})) {
       headers.set(name, value);
+    }
+    if (request.idempotencyKey !== undefined) {
+      headers.set("Idempotency-Key", request.idempotencyKey);
     }
     if (request.body !== undefined) {
       headers.set("Content-Type", "application/json");

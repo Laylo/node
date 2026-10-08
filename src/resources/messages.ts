@@ -1,6 +1,6 @@
 import { LayloConfigurationError } from "../core/errors.js";
 import type { RequestOptions } from "../core/request-options.js";
-import { isoTimestamp } from "../core/time.js";
+import { isoSignUpBounds, type WithDateSignUpBounds } from "../core/time.js";
 import type {
   MessageSegment,
   ScheduleSegmentMessageRequest,
@@ -12,6 +12,8 @@ import type {
 import { APIResource, type ResourceContext } from "./base.js";
 
 const MAX_SMS_RECIPIENTS = 200;
+
+const isGiven = (value: unknown) => value !== undefined && value !== null;
 
 // The API refuses these too; checking here saves a round trip that would
 // only come back as a 400.
@@ -86,21 +88,7 @@ export class SmsMessages extends APIResource {
  * `signedUpBefore` can be given.
  * @see https://developers.laylo.com/guides/segment-messages
  */
-export type MessageSegmentInput = Omit<
-  MessageSegment,
-  "signedUpAfter" | "signedUpBefore"
-> & {
-  /**
-   * Only message fans who signed up at or after this time: a `Date`, or an
-   * ISO 8601 string with an explicit UTC offset.
-   */
-  signedUpAfter?: string | Date;
-  /**
-   * Only message fans who signed up before this time (exclusive): a `Date`,
-   * or an ISO 8601 string with an explicit UTC offset.
-   */
-  signedUpBefore?: string | Date;
-};
+export type MessageSegmentInput = WithDateSignUpBounds<MessageSegment>;
 
 /**
  * A message to send to a fan segment now.
@@ -135,12 +123,15 @@ export interface SegmentMessageOptions extends RequestOptions {
    * Makes the call safe to retry, sent as the `Idempotency-Key` header: 1 to
    * 255 printable ASCII characters, unique to this message. A repeat with the
    * same key and body within 24 hours returns the first response instead of
-   * creating another message. With a key, a `5xx` or dropped connection is
-   * retried automatically. The same key with a different body throws an
-   * `LayloAPIError` with status `422`, and a repeat while the first request
-   * is still running throws a `ConflictError`.
+   * creating another message, so with a key the SDK retries a `5xx`, a
+   * dropped connection, and a `409` from an earlier attempt that hasn't
+   * finished yet. A `ConflictError` after those retries means that attempt
+   * is still running and the message may well be created: call again later
+   * with the same key to get its response. A timeout is never retried
+   * automatically; retry it yourself with the same key. The same key with a
+   * different body throws a `LayloAPIError` with status `422`.
    */
-  idempotencyKey?: string;
+  idempotencyKey?: string | null;
 }
 
 /**
@@ -227,31 +218,22 @@ export class SegmentMessages extends APIResource {
         'segment.signUpType must be "sms": only SMS segments can be messaged',
       );
     }
+    // A count takes both bounds, but the API refuses them together on a send.
+    if (isGiven(segment.signedUpAfter) && isGiven(segment.signedUpBefore)) {
+      throw new LayloConfigurationError(
+        "segment.signedUpAfter and segment.signedUpBefore can't be combined when messaging; pass one",
+      );
+    }
 
-    const { idempotencyKey } = options;
-    const hasKey = idempotencyKey !== undefined;
     return this.request<SegmentMessage>(
       {
         method: "POST",
         path,
         body: {
           ...input,
-          segment: {
-            ...segment,
-            signedUpAfter: isoTimestamp(
-              segment.signedUpAfter,
-              "segment.signedUpAfter",
-            ),
-            signedUpBefore: isoTimestamp(
-              segment.signedUpBefore,
-              "segment.signedUpBefore",
-            ),
-          },
+          segment: { ...segment, ...isoSignUpBounds(segment, "segment.") },
         },
-        ...(hasKey && {
-          headers: { "Idempotency-Key": idempotencyKey },
-          idempotent: true,
-        }),
+        idempotencyKey: options.idempotencyKey,
       },
       options,
     );

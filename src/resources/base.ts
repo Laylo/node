@@ -28,15 +28,34 @@ export interface EndpointRequest {
   path: string;
   query?: Record<string, unknown>;
   body?: unknown;
-  headers?: Record<string, string>;
   /**
    * Marks a POST or PATCH as safe to replay so transient failures are
-   * retried like a GET: a read that happens to use a write verb, or a write
-   * carrying an idempotency key.
+   * retried like a GET. Only for reads that happen to use a write verb.
    */
   idempotent?: boolean;
+  /**
+   * Sent as the `Idempotency-Key` header and makes the call safe to retry.
+   * `null` is treated as absent.
+   */
+  idempotencyKey?: string | null | undefined;
   integratorOnly?: boolean;
 }
+
+const IDEMPOTENCY_KEY = /^[\x20-\x7e]{1,255}$/;
+
+// The API rejects anything else with a 400; a control character would make
+// Headers throw a TypeError before the request is even sent.
+const idempotencyKeyFrom = (value: unknown): string | undefined => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== "string" || !IDEMPOTENCY_KEY.test(value)) {
+    throw new LayloConfigurationError(
+      "idempotencyKey must be 1 to 255 printable ASCII characters",
+    );
+  }
+  return value;
+};
 
 /**
  * Base class every resource extends. Owns what all endpoints share: resolving
@@ -67,6 +86,7 @@ export abstract class APIResource {
     options: RequestOptions = {},
   ): Promise<T> {
     const { tokens } = this.context;
+    const idempotencyKey = idempotencyKeyFrom(endpoint.idempotencyKey);
     if (endpoint.integratorOnly === true && tokens === undefined) {
       throw new LayloConfigurationError(
         `${endpoint.method} ${endpoint.path} needs integrator credentials — a client constructed with only an apiKey can't call it. See https://developers.laylo.com/authentication`,
@@ -85,8 +105,8 @@ export abstract class APIResource {
       path: endpoint.path,
       query: endpoint.query,
       body: endpoint.body,
-      headers: endpoint.headers,
       idempotent: endpoint.idempotent,
+      idempotencyKey,
       auth: tokens === undefined ? customer : { bearer: tokens, ...customer },
       signal: options.signal,
       timeoutMs: options.timeoutMs,

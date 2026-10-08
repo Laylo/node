@@ -561,8 +561,12 @@ is the one exception — it only accepts `signal`).
   away. It's rounded up to the next five-minute mark.
 
   Both are writes, so they aren't retried on a server error unless you pass
-  an `idempotencyKey` in the options. With one, a retry within 24 hours
-  returns the first response instead of sending the message twice.
+  an `idempotencyKey` in the options. With one, a repeat within 24 hours
+  returns the first response instead of sending the message twice, and the
+  SDK retries server errors and dropped connections itself. A timeout isn't
+  retried; call again with the same key. A `ConflictError` with a key means
+  the first attempt is still running. `signedUpAfter` and `signedUpBefore`
+  can't be combined when messaging.
 
   ```ts
   import Laylo, { type MessageSegmentInput } from "@laylo.com/node";

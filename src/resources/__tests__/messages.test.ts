@@ -216,6 +216,79 @@ describe("Messages", () => {
       expect(apiCalls()).toHaveLength(1);
     });
 
+    it("refuses both sign-up bounds before any request", async () => {
+      const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
+
+      await expect(
+        new Messages(context).segments.send({
+          ...presale,
+          segment: {
+            signUpType: "sms",
+            signedUpAfter: "2026-01-01T00:00:00Z",
+            signedUpBefore: "2026-02-01T00:00:00Z",
+          },
+        }),
+      ).rejects.toThrow(/can't be combined/);
+      expect(calls).toHaveLength(0);
+    });
+
+    it("refuses a malformed idempotency key before any request", async () => {
+      const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
+      const segments = new Messages(context).segments;
+
+      for (const idempotencyKey of ["", "line\nbreak", "x".repeat(256)]) {
+        await expect(
+          segments.send(presale, { idempotencyKey }),
+        ).rejects.toThrow(LayloConfigurationError);
+      }
+      expect(calls).toHaveLength(0);
+    });
+
+    it("treats a null idempotency key as absent", async () => {
+      const { context, apiCalls } = fakeContext(
+        [json(503, {}), json(200, created)],
+        { apiKey: "customer-key-1" },
+      );
+
+      const failure: unknown = await new Messages(context).segments
+        .send(presale, { idempotencyKey: null })
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(ServerError);
+      const [call] = apiCalls();
+      expect(call && headersOf(call).has("idempotency-key")).toBe(false);
+      expect(apiCalls()).toHaveLength(1);
+    });
+
+    it("replays a 409 from a keyed attempt that hasn't finished", async () => {
+      vi.useFakeTimers();
+      try {
+        const { context, apiCalls } = fakeContext(
+          [
+            json(409, {
+              error: {
+                code: "CONFLICT",
+                message:
+                  "A request with this Idempotency-Key is still in progress",
+              },
+            }),
+            json(200, created),
+          ],
+          { apiKey: "customer-key-1" },
+        );
+        const result = new Messages(context).segments.send(presale, {
+          idempotencyKey: "presale-2026-11-20",
+        });
+
+        await vi.runAllTimersAsync();
+
+        await expect(result).resolves.toEqual(created);
+        expect(apiCalls()).toHaveLength(2);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("sends the idempotency key and replays a 503 with it", async () => {
       vi.useFakeTimers();
       try {
