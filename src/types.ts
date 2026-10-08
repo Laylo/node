@@ -259,6 +259,8 @@ export type SegmentMessage = SuccessJson<operations["messages.segments.send"]>;
  * What a segment message is expected to cost, from the fans who match the
  * segment at the time of the request: recipients and credits per channel,
  * the total in credits and US dollars, and a `disclaimer` to show alongside.
+ * `costUsd` doesn't subtract free or prepaid credits, and fans counted under
+ * `emails` are also counted under a text channel, so it errs high.
  * @see https://developers.laylo.com/records/segment-message-estimate
  */
 export type SegmentMessageEstimate = SegmentMessage["estimate"];

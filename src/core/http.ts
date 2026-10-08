@@ -79,6 +79,12 @@ export interface HttpRequest {
    */
   idempotent?: boolean | undefined;
   /**
+   * Set to `false` to stop a write from being resent when the connection
+   * fails before any response. That failure usually means the server never
+   * got the request, but not always.
+   */
+  replayUnsent?: boolean | undefined;
+  /**
    * Sent as the `Idempotency-Key` header. The server answers a replay with
    * the first response, so a keyed write is retried like a GET, plus on a
    * 409 from an earlier attempt that hasn't finished.
@@ -268,7 +274,9 @@ export class HttpClient {
       const canRetry = attempt < maxRetries;
 
       if ("error" in outcome) {
-        if (canRetry && (idempotent || outcome.unsent)) {
+        const replay =
+          idempotent || (outcome.unsent && request.replayUnsent !== false);
+        if (canRetry && replay) {
           await this.wait(backoffMs(attempt), request.signal);
           continue;
         }

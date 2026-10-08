@@ -354,7 +354,7 @@ type SegmentMessage = {
 
 type EstimateChannel = {
   recipients: number;
-  creditsPerRecipient: number;
+  creditsPerRecipient: number; // texts: the account's per-segment price × smsSegments
   credits: number;
 };
 ```
@@ -371,7 +371,7 @@ dry run is retried like a read, with or without a key. A timeout is never retrie
 automatically, so retry it with the same key. The same key with a different
 body throws a 422 `LayloAPIError`, and a malformed key throws
 `LayloConfigurationError` before any request. Without a key it isn't retried
-on a 5xx.
+on a 5xx or a dropped connection.
 
 ## auth.createToken()
 

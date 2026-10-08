@@ -33,6 +33,8 @@ export interface EndpointRequest {
    * retried like a GET. Only for reads that happen to use a write verb.
    */
   idempotent?: boolean;
+  /** Set to `false` to never resend after a connection failure. */
+  replayUnsent?: boolean;
   /**
    * Sent as the `Idempotency-Key` header and makes the call safe to retry.
    * `null` is treated as absent.
@@ -106,6 +108,7 @@ export abstract class APIResource {
       query: endpoint.query,
       body: endpoint.body,
       idempotent: endpoint.idempotent,
+      replayUnsent: endpoint.replayUnsent,
       idempotencyKey,
       auth: tokens === undefined ? customer : { bearer: tokens, ...customer },
       signal: options.signal,

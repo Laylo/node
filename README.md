@@ -556,15 +556,17 @@ is the one exception — it only accepts `signal`).
   fans currently subscribed by SMS are texted. It resolves to
   `{ id, note, sendAt, dryRun, estimate }`, with `sendAt` in UTC and
   `estimate` giving the recipients, credits, and `costUsd` from the fans who
-  match right now. Pass `dryRun: true` to get that estimate without sending
+  match right now. `costUsd` doesn't subtract free or prepaid credits, and
+  fans counted under `emails` are also counted under a text channel, so it
+  errs high. Pass `dryRun: true` to get that estimate without sending
   anything; `id` is then null.
 - [`messages.segments.schedule(input, options?)`](https://developers.laylo.com/api-reference/messages/messages.segments.schedule) —
   the same, sent at `sendAt`: a local date and time in `timezone` with no
   offset, like `"2026-11-20T19:00"`, at least 5 minutes and at most 2 years
   away. It's rounded up to the next five-minute mark.
 
-  Both are writes, so they aren't retried on a server error unless you pass
-  an `idempotencyKey` in the options. With one, a repeat within 24 hours
+  Both are writes, so they aren't retried on a server error or a dropped
+  connection unless you pass an `idempotencyKey` in the options. With one, a repeat within 24 hours
   returns the first response instead of sending the message twice, and the
   SDK retries server errors and dropped connections itself. A timeout isn't
   retried; call again with the same key. A `ConflictError` with a key means

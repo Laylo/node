@@ -1,6 +1,10 @@
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
-import { LayloConfigurationError, ServerError } from "../../core/errors.js";
+import {
+  LayloConfigurationError,
+  LayloConnectionError,
+  ServerError,
+} from "../../core/errors.js";
 import type {
   SegmentMessage,
   SendSmsRequest,
@@ -293,6 +297,17 @@ describe("Messages", () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it("does not resend after a dropped connection without a key", async () => {
+      const { context, apiCalls } = fakeContext([], {
+        apiKey: "customer-key-1",
+      });
+
+      await expect(
+        new Messages(context).segments.send(presale),
+      ).rejects.toBeInstanceOf(LayloConnectionError);
+      expect(apiCalls()).toHaveLength(1);
     });
 
     it("replays a 503 on a dry run without a key", async () => {

@@ -153,8 +153,8 @@ export class SegmentMessages extends APIResource {
    * Pass `dryRun: true` to validate the message and get its cost `estimate`
    * without sending anything; a dry run is retried like a read.
    *
-   * This is a write, so a `5xx` response is not retried automatically unless
-   * you pass an `idempotencyKey`.
+   * This is a write, so a `5xx` or a dropped connection is not retried
+   * automatically unless you pass an `idempotencyKey`.
    * @param input The message, the segment to send it to, and its time zone.
    * @param options Per-call overrides, including an optional idempotency key.
    * @returns The created message, with the UTC time it will send and its
@@ -189,8 +189,8 @@ export class SegmentMessages extends APIResource {
    * one uses the first occurrence. Recipients are worked out when the
    * message sends, not now. `dryRun: true` works as it does for `send()`.
    *
-   * This is a write, so a `5xx` response is not retried automatically unless
-   * you pass an `idempotencyKey`.
+   * This is a write, so a `5xx` or a dropped connection is not retried
+   * automatically unless you pass an `idempotencyKey`.
    * @param input The message, the segment, and when to send it.
    * @param options Per-call overrides, including an optional idempotency key.
    * @returns The created message, with the UTC time it will send and its
@@ -241,8 +241,13 @@ export class SegmentMessages extends APIResource {
           segment: { ...segment, ...isoSignUpBounds(segment, "segment.") },
         },
         idempotencyKey: options.idempotencyKey,
-        // A dry run creates nothing, so it's as safe to retry as a read.
-        ...(input.dryRun === true && { idempotent: true }),
+        // A dry run creates nothing, so it's as safe to retry as a read. A
+        // send without a key can't be deduplicated, and a dropped connection
+        // may still have reached the server, so resending could text the
+        // whole segment twice.
+        ...(input.dryRun === true
+          ? { idempotent: true }
+          : !isGiven(options.idempotencyKey) && { replayUnsent: false }),
       },
       options,
     );
