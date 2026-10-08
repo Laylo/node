@@ -279,9 +279,7 @@ export class HttpClient {
         return { data: outcome.body as T, response };
       }
       const retryAfter = parseRetryAfter(response.headers.get("retry-after"));
-      // A keyed replay that lands while the first attempt still holds its
-      // claim, or just after it released it, gets a 409 that clears once the
-      // first attempt settles.
+      // A keyed replay gets a 409 while the first attempt is still settling.
       const retryableStatus =
         isRetryableStatus(response.status) ||
         (keyed && response.status === 409);

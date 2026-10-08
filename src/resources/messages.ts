@@ -212,7 +212,6 @@ export class SegmentMessages extends APIResource {
     options: SegmentMessageOptions = {},
   ): Promise<SegmentMessage> {
     const segment = input?.segment;
-    // Enforced for JS callers; TS callers already get this from the type.
     if (segment?.signUpType !== "sms") {
       throw new LayloConfigurationError(
         'segment.signUpType must be "sms": only SMS segments can be messaged',
