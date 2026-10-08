@@ -1,8 +1,12 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
 import { LayloConfigurationError, ServerError } from "../../core/errors.js";
-import type { SendSmsRequest, SendSmsResponse } from "../../types.js";
-import { Messages } from "../messages.js";
+import type {
+  SegmentMessage,
+  SendSmsRequest,
+  SendSmsResponse,
+} from "../../types.js";
+import { Messages, type SendSegmentMessageInput } from "../messages.js";
 import { bodyOf, fakeContext, headersOf, json } from "./harness.js";
 
 const sent: SendSmsResponse = {
@@ -104,6 +108,139 @@ describe("Messages", () => {
 
       expect(failure).toBeInstanceOf(ServerError);
       expect(apiCalls()).toHaveLength(1);
+    });
+  });
+
+  describe("segments", () => {
+    const created: SegmentMessage = {
+      id: "4b0d3a8e-6f3c-4c1e-9a55-0f7e2d8c1b2a",
+      note: "Message will start sending at sendAt, within the next few minutes",
+      sendAt: "2026-11-20T19:05:00.000Z",
+    };
+
+    const presale: SendSegmentMessageInput = {
+      message: "Presale starts now",
+      segment: {
+        signUpType: "sms",
+        dropIds: ["drop_123"],
+        locations: [{ city: "Los Angeles", state: "CA", country: "US" }],
+      },
+      timezone: "America/Los_Angeles",
+    };
+
+    it("send issues POST /v1/messages/segments with the body as given", async () => {
+      const { context, apiCalls } = fakeContext([json(200, created)], {
+        apiKey: "customer-key-1",
+      });
+
+      const result = await new Messages(context).segments.send(presale);
+
+      expect(result).toEqual(created);
+      const [call] = apiCalls();
+      expect(call?.url).toBe(
+        "https://api.example.test/api/v1/messages/segments",
+      );
+      expect(call?.init.method).toBe("POST");
+      expect(call && headersOf(call).has("idempotency-key")).toBe(false);
+      expect(bodyOf(call)).toEqual(presale);
+    });
+
+    it("schedule issues POST /v1/messages/segments/scheduled with sendAt untouched", async () => {
+      const { context, apiCalls } = fakeContext([json(200, created)], {
+        creatorId: "creator-1",
+      });
+
+      await new Messages(context).segments.schedule({
+        message: "Tickets go on sale tomorrow",
+        segment: { signUpType: "sms" },
+        sendAt: "2026-11-20T19:00",
+        timezone: "America/New_York",
+      });
+
+      const [call] = apiCalls();
+      expect(call?.url).toBe(
+        "https://api.example.test/api/v1/messages/segments/scheduled",
+      );
+      expect(bodyOf(call)).toEqual({
+        message: "Tickets go on sale tomorrow",
+        segment: { signUpType: "sms" },
+        sendAt: "2026-11-20T19:00",
+        timezone: "America/New_York",
+      });
+    });
+
+    it("sends a Date sign-up bound as its ISO string", async () => {
+      const { context, apiCalls } = fakeContext([json(200, created)], {
+        apiKey: "customer-key-1",
+      });
+
+      await new Messages(context).segments.send({
+        ...presale,
+        segment: {
+          signUpType: "sms",
+          signedUpAfter: new Date("2026-01-01T00:00:00Z"),
+        },
+      });
+
+      expect(bodyOf(apiCalls()[0]).segment).toEqual({
+        signUpType: "sms",
+        signedUpAfter: "2026-01-01T00:00:00.000Z",
+      });
+    });
+
+    it("refuses a segment that isn't sms before any request", async () => {
+      const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
+      const segments = new Messages(context).segments;
+      const emailSegment = {
+        ...presale,
+        segment: { signUpType: "email" },
+      } as unknown as SendSegmentMessageInput;
+
+      await expect(segments.send(emailSegment)).rejects.toThrow(
+        LayloConfigurationError,
+      );
+      expect(calls).toHaveLength(0);
+    });
+
+    it("does not replay a 503 without an idempotency key", async () => {
+      const { context, apiCalls } = fakeContext(
+        [json(503, {}), json(200, created)],
+        { apiKey: "customer-key-1" },
+      );
+
+      const failure: unknown = await new Messages(context).segments
+        .send(presale)
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(ServerError);
+      expect(apiCalls()).toHaveLength(1);
+    });
+
+    it("sends the idempotency key and replays a 503 with it", async () => {
+      vi.useFakeTimers();
+      try {
+        const { context, apiCalls } = fakeContext(
+          [json(503, {}), json(200, created)],
+          { apiKey: "customer-key-1" },
+        );
+        const result = new Messages(context).segments.send(presale, {
+          idempotencyKey: "presale-2026-11-20",
+        });
+
+        await vi.runAllTimersAsync();
+
+        await expect(result).resolves.toEqual(created);
+        const calls = apiCalls();
+        expect(calls).toHaveLength(2);
+        for (const call of calls) {
+          expect(headersOf(call).get("idempotency-key")).toBe(
+            "presale-2026-11-20",
+          );
+          expect(bodyOf(call)).toEqual(presale);
+        }
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

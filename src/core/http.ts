@@ -61,7 +61,7 @@ export interface HttpRequest {
   path: string;
   query?: Record<string, unknown> | undefined;
   body?: unknown;
-  headers?: Record<string, string>;
+  headers?: Record<string, string> | undefined;
   auth?: RequestAuth;
   /** Caller-owned signal; aborting it rejects with the caller's `AbortError`. */
   signal?: AbortSignal | undefined;
@@ -75,7 +75,8 @@ export interface HttpRequest {
   retry?: boolean | undefined;
   /**
    * Marks a POST or PATCH as safe to replay so transient failures are
-   * retried like a GET. Only for reads that happen to use a write verb.
+   * retried like a GET: a read that happens to use a write verb, or a write
+   * carrying an idempotency key.
    */
   idempotent?: boolean | undefined;
 }
@@ -111,9 +112,10 @@ const parseBody = async (response: Response): Promise<unknown> => {
 };
 
 // Replaying a write the server may already have committed can duplicate it,
-// and the API has no idempotency header to guard against that. So a POST or
-// PATCH is only retried when the server never processed it: the request got
-// no response at all, or was turned away with a 429.
+// and most write endpoints take no idempotency key to guard against that. So
+// a POST or PATCH is only retried when the server never processed it: the
+// request got no response at all, or was turned away with a 429. A request
+// marked `idempotent` opts out of this.
 const isIdempotent = (method: HttpMethod) =>
   method !== "POST" && method !== "PATCH";
 

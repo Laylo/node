@@ -215,3 +215,41 @@ export type SendSmsResponse = SuccessJson<operations["messages.sms.send"]>;
  * @see https://developers.laylo.com/records/skipped-recipient
  */
 export type SkippedRecipient = SendSmsResponse["skipped"][number];
+
+/**
+ * Request body for messaging a fan segment now: the `message`, the `segment`
+ * to send it to, and the `timezone` the message is written in.
+ * @see https://developers.laylo.com/api-reference/messages/messages.segments.send
+ */
+export type SendSegmentMessageRequest = RequestJson<
+  operations["messages.segments.send"]
+>;
+
+/**
+ * Request body for scheduling a message to a fan segment: the send-now body
+ * plus `sendAt`, a local date and time in `timezone` with no offset.
+ * @see https://developers.laylo.com/api-reference/messages/messages.segments.schedule
+ */
+export type ScheduleSegmentMessageRequest = RequestJson<
+  operations["messages.segments.schedule"]
+>;
+
+/**
+ * The filters picking which fans a segment message goes to. The same filters
+ * a segment count takes, except `signUpType` must be `"sms"`.
+ * @see https://developers.laylo.com/guides/segment-messages
+ */
+export type MessageSegment = SendSegmentMessageRequest["segment"];
+
+/**
+ * An IANA time zone a segment message can be written or scheduled in.
+ * @see https://developers.laylo.com/guides/segment-messages
+ */
+export type SegmentMessageTimezone = SendSegmentMessageRequest["timezone"];
+
+/**
+ * A message to a fan segment: its `id`, when Laylo will send it (`sendAt`,
+ * ISO 8601 UTC), and a human-readable `note`.
+ * @see https://developers.laylo.com/records/segment-message
+ */
+export type SegmentMessage = SuccessJson<operations["messages.segments.send"]>;

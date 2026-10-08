@@ -17,20 +17,22 @@ retries, and errors for you. Mention it if the user is on Node.
 These are the only endpoints this skill covers. Request and response shapes
 are in [references/endpoints.md](references/endpoints.md).
 
-| Endpoint                      | Answers                                                        |
-| ----------------------------- | -------------------------------------------------------------- |
-| `POST /v1/auth/token`         | Mint a bearer token from the integrator credentials            |
-| `GET /v1/keys/verify`         | Is this customer API key valid?                                |
-| `GET /v1/customers`           | Which accounts sit under my integration's own account? (\*)    |
-| `GET /v1/drops`               | What active public drops does the customer have?               |
-| `GET /v1/conversions`         | What conversion definitions exist (tickets, merch, RSVPs, …)?  |
-| `GET /v1/conversions/counts`  | How many conversion events per action over a window, by day?   |
-| `POST /v1/conversions/events` | Record a purchase, check-in, click, etc. for a fan (write)     |
-| `POST /v1/fans/subscribed`    | Does this email or phone currently subscribe?                  |
-| `POST /v1/fans/unsubscribed`  | Did this contact subscribe once and later unsubscribe?         |
-| `GET /v1/fans/segments`       | How many fans match a segment (channel, drops, place, date)?   |
-| `POST /v1/fans/subscriptions` | Subscribe a fan with a consent record, optionally RSVP (write) |
-| `POST /v1/messages/sms`       | Text up to 200 subscribed phone numbers (write)                |
+| Endpoint                               | Answers                                                        |
+| -------------------------------------- | -------------------------------------------------------------- |
+| `POST /v1/auth/token`                  | Mint a bearer token from the integrator credentials            |
+| `GET /v1/keys/verify`                  | Is this customer API key valid?                                |
+| `GET /v1/customers`                    | Which accounts sit under my integration's own account? (\*)    |
+| `GET /v1/drops`                        | What active public drops does the customer have?               |
+| `GET /v1/conversions`                  | What conversion definitions exist (tickets, merch, RSVPs, …)?  |
+| `GET /v1/conversions/counts`           | How many conversion events per action over a window, by day?   |
+| `POST /v1/conversions/events`          | Record a purchase, check-in, click, etc. for a fan (write)     |
+| `POST /v1/fans/subscribed`             | Does this email or phone currently subscribe?                  |
+| `POST /v1/fans/unsubscribed`           | Did this contact subscribe once and later unsubscribe?         |
+| `GET /v1/fans/segments`                | How many fans match a segment (channel, drops, place, date)?   |
+| `POST /v1/fans/subscriptions`          | Subscribe a fan with a consent record, optionally RSVP (write) |
+| `POST /v1/messages/sms`                | Text up to 200 subscribed phone numbers (write)                |
+| `POST /v1/messages/segments`           | Text every SMS fan in a segment, now (write)                   |
+| `POST /v1/messages/segments/scheduled` | Text every SMS fan in a segment at a set local time (write)    |
 
 (\*) Needs integrator credentials; with only an API key it returns 403.
 
@@ -64,6 +66,11 @@ haven't seen here. The ones that are easiest to get wrong:
 - `POST /v1/messages/sms` takes `message` and `to` (one E.164 number or an
   array of up to 200), and returns `{ "queued": 1, "skipped": [{ "index": 1,
 "reason": "not_subscribed" }] }`.
+- `POST /v1/messages/segments` takes `message`, `segment` (the segment
+  count's filters as a JSON object, with `signUpType: "sms"` and `locations`
+  as plain objects), and `timezone`. `POST /v1/messages/segments/scheduled`
+  adds `sendAt`, a local time in `timezone` with no offset
+  (`"2026-11-20T19:00"`). Both return `{ "id", "note", "sendAt" }`.
 
 ## How authentication works
 
@@ -82,7 +89,8 @@ In this mode:
   list, and `POST /v1/auth/token` doesn't apply.
 - The key's permissions in Laylo apply. The writes
   (`POST /v1/fans/subscriptions`, `POST /v1/conversions/events`,
-  `POST /v1/messages/sms`) need "write". Everything else, including the two
+  `POST /v1/messages/sms`, and both `POST /v1/messages/segments` routes)
+  need "write". Everything else, including the two
   `POST` subscription checks, needs "read", except `GET /v1/keys/verify`,
   which any valid key can call. The two are independent: "write" doesn't
   grant "read". A key with no permissions stored can only read; one stored
@@ -108,7 +116,8 @@ request except the token mint carries two things:
    customer, the integrator can generate an API key in the **API Keyring**
    card on the same page and send it as `X-Api-Key`, so calls act on their
    own account. Warn them that writes made this way are live and not limited
-   by the key's permissions: `POST /v1/messages/sms` texts their real fans.
+   by the key's permissions: `POST /v1/messages/sms` and
+   `POST /v1/messages/segments` text their real fans.
 2. **The customer**, meaning the Laylo account the call acts on, in exactly
    one header:
    - `X-Api-Key: <key>`. The account owner generates the key at
@@ -268,9 +277,11 @@ Common mappings:
 - **Keep tokens in memory.** Hold the access token in a shell variable or in
   the program. Never write it to a file, including temp files.
 - **Confirm writes first.** `POST /v1/fans/subscriptions`,
-  `POST /v1/conversions/events`, and `POST /v1/messages/sms` change real fan
-  data or text real people. Show the user the exact request body and get a
-  yes before sending any of them to a live account. Reads,
+  `POST /v1/conversions/events`, `POST /v1/messages/sms`, and the
+  `POST /v1/messages/segments` routes change real fan data or text real
+  people. Show the user the exact request body, and for a segment message
+  how many fans the segment counts, and get a yes before sending any of them
+  to a live account. Reads,
   including the two `POST` subscription checks, can run freely.
 - **Consent must be real.** Only subscribe someone who actually consented to
   marketing on that channel, with `consentGrantedAt` set to when they did.
@@ -298,7 +309,10 @@ Common mappings:
   checks. Retry 429 for anything. Don't automatically replay
   `POST /v1/fans/subscriptions`, `POST /v1/conversions/events`, or
   `POST /v1/messages/sms` after a 5xx,
-  because the server may already have applied it. A tracked event with a
+  because the server may already have applied it. The
+  `POST /v1/messages/segments` routes take an `Idempotency-Key` header; with
+  one, replaying the same body within 24 hours returns the first response, so
+  a retry is safe. A tracked event with a
   stable `metadata.uniqueId` is merged on repeat, so a deliberate retry of
   that one is safe.
 - `POST /v1/conversions/events` can return 200 with `"status":"failure"`, so

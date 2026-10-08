@@ -17,20 +17,22 @@ trailing `RequestOptions` (`apiKey`, `creatorId`, `signal`, `timeoutMs`,
 `retry`). Parameters and response shapes are in
 [references/methods.md](references/methods.md).
 
-| Method                             | Answers                                                           |
-| ---------------------------------- | ----------------------------------------------------------------- |
-| `keys.verify()`                    | Is this customer API key valid?                                   |
-| `customers.list()`                 | Which accounts sit under my integration's own account? (\*)       |
-| `drops.list()`                     | What active public drops does the customer have?                  |
-| `conversions.list(params?)`        | What conversion definitions exist (tickets, merch, RSVPs, …)?     |
-| `conversions.counts.list(params?)` | How many conversion events per action over a window, by day?      |
-| `conversions.events.track(event)`  | Record a purchase, check-in, click, etc. for a fan (write)        |
-| `fans.isSubscribed(contact)`       | Does this email or phone currently subscribe?                     |
-| `fans.isUnsubscribed(contact)`     | Did this contact subscribe once and later unsubscribe?            |
-| `fans.segments.count(filters)`     | How many fans match a segment (channel, drops, place, date)?      |
-| `fans.subscribe(fan)`              | Subscribe a fan with a consent record, optionally RSVP (write)    |
-| `messages.sms.send(sms)`           | Text up to 200 subscribed phone numbers (write)                   |
-| `auth.createToken()`               | A raw bearer token, only for calling the API outside the SDK (\*) |
+| Method                              | Answers                                                           |
+| ----------------------------------- | ----------------------------------------------------------------- |
+| `keys.verify()`                     | Is this customer API key valid?                                   |
+| `customers.list()`                  | Which accounts sit under my integration's own account? (\*)       |
+| `drops.list()`                      | What active public drops does the customer have?                  |
+| `conversions.list(params?)`         | What conversion definitions exist (tickets, merch, RSVPs, …)?     |
+| `conversions.counts.list(params?)`  | How many conversion events per action over a window, by day?      |
+| `conversions.events.track(event)`   | Record a purchase, check-in, click, etc. for a fan (write)        |
+| `fans.isSubscribed(contact)`        | Does this email or phone currently subscribe?                     |
+| `fans.isUnsubscribed(contact)`      | Did this contact subscribe once and later unsubscribe?            |
+| `fans.segments.count(filters)`      | How many fans match a segment (channel, drops, place, date)?      |
+| `fans.subscribe(fan)`               | Subscribe a fan with a consent record, optionally RSVP (write)    |
+| `messages.sms.send(sms)`            | Text up to 200 subscribed phone numbers (write)                   |
+| `messages.segments.send(input)`     | Text every SMS fan in a segment, now (write)                      |
+| `messages.segments.schedule(input)` | Text every SMS fan in a segment at a set local time (write)       |
+| `auth.createToken()`                | A raw bearer token, only for calling the API outside the SDK (\*) |
 
 (\*) Needs integrator credentials. On a client with only an API key, both
 reject with `LayloConfigurationError` before sending anything.
@@ -64,6 +66,11 @@ call you haven't seen here. The ones that are easiest to get wrong:
   optional `dropId`. Given both, the two records are linked as the same person and each keeps its own id.
 - `messages.sms.send` takes `message` and `to` (one E.164 number or an array
   of up to 200), and resolves to `{ queued, skipped: [{ index, reason }] }`.
+- `messages.segments.send` takes `message`, `segment` (the count's filters
+  with `signUpType: "sms"`), and `timezone`; `.schedule` adds `sendAt`, a
+  local time in `timezone` with no offset (`"2026-11-20T19:00"`). Both
+  resolve to `{ id, note, sendAt }`. Pass `{ idempotencyKey }` as the second
+  argument so a retry can't send twice.
 
 ## Setting up authentication
 
@@ -100,7 +107,8 @@ to the next.
    customer, they can generate an API key in the **API Keyring** card on the
    same page and use it as the customer, so the integration acts on their own
    account. Warn them that writes made this way are live and not limited by
-   the key's permissions: `messages.sms.send` texts their real fans.
+   the key's permissions: `messages.sms.send` and `messages.segments` text
+   their real fans.
 4. **Name the customer.** Every call acts on one Laylo account, named in one of
    two ways. Use one or the other, never both. Ask the user which situation
    they're in rather than assuming an API key (see
@@ -138,7 +146,8 @@ shell or load them with `dotenv`.
 
 With only an API key, each call is checked against the key's permissions in
 Laylo. Integrator calls aren't. Writes (`fans.subscribe`,
-`conversions.events.track`, `messages.sms.send`) need "write". Everything
+`conversions.events.track`, `messages.sms.send`, and both
+`messages.segments` methods) need "write". Everything
 else, including `fans.isSubscribed` and `fans.isUnsubscribed`, needs "read",
 except `keys.verify()`, which any valid key can call. The two are
 independent: "write" doesn't grant "read". A key with no permissions stored
@@ -241,10 +250,12 @@ access token, so creating them is cheap.
   a secret or API key back, and never hard-code one in a source file. Logging
   the client itself is safe: its `toJSON` masks the key and redacts the
   secret.
-- **Confirm writes first.** `fans.subscribe`, `conversions.events.track`, and
-  `messages.sms.send` change real fan data or text real people. Show the user
-  exactly what will be sent and get a yes before running any of them against
-  a live account. Reads can run freely.
+- **Confirm writes first.** `fans.subscribe`, `conversions.events.track`,
+  `messages.sms.send`, and `messages.segments` change real fan data or text
+  real people. Show the user exactly what will be sent and get a yes before
+  running any of them against a live account. For a segment message, count
+  the segment first and tell them how many fans it reaches. Reads can run
+  freely.
 - **Consent must be real.** Only call `fans.subscribe` for someone who actually
   consented to marketing on that channel, with `consentGrantedAt` set to when
   they did. Subscribing a fan also clears an earlier unsubscribe, so never use

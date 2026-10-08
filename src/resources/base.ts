@@ -28,9 +28,11 @@ export interface EndpointRequest {
   path: string;
   query?: Record<string, unknown>;
   body?: unknown;
+  headers?: Record<string, string>;
   /**
    * Marks a POST or PATCH as safe to replay so transient failures are
-   * retried like a GET. Only for reads that happen to use a write verb.
+   * retried like a GET: a read that happens to use a write verb, or a write
+   * carrying an idempotency key.
    */
   idempotent?: boolean;
   integratorOnly?: boolean;
@@ -83,6 +85,7 @@ export abstract class APIResource {
       path: endpoint.path,
       query: endpoint.query,
       body: endpoint.body,
+      headers: endpoint.headers,
       idempotent: endpoint.idempotent,
       auth: tokens === undefined ? customer : { bearer: tokens, ...customer },
       signal: options.signal,

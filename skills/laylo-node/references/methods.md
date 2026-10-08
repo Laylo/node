@@ -53,7 +53,8 @@ their environment variables off for all three; passing them as `undefined`
 with none in the environment is also a construction error.
 
 Each key-only call also needs a permission on the key: "write" for
-`fans.subscribe`, `conversions.events.track`, and `messages.sms.send`, "read"
+`fans.subscribe`, `conversions.events.track`, `messages.sms.send`, and
+`messages.segments.send` / `.schedule`, "read"
 for everything else except `keys.verify()`, which needs none. "write" doesn't
 grant "read", and a key with none stored can only read (an empty list allows
 only `keys.verify()`). A missing one throws `PermissionError`
@@ -285,6 +286,60 @@ type SendSmsResponse = {
 ```
 
 It isn't retried on a 5xx. Retrying only the `queue_failed` recipients is safe.
+
+## messages.segments.send(input) / messages.segments.schedule(input)
+
+```ts
+type SendSegmentMessageInput = {
+  message: string; // up to 1,600 characters
+  segment: {
+    signUpType: "sms"; // required; only SMS segments can be messaged
+    dropIds?: string[];
+    excludedDropIds?: string[];
+    conversionIds?: string[];
+    excludedConversionIds?: string[];
+    locations?: SegmentLocation[];
+    excludedLocations?: SegmentLocation[];
+    signedUpAfter?: Date | string; // send at most one of these two
+    signedUpBefore?: Date | string;
+  };
+  timezone: string; // IANA zone, like "America/New_York"
+};
+
+type ScheduleSegmentMessageInput = SendSegmentMessageInput & {
+  sendAt: string; // local time in `timezone`, no offset: "2026-11-20T19:00"
+};
+```
+
+`send` goes out within about five minutes. `schedule` needs `sendAt` at least
+5 minutes and at most 2 years away and rounds it up to the next five-minute
+mark. A time skipped by daylight saving is rejected. The segment uses the
+same filters as `fans.segments.count`, except `excludedLocations` only drops
+a fan when every location they have is excluded, so the send can reach more
+fans than the count. Every drop and conversion id must belong to the
+customer. Recipients are worked out when the message sends.
+
+A segment that isn't `"sms"` throws `LayloConfigurationError` before any
+request. A bad field, id, location, `timezone`, or `sendAt` throws
+`BadRequestError`. A message flagged as possible phishing or scam content
+throws `PermissionError`, isn't sent, and locks the account for review.
+
+Returns:
+
+```ts
+type SegmentMessage = {
+  id: string;
+  note: string; // for people to read; don't parse it
+  sendAt: string; // ISO 8601 UTC
+};
+```
+
+Pass `{ idempotencyKey }` (1 to 255 printable ASCII characters) in the options
+to make it safe to retry: a repeat with the same key and body within 24 hours
+returns the first response, and the SDK then retries a 5xx itself. The same
+key with a different body throws a 422 `LayloAPIError`, and a repeat while the
+first is still running throws `ConflictError`. Without a key it isn't retried
+on a 5xx.
 
 ## auth.createToken()
 

@@ -148,7 +148,7 @@ for the full model.
    drops and fans before onboarding anyone else.
 
 Writes made this way are live. Integrator calls aren't limited by the key's
-permissions, so `messages.sms.send` texts your real fans and
+permissions, so `messages.sms.send` and `messages.segments` text your real fans and
 `fans.subscribe` and `conversions.events.track` create real records. Stick
 to reads, or send only to your own number, until you mean it.
 
@@ -188,7 +188,8 @@ access token. Compared with integrator credentials:
   `LayloConfigurationError` without sending a request, since there's no
   integrator roster to list or token to mint.
 - The key's own permissions apply. Writes (`fans.subscribe`,
-  `conversions.events.track`, `messages.sms.send`) need "write"; everything
+  `conversions.events.track`, `messages.sms.send`, `messages.segments.send`,
+  `messages.segments.schedule`) need "write"; everything
   else, including `fans.isSubscribed` and `fans.isUnsubscribed`, needs "read",
   except `keys.verify()`, which any valid key can call. The two are
   independent, so "write" doesn't grant "read". A key with no permissions
@@ -545,6 +546,50 @@ is the one exception — it only accepts `signal`).
   for (const { index, reason } of skipped) {
     console.log(to[index], reason);
   }
+  ```
+
+- [`messages.segments.send(input, options?)`](https://developers.laylo.com/api-reference/messages/messages.segments.send) —
+  texts `message` to every fan in `segment` within the next few minutes. The
+  segment takes the same filters as `fans.segments.count`, as long as
+  `signUpType` is `"sms"`, so you can count it first. `timezone` is the IANA
+  zone the message is written in. Recipients are worked out when the message
+  sends, and only fans currently subscribed by SMS are texted. It resolves
+  to `{ id, note, sendAt }`, with `sendAt` in UTC.
+- [`messages.segments.schedule(input, options?)`](https://developers.laylo.com/api-reference/messages/messages.segments.schedule) —
+  the same, sent at `sendAt`: a local date and time in `timezone` with no
+  offset, like `"2026-11-20T19:00"`, at least 5 minutes and at most 2 years
+  away. It's rounded up to the next five-minute mark.
+
+  Both are writes, so they aren't retried on a server error unless you pass
+  an `idempotencyKey` in the options. With one, a retry within 24 hours
+  returns the first response instead of sending the message twice.
+
+  ```ts
+  import Laylo, { type MessageSegmentInput } from "@laylo.com/node";
+
+  const laylo = new Laylo({
+    userId: process.env.LAYLO_USER_ID,
+    accessKey: process.env.LAYLO_ACCESS_KEY,
+    secretKey: process.env.LAYLO_SECRET_KEY,
+    apiKey: process.env.LAYLO_API_KEY,
+  });
+
+  const segment: MessageSegmentInput = {
+    signUpType: "sms",
+    dropIds: ["drop_123"],
+  };
+  const reach = await laylo.fans.segments.count(segment);
+  console.log(`Messaging about ${String(reach)} fans`);
+
+  const { sendAt } = await laylo.messages.segments.schedule(
+    {
+      message: "Tickets go on sale tomorrow: https://laylo.com/example",
+      segment,
+      sendAt: "2026-11-20T19:00",
+      timezone: "America/New_York",
+    },
+    { idempotencyKey: "tour-onsale-2026-11-20" },
+  );
   ```
 
 The SDK mints and refreshes access tokens for you, but `laylo.auth.createToken()`
