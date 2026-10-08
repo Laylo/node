@@ -304,6 +304,7 @@ type SendSegmentMessageInput = {
     signedUpBefore?: Date | string;
   };
   timezone: string; // IANA zone, like "America/New_York"
+  dryRun?: boolean; // true: validate and estimate the cost, send nothing
 };
 
 type ScheduleSegmentMessageInput = SendSegmentMessageInput & {
@@ -314,23 +315,47 @@ type ScheduleSegmentMessageInput = SendSegmentMessageInput & {
 `send` goes out within about five minutes. `schedule` needs `sendAt` at least
 5 minutes and at most 2 years away and rounds it up to the next five-minute
 mark. A time skipped by daylight saving is rejected. The segment uses the
-same filters as `fans.segments.count`, except `excludedLocations` only drops
-a fan when every location they have is excluded, so the send can reach more
-fans than the count. Every drop and conversion id must belong to the
-customer. Recipients are worked out when the message sends.
+same filters as `fans.segments.count` and matches the same fans. Every drop
+and conversion id must belong to the customer. Recipients are worked out when
+the message sends.
+
+`dryRun: true` validates the request like a real one and returns the
+estimate without creating or sending anything. It skips the phishing screen,
+so only a real send can be flagged, and it ignores the idempotency key.
 
 A segment that isn't `"sms"`, or one with both `signedUpAfter` and
 `signedUpBefore`, throws `LayloConfigurationError` before any request. A bad field, id, location, `timezone`, or `sendAt` throws
 `BadRequestError`. A message flagged as possible phishing or scam content
-throws `PermissionError`, isn't sent, and locks the account for review.
+throws `PermissionError`, isn't sent, and locks the account for review. If
+Laylo can't work out the estimate it throws `ServerError` (503) and nothing is
+sent; with an idempotency key the SDK retries it.
 
 Returns:
 
 ```ts
 type SegmentMessage = {
-  id: string;
+  id: string | null; // null for a dry run
+  dryRun: boolean;
   note: string; // for people to read; don't parse it
   sendAt: string; // ISO 8601 UTC
+  estimate: {
+    recipients: number; // fans who match the segment right now
+    smsSegments: number; // per text, after the link, name, and suffix are added
+    credits: number;
+    costUsd: number; // free or prepaid credits aren't subtracted
+    disclaimer: string; // show it alongside the numbers; don't parse it
+    channels: {
+      domesticSms: EstimateChannel; // US and Canadian numbers
+      internationalSms: EstimateChannel;
+      emails: EstimateChannel; // also counted under a text channel
+    };
+  };
+};
+
+type EstimateChannel = {
+  recipients: number;
+  creditsPerRecipient: number;
+  credits: number;
 };
 ```
 

@@ -1694,7 +1694,7 @@ export interface operations {
                  */
                 excludedDropIds?: string[];
                 /**
-                 * @description Excluded locations as a JSON-encoded array of location objects.
+                 * @description Excluded locations as a JSON-encoded array of location objects. A fan is left out when every location Laylo has for them is excluded, matching who a segment message reaches; a fan with no known location is always left out.
                  * @example [
                  *       {
                  *         "country": "CA"
@@ -2912,11 +2912,13 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
+                    /** @description Defaults to false. When true, nothing is created or sent: the request is validated like a real one, without the phishing screen, and the response shows the cost estimate, with a null id. A dry run doesn't use the Idempotency-Key. */
+                    dryRun?: boolean;
                     /** @description The text to send, up to 1600 characters. The first link gets https:// added when it has no scheme. */
                     message: string;
                     /**
                      * SegmentConfiguration
-                     * @description The same filters GET /v1/fans/segments counts with, as a JSON object, except only sms segments can be messaged. excludedLocations work differently when sending: a fan with an excluded location and another, non-excluded one is still messaged, so a send can reach more fans than the count. signedUpAfter and signedUpBefore can't both be sent, and at most 30 locations and excluded locations are allowed combined.
+                     * @description The same filters GET /v1/fans/segments counts with, as a JSON object, except only sms segments can be messaged. signedUpAfter and signedUpBefore can't both be sent, and at most 30 locations and excluded locations are allowed combined.
                      */
                     segment: {
                         conversionIds?: string[];
@@ -2969,7 +2971,10 @@ export interface operations {
                          * @description Sign-up time boundary, in ISO 8601 with an explicit UTC offset. A fan signs up when they first follow the customer.
                          */
                         signedUpBefore?: string;
-                        /** @enum {string} */
+                        /**
+                         * @description Must be sms: only sms segments can be messaged.
+                         * @enum {string}
+                         */
                         signUpType: "sms";
                     };
                     /**
@@ -2982,7 +2987,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The message that was created. */
+            /** @description The message that was created, or for a dry run what would be, with its cost estimate. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2990,14 +2995,86 @@ export interface operations {
                 content: {
                     /**
                      * @example {
+                     *       "dryRun": false,
+                     *       "estimate": {
+                     *         "channels": {
+                     *           "domesticSms": {
+                     *             "credits": 2400,
+                     *             "creditsPerRecipient": 10,
+                     *             "recipients": 240
+                     *           },
+                     *           "emails": {
+                     *             "credits": 12,
+                     *             "creditsPerRecipient": 1,
+                     *             "recipients": 12
+                     *           },
+                     *           "internationalSms": {
+                     *             "credits": 375,
+                     *             "creditsPerRecipient": 25,
+                     *             "recipients": 15
+                     *           }
+                     *         },
+                     *         "costUsd": 5.57,
+                     *         "credits": 2787,
+                     *         "disclaimer": "This is an estimate from the fans who match the segment right now. The number of recipients and the cost can change until the message sends as fans subscribe and unsubscribe, and you are billed for the messages actually sent.",
+                     *         "recipients": 255,
+                     *         "smsSegments": 1
+                     *       },
                      *       "id": "4b0d3a8e-6f3c-4c1e-9a55-0f7e2d8c1b2a",
                      *       "note": "Message will start sending at sendAt, within the next few minutes",
                      *       "sendAt": "2026-10-05T16:05:00.000Z"
                      *     }
                      */
                     "application/json": {
-                        /** @description Opaque Laylo message identifier. */
-                        id: string;
+                        /** @description True when nothing was created or sent. */
+                        dryRun: boolean;
+                        /**
+                         * SegmentMessageEstimate
+                         * @description What the message is expected to cost, worked out the way the Laylo message composer does from the fans who match the segment at the time of the request.
+                         */
+                        estimate: {
+                            channels: {
+                                /** @description Fans with a US or Canadian phone number. */
+                                domesticSms: {
+                                    /** @description creditsPerRecipient times recipients. */
+                                    credits: number;
+                                    /** @description Credits for each recipient at the customer's prices, including any discount on their account. For texts this is the price per segment times smsSegments. */
+                                    creditsPerRecipient: number;
+                                    /** @description Fans currently counted on this channel. */
+                                    recipients: number;
+                                };
+                                /** @description Fans in the segment who also have an email address. They are counted here as well as under a text channel, so the estimate errs high. */
+                                emails: {
+                                    /** @description creditsPerRecipient times recipients. */
+                                    credits: number;
+                                    /** @description Credits for each recipient at the customer's prices, including any discount on their account. For texts this is the price per segment times smsSegments. */
+                                    creditsPerRecipient: number;
+                                    /** @description Fans currently counted on this channel. */
+                                    recipients: number;
+                                };
+                                /** @description Fans with a phone number outside the US and Canada. */
+                                internationalSms: {
+                                    /** @description creditsPerRecipient times recipients. */
+                                    credits: number;
+                                    /** @description Credits for each recipient at the customer's prices, including any discount on their account. For texts this is the price per segment times smsSegments. */
+                                    creditsPerRecipient: number;
+                                    /** @description Fans currently counted on this channel. */
+                                    recipients: number;
+                                };
+                            };
+                            /** @description credits converted to US dollars at the customer's credits-per-dollar rate, rounded to the cent. Free or prepaid credits on the account aren't subtracted. */
+                            costUsd: number;
+                            /** @description Total estimated credits across channels. */
+                            credits: number;
+                            /** @description A sentence to show people alongside the estimate: the count and cost can change until the message sends. Don't parse it. */
+                            disclaimer: string;
+                            /** @description Fans who currently match the segment. */
+                            recipients: number;
+                            /** @description SMS segments in each text as sent, after the tracked link and, unless the customer has their own sender, the name prefix and 'sent via Laylo' suffix are added. 160 GSM-7 or 70 Unicode characters fit in one segment; longer texts split at 153 or 67. */
+                            smsSegments: number;
+                        };
+                        /** @description Opaque Laylo message identifier. Null for a dry run. */
+                        id: string | null;
                         /** @description A sentence about the send for people to read, such as a reminder that recipients are worked out when it sends. Don't parse it. */
                         note: string;
                         /**
@@ -3216,6 +3293,30 @@ export interface operations {
                      *       "error": {
                      *         "code": "INTERNAL_ERROR",
                      *         "message": "An unexpected error occurred"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description A dependency this operation needs is briefly unavailable, so nothing was done. Retry with backoff. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "SERVICE_UNAVAILABLE",
+                     *         "message": "Couldn't estimate what this message would cost, so it wasn't sent. Try again shortly."
                      *       }
                      *     }
                      */
@@ -3252,11 +3353,13 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
+                    /** @description Defaults to false. When true, nothing is created or sent: the request is validated like a real one, without the phishing screen, and the response shows the cost estimate, with a null id. A dry run doesn't use the Idempotency-Key. */
+                    dryRun?: boolean;
                     /** @description The text to send, up to 1600 characters. The first link gets https:// added when it has no scheme. */
                     message: string;
                     /**
                      * SegmentConfiguration
-                     * @description The same filters GET /v1/fans/segments counts with, as a JSON object, except only sms segments can be messaged. excludedLocations work differently when sending: a fan with an excluded location and another, non-excluded one is still messaged, so a send can reach more fans than the count. signedUpAfter and signedUpBefore can't both be sent, and at most 30 locations and excluded locations are allowed combined.
+                     * @description The same filters GET /v1/fans/segments counts with, as a JSON object, except only sms segments can be messaged. signedUpAfter and signedUpBefore can't both be sent, and at most 30 locations and excluded locations are allowed combined.
                      */
                     segment: {
                         conversionIds?: string[];
@@ -3309,7 +3412,10 @@ export interface operations {
                          * @description Sign-up time boundary, in ISO 8601 with an explicit UTC offset. A fan signs up when they first follow the customer.
                          */
                         signedUpBefore?: string;
-                        /** @enum {string} */
+                        /**
+                         * @description Must be sms: only sms segments can be messaged.
+                         * @enum {string}
+                         */
                         signUpType: "sms";
                     };
                     /** @description When to send, as the local date and time in timezone with no offset, like 2026-11-20T19:00. Must be at least 5 minutes and at most 2 years from now, and is rounded up to the next five-minute mark. */
@@ -3324,7 +3430,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The message that was created. */
+            /** @description The message that was created, or for a dry run what would be, with its cost estimate. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3332,14 +3438,86 @@ export interface operations {
                 content: {
                     /**
                      * @example {
+                     *       "dryRun": false,
+                     *       "estimate": {
+                     *         "channels": {
+                     *           "domesticSms": {
+                     *             "credits": 2400,
+                     *             "creditsPerRecipient": 10,
+                     *             "recipients": 240
+                     *           },
+                     *           "emails": {
+                     *             "credits": 12,
+                     *             "creditsPerRecipient": 1,
+                     *             "recipients": 12
+                     *           },
+                     *           "internationalSms": {
+                     *             "credits": 375,
+                     *             "creditsPerRecipient": 25,
+                     *             "recipients": 15
+                     *           }
+                     *         },
+                     *         "costUsd": 5.57,
+                     *         "credits": 2787,
+                     *         "disclaimer": "This is an estimate from the fans who match the segment right now. The number of recipients and the cost can change until the message sends as fans subscribe and unsubscribe, and you are billed for the messages actually sent.",
+                     *         "recipients": 255,
+                     *         "smsSegments": 1
+                     *       },
                      *       "id": "4b0d3a8e-6f3c-4c1e-9a55-0f7e2d8c1b2a",
                      *       "note": "Number of fans to message can change between now and the scheduled message time as fans matching the segments join and unsubscribe.",
                      *       "sendAt": "2026-11-21T00:00:00.000Z"
                      *     }
                      */
                     "application/json": {
-                        /** @description Opaque Laylo message identifier. */
-                        id: string;
+                        /** @description True when nothing was created or sent. */
+                        dryRun: boolean;
+                        /**
+                         * SegmentMessageEstimate
+                         * @description What the message is expected to cost, worked out the way the Laylo message composer does from the fans who match the segment at the time of the request.
+                         */
+                        estimate: {
+                            channels: {
+                                /** @description Fans with a US or Canadian phone number. */
+                                domesticSms: {
+                                    /** @description creditsPerRecipient times recipients. */
+                                    credits: number;
+                                    /** @description Credits for each recipient at the customer's prices, including any discount on their account. For texts this is the price per segment times smsSegments. */
+                                    creditsPerRecipient: number;
+                                    /** @description Fans currently counted on this channel. */
+                                    recipients: number;
+                                };
+                                /** @description Fans in the segment who also have an email address. They are counted here as well as under a text channel, so the estimate errs high. */
+                                emails: {
+                                    /** @description creditsPerRecipient times recipients. */
+                                    credits: number;
+                                    /** @description Credits for each recipient at the customer's prices, including any discount on their account. For texts this is the price per segment times smsSegments. */
+                                    creditsPerRecipient: number;
+                                    /** @description Fans currently counted on this channel. */
+                                    recipients: number;
+                                };
+                                /** @description Fans with a phone number outside the US and Canada. */
+                                internationalSms: {
+                                    /** @description creditsPerRecipient times recipients. */
+                                    credits: number;
+                                    /** @description Credits for each recipient at the customer's prices, including any discount on their account. For texts this is the price per segment times smsSegments. */
+                                    creditsPerRecipient: number;
+                                    /** @description Fans currently counted on this channel. */
+                                    recipients: number;
+                                };
+                            };
+                            /** @description credits converted to US dollars at the customer's credits-per-dollar rate, rounded to the cent. Free or prepaid credits on the account aren't subtracted. */
+                            costUsd: number;
+                            /** @description Total estimated credits across channels. */
+                            credits: number;
+                            /** @description A sentence to show people alongside the estimate: the count and cost can change until the message sends. Don't parse it. */
+                            disclaimer: string;
+                            /** @description Fans who currently match the segment. */
+                            recipients: number;
+                            /** @description SMS segments in each text as sent, after the tracked link and, unless the customer has their own sender, the name prefix and 'sent via Laylo' suffix are added. 160 GSM-7 or 70 Unicode characters fit in one segment; longer texts split at 153 or 67. */
+                            smsSegments: number;
+                        };
+                        /** @description Opaque Laylo message identifier. Null for a dry run. */
+                        id: string | null;
                         /** @description A sentence about the send for people to read, such as a reminder that recipients are worked out when it sends. Don't parse it. */
                         note: string;
                         /**
@@ -3558,6 +3736,30 @@ export interface operations {
                      *       "error": {
                      *         "code": "INTERNAL_ERROR",
                      *         "message": "An unexpected error occurred"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description A dependency this operation needs is briefly unavailable, so nothing was done. Retry with backoff. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "SERVICE_UNAVAILABLE",
+                     *         "message": "Couldn't estimate what this message would cost, so it wasn't sent. Try again shortly."
                      *       }
                      *     }
                      */

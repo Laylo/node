@@ -551,10 +551,13 @@ is the one exception — it only accepts `signal`).
 - [`messages.segments.send(input, options?)`](https://developers.laylo.com/api-reference/messages/messages.segments.send) —
   texts `message` to every fan in `segment` within the next few minutes. The
   segment takes the same filters as `fans.segments.count`, as long as
-  `signUpType` is `"sms"`, so you can count it first. `timezone` is the IANA
-  zone the message is written in. Recipients are worked out when the message
-  sends, and only fans currently subscribed by SMS are texted. It resolves
-  to `{ id, note, sendAt }`, with `sendAt` in UTC.
+  `signUpType` is `"sms"`. `timezone` is the IANA zone the message is
+  written in. Recipients are worked out when the message sends, and only
+  fans currently subscribed by SMS are texted. It resolves to
+  `{ id, note, sendAt, dryRun, estimate }`, with `sendAt` in UTC and
+  `estimate` giving the recipients, credits, and `costUsd` from the fans who
+  match right now. Pass `dryRun: true` to get that estimate without sending
+  anything; `id` is then null.
 - [`messages.segments.schedule(input, options?)`](https://developers.laylo.com/api-reference/messages/messages.segments.schedule) —
   the same, sent at `sendAt`: a local date and time in `timezone` with no
   offset, like `"2026-11-20T19:00"`, at least 5 minutes and at most 2 years
@@ -565,11 +568,12 @@ is the one exception — it only accepts `signal`).
   returns the first response instead of sending the message twice, and the
   SDK retries server errors and dropped connections itself. A timeout isn't
   retried; call again with the same key. A `ConflictError` with a key means
-  the first attempt is still running. `signedUpAfter` and `signedUpBefore`
-  can't be combined when messaging.
+  the first attempt is still running. A dry run ignores the key, so the real
+  send can reuse it. `signedUpAfter` and `signedUpBefore` can't be combined
+  when messaging.
 
   ```ts
-  import Laylo, { type MessageSegmentInput } from "@laylo.com/node";
+  import Laylo, { type ScheduleSegmentMessageInput } from "@laylo.com/node";
 
   const laylo = new Laylo({
     userId: process.env.LAYLO_USER_ID,
@@ -578,22 +582,25 @@ is the one exception — it only accepts `signal`).
     apiKey: process.env.LAYLO_API_KEY,
   });
 
-  const segment: MessageSegmentInput = {
-    signUpType: "sms",
-    dropIds: ["drop_123"],
+  const message: ScheduleSegmentMessageInput = {
+    message: "Tickets go on sale tomorrow: https://laylo.com/example",
+    segment: { signUpType: "sms", dropIds: ["drop_123"] },
+    sendAt: "2026-11-20T19:00",
+    timezone: "America/New_York",
   };
-  const reach = await laylo.fans.segments.count(segment);
-  console.log(`Messaging about ${String(reach)} fans`);
 
-  const { sendAt } = await laylo.messages.segments.schedule(
-    {
-      message: "Tickets go on sale tomorrow: https://laylo.com/example",
-      segment,
-      sendAt: "2026-11-20T19:00",
-      timezone: "America/New_York",
-    },
-    { idempotencyKey: "tour-onsale-2026-11-20" },
+  const { estimate } = await laylo.messages.segments.schedule({
+    ...message,
+    dryRun: true,
+  });
+  console.log(
+    `About ${String(estimate.recipients)} fans, $${String(estimate.costUsd)}`,
   );
+  console.log(estimate.disclaimer);
+
+  const { sendAt } = await laylo.messages.segments.schedule(message, {
+    idempotencyKey: "tour-onsale-2026-11-20",
+  });
   ```
 
 The SDK mints and refreshes access tokens for you, but `laylo.auth.createToken()`

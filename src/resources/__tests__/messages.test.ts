@@ -112,7 +112,21 @@ describe("Messages", () => {
   });
 
   describe("segments", () => {
+    const channel = { credits: 0, creditsPerRecipient: 10, recipients: 0 };
     const created: SegmentMessage = {
+      dryRun: false,
+      estimate: {
+        channels: {
+          domesticSms: { ...channel, credits: 2400, recipients: 240 },
+          emails: { ...channel, creditsPerRecipient: 1 },
+          internationalSms: { ...channel, creditsPerRecipient: 25 },
+        },
+        costUsd: 4.8,
+        credits: 2400,
+        disclaimer: "This is an estimate.",
+        recipients: 240,
+        smsSegments: 1,
+      },
       id: "4b0d3a8e-6f3c-4c1e-9a55-0f7e2d8c1b2a",
       note: "Message will start sending at sendAt, within the next few minutes",
       sendAt: "2026-11-20T19:05:00.000Z",

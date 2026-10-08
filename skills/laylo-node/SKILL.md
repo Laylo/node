@@ -69,8 +69,10 @@ call you haven't seen here. The ones that are easiest to get wrong:
 - `messages.segments.send` takes `message`, `segment` (the count's filters
   with `signUpType: "sms"`), and `timezone`; `.schedule` adds `sendAt`, a
   local time in `timezone` with no offset (`"2026-11-20T19:00"`). Both
-  resolve to `{ id, note, sendAt }`. Pass `{ idempotencyKey }` as the second
-  argument so a retry can't send twice.
+  resolve to `{ id, note, sendAt, dryRun, estimate }`, where `estimate` has
+  the recipients, credits, and `costUsd`. Add `dryRun: true` to the input to
+  get the estimate without sending (`id` is then null). Pass
+  `{ idempotencyKey }` as the second argument so a retry can't send twice.
 
 ## Setting up authentication
 
@@ -253,9 +255,9 @@ access token, so creating them is cheap.
 - **Confirm writes first.** `fans.subscribe`, `conversions.events.track`,
   `messages.sms.send`, and `messages.segments` change real fan data or text
   real people. Show the user exactly what will be sent and get a yes before
-  running any of them against a live account. For a segment message, count
-  the segment first and tell them how many fans it reaches. Reads can run
-  freely.
+  running any of them against a live account. For a segment message, do a
+  dry run first and tell them the estimated recipients and cost, along with
+  its `disclaimer`. Reads can run freely.
 - **Consent must be real.** Only call `fans.subscribe` for someone who actually
   consented to marketing on that channel, with `consentGrantedAt` set to when
   they did. Subscribing a fan also clears an earlier unsubscribe, so never use

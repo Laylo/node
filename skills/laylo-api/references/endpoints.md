@@ -325,21 +325,50 @@ Texts every fan in `segment` within about five minutes. `segment` takes the
 same filters as `GET /v1/fans/segments`, as a JSON object with locations as
 plain objects, but `signUpType` must be `sms`, only one of `signedUpAfter`
 and `signedUpBefore` can be sent, and at most 30 locations and excluded
-locations are allowed combined. `excludedLocations` only drops a fan when
-every location they have is excluded, so a send can reach more fans than the
+locations are allowed combined. The segment matches the same fans as the
 count. Every drop and conversion id must belong to the customer. `timezone`
 is an IANA zone used to read a time the message mentions. Recipients are
 worked out when the message sends.
 
 ```json
 {
+  "dryRun": false,
+  "estimate": {
+    "channels": {
+      "domesticSms": {
+        "credits": 2400,
+        "creditsPerRecipient": 10,
+        "recipients": 240
+      },
+      "emails": { "credits": 12, "creditsPerRecipient": 1, "recipients": 12 },
+      "internationalSms": {
+        "credits": 375,
+        "creditsPerRecipient": 25,
+        "recipients": 15
+      }
+    },
+    "costUsd": 5.57,
+    "credits": 2787,
+    "disclaimer": "This is an estimate from the fans who match the segment right now. …",
+    "recipients": 255,
+    "smsSegments": 1
+  },
   "id": "4b0d3a8e-6f3c-4c1e-9a55-0f7e2d8c1b2a",
   "note": "Message will start sending at sendAt, within the next few minutes",
   "sendAt": "2026-11-20T19:05:00.000Z"
 }
 ```
 
-`note` is for people to read; don't parse it. `sendAt` is ISO 8601 UTC.
+`note` and `disclaimer` are for people to read; don't parse them. `sendAt` is
+ISO 8601 UTC. `estimate` comes from the fans who match the segment right now;
+`emails` counts fans who are also counted under a text channel, so it errs
+high, and `costUsd` doesn't subtract free or prepaid credits.
+
+Add `"dryRun": true` to either route to validate the request and get the
+estimate without sending: nothing is created, `id` is null, the phishing
+screen is skipped, and the `Idempotency-Key` is ignored. A
+`503 SERVICE_UNAVAILABLE` means the estimate couldn't be worked out and
+nothing was sent; retry with backoff.
 
 ## POST /v1/messages/segments/scheduled
 

@@ -70,7 +70,9 @@ haven't seen here. The ones that are easiest to get wrong:
   count's filters as a JSON object, with `signUpType: "sms"` and `locations`
   as plain objects), and `timezone`. `POST /v1/messages/segments/scheduled`
   adds `sendAt`, a local time in `timezone` with no offset
-  (`"2026-11-20T19:00"`). Both return `{ "id", "note", "sendAt" }`.
+  (`"2026-11-20T19:00"`). Both return `id`, `note`, `sendAt`, `dryRun`, and
+  `estimate`, which has the recipients, credits, and `costUsd`. Add
+  `"dryRun": true` to get the estimate without sending (`id` is then null).
 
 ## How authentication works
 
@@ -280,8 +282,8 @@ Common mappings:
   `POST /v1/conversions/events`, `POST /v1/messages/sms`, and the
   `POST /v1/messages/segments` routes change real fan data or text real
   people. Show the user the exact request body, and for a segment message
-  how many fans the segment counts, and get a yes before sending any of them
-  to a live account. Reads,
+  the estimated recipients and cost from a dry run, and get a yes before
+  sending any of them to a live account. Reads,
   including the two `POST` subscription checks, can run freely.
 - **Consent must be real.** Only subscribe someone who actually consented to
   marketing on that channel, with `consentGrantedAt` set to when they did.

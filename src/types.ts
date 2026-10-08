@@ -248,8 +248,17 @@ export type MessageSegment = SendSegmentMessageRequest["segment"];
 export type SegmentMessageTimezone = SendSegmentMessageRequest["timezone"];
 
 /**
- * A message to a fan segment: its `id`, when Laylo will send it (`sendAt`,
- * ISO 8601 UTC), and a human-readable `note`.
+ * A message to a fan segment: its `id` (null for a dry run), when Laylo will
+ * send it (`sendAt`, ISO 8601 UTC), a human-readable `note`, and the
+ * `estimate` of what it costs.
  * @see https://developers.laylo.com/records/segment-message
  */
 export type SegmentMessage = SuccessJson<operations["messages.segments.send"]>;
+
+/**
+ * What a segment message is expected to cost, from the fans who match the
+ * segment at the time of the request: recipients and credits per channel,
+ * the total in credits and US dollars, and a `disclaimer` to show alongside.
+ * @see https://developers.laylo.com/records/segment-message-estimate
+ */
+export type SegmentMessageEstimate = SegmentMessage["estimate"];

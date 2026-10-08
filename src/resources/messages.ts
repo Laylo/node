@@ -129,7 +129,8 @@ export interface SegmentMessageOptions extends RequestOptions {
    * is still running and the message may well be created: call again later
    * with the same key to get its response. A timeout is never retried
    * automatically; retry it yourself with the same key. The same key with a
-   * different body throws a `LayloAPIError` with status `422`.
+   * different body throws a `LayloAPIError` with status `422`. A dry run
+   * ignores the key, so the real send can reuse it.
    */
   idempotencyKey?: string | null;
 }
@@ -141,17 +142,19 @@ export interface SegmentMessageOptions extends RequestOptions {
 export class SegmentMessages extends APIResource {
   /**
    * Texts `message` to every fan in `segment` within the next few minutes.
-   * The segment takes the same filters as `laylo.fans.segments.count()`, so
-   * count first to see roughly how many fans it reaches. Recipients are
-   * worked out when the message sends, and only fans currently subscribed by
-   * SMS are texted. `timezone` is the IANA zone the message is written in,
-   * used to read a time it mentions, like "tomorrow at 2pm".
+   * The segment takes the same filters as `laylo.fans.segments.count()`.
+   * Recipients are worked out when the message sends, and only fans
+   * currently subscribed by SMS are texted. `timezone` is the IANA zone the
+   * message is written in, used to read a time it mentions, like "tomorrow
+   * at 2pm". Pass `dryRun: true` to validate the message and get its cost
+   * `estimate` without sending anything.
    *
    * This is a write, so a `5xx` response is not retried automatically unless
    * you pass an `idempotencyKey`.
    * @param input The message, the segment to send it to, and its time zone.
    * @param options Per-call overrides, including an optional idempotency key.
-   * @returns The created message, with the UTC time it will send.
+   * @returns The created message, with the UTC time it will send and its
+   * cost estimate. For a dry run, `id` is null and nothing was created.
    * @example
    * ```ts
    * const { id, sendAt } = await laylo.messages.segments.send(
@@ -180,13 +183,14 @@ export class SegmentMessages extends APIResource {
    * to the next five-minute mark. Daylight saving is applied for that date:
    * a time skipped when clocks spring forward is rejected, and a repeated
    * one uses the first occurrence. Recipients are worked out when the
-   * message sends, not now.
+   * message sends, not now. `dryRun: true` works as it does for `send()`.
    *
    * This is a write, so a `5xx` response is not retried automatically unless
    * you pass an `idempotencyKey`.
    * @param input The message, the segment, and when to send it.
    * @param options Per-call overrides, including an optional idempotency key.
-   * @returns The created message, with the UTC time it will send.
+   * @returns The created message, with the UTC time it will send and its
+   * cost estimate. For a dry run, `id` is null and nothing was created.
    * @example
    * ```ts
    * const { sendAt } = await laylo.messages.segments.schedule({
