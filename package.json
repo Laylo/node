@@ -60,7 +60,6 @@
     "check:package": "publint && attw --pack",
     "verify:pack": "npm run build && tsx scripts/verify-pack.ts",
     "generate": "tsx scripts/generate-types.ts",
-    "generate:check": "tsx scripts/generate-types.ts --check",
     "prepublishOnly": "npm run build",
     "changeset": "changeset",
     "version:packages": "changeset version && npm install --package-lock-only",
