@@ -25,3 +25,41 @@ export const isoTimestamp = <Value extends string | Date | undefined>(
   }
   return value as IsoOf<Value>;
 };
+
+/**
+ * Segment filters with their sign-up bounds also accepting a `Date`, which is
+ * sent as its ISO 8601 string.
+ */
+export type WithDateSignUpBounds<Filters> = Omit<
+  Filters,
+  "signedUpAfter" | "signedUpBefore"
+> & {
+  /**
+   * Only fans who signed up at or after this time: a `Date`, or an ISO 8601
+   * string with an explicit UTC offset.
+   */
+  signedUpAfter?: string | Date;
+  /**
+   * Only fans who signed up before this time (exclusive): a `Date`, or an ISO
+   * 8601 string with an explicit UTC offset.
+   */
+  signedUpBefore?: string | Date;
+};
+
+/**
+ * Normalizes a segment's sign-up bounds for the wire with {@link isoTimestamp}.
+ * @param filters The filters carrying the bounds.
+ * @param prefix Prepended to each field's name in error messages.
+ * @returns Both bounds as ISO 8601 strings, or `undefined` when not given.
+ * @throws LayloConfigurationError When a `Date` is invalid.
+ */
+export const isoSignUpBounds = (
+  filters: WithDateSignUpBounds<object>,
+  prefix = "",
+) => ({
+  signedUpAfter: isoTimestamp(filters.signedUpAfter, `${prefix}signedUpAfter`),
+  signedUpBefore: isoTimestamp(
+    filters.signedUpBefore,
+    `${prefix}signedUpBefore`,
+  ),
+});

@@ -278,7 +278,10 @@ export class MethodNotAllowedError extends LayloAPIError {}
 brand(MethodNotAllowedError, "MethodNotAllowedError");
 
 /**
- * 409 — the request conflicts with the current state of the resource.
+ * 409 — the request conflicts with the current state of the resource. For a
+ * write sent with an idempotency key, it means an earlier attempt with that
+ * key is still running; the SDK retries it before giving up, and that
+ * attempt may still complete.
  * @see https://developers.laylo.com/errors
  */
 export class ConflictError extends LayloAPIError {}
@@ -313,9 +316,9 @@ brand(NotImplementedError, "NotImplementedError");
 
 /**
  * 5xx — something went wrong on Laylo's side. Retried automatically for
- * idempotent requests (GET, PUT, DELETE, or a POST/PATCH marked
- * `idempotent`) before giving up; other writes are not replayed since the
- * server may already have applied them.
+ * idempotent requests (GET, PUT, DELETE, a POST/PATCH marked `idempotent`,
+ * or a write sent with an idempotency key) before giving up; other writes
+ * are not replayed since the server may already have applied them.
  * @see https://developers.laylo.com/errors
  */
 export class ServerError extends LayloAPIError {}

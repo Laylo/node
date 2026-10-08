@@ -33,8 +33,31 @@ export interface EndpointRequest {
    * retried like a GET. Only for reads that happen to use a write verb.
    */
   idempotent?: boolean;
+  /** Set to `false` to never resend after a connection failure. */
+  replayUnsent?: boolean;
+  /**
+   * Sent as the `Idempotency-Key` header and makes the call safe to retry.
+   * `null` is treated as absent.
+   */
+  idempotencyKey?: string | null | undefined;
   integratorOnly?: boolean;
 }
+
+// Printable ASCII with no space at either end. The API rejects anything else
+// with a 400, a control character would make Headers throw a TypeError, and
+// Headers trims surrounding spaces, so the key on the wire would differ.
+const IDEMPOTENCY_KEY = /^[\x21-\x7e](?:[\x20-\x7e]{0,253}[\x21-\x7e])?$/;
+const idempotencyKeyFrom = (value: unknown): string | undefined => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== "string" || !IDEMPOTENCY_KEY.test(value)) {
+    throw new LayloConfigurationError(
+      "idempotencyKey must be 1 to 255 printable ASCII characters, with no space at either end",
+    );
+  }
+  return value;
+};
 
 /**
  * Base class every resource extends. Owns what all endpoints share: resolving
@@ -65,6 +88,7 @@ export abstract class APIResource {
     options: RequestOptions = {},
   ): Promise<T> {
     const { tokens } = this.context;
+    const idempotencyKey = idempotencyKeyFrom(endpoint.idempotencyKey);
     if (endpoint.integratorOnly === true && tokens === undefined) {
       throw new LayloConfigurationError(
         `${endpoint.method} ${endpoint.path} needs integrator credentials — a client constructed with only an apiKey can't call it. See https://developers.laylo.com/authentication`,
@@ -84,6 +108,8 @@ export abstract class APIResource {
       query: endpoint.query,
       body: endpoint.body,
       idempotent: endpoint.idempotent,
+      replayUnsent: endpoint.replayUnsent,
+      idempotencyKey,
       auth: tokens === undefined ? customer : { bearer: tokens, ...customer },
       signal: options.signal,
       timeoutMs: options.timeoutMs,

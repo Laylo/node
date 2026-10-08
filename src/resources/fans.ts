@@ -1,6 +1,10 @@
 import { LayloConfigurationError } from "../core/errors.js";
 import type { RequestOptions } from "../core/request-options.js";
-import { isoTimestamp } from "../core/time.js";
+import {
+  isoSignUpBounds,
+  isoTimestamp,
+  type WithDateSignUpBounds,
+} from "../core/time.js";
 import type {
   Contact,
   SegmentCountResponse,
@@ -43,21 +47,7 @@ export type SubscribeFanInput = DistributiveOmit<
  * its ISO 8601 string. Only `signUpType` is required.
  * @see https://developers.laylo.com/api-reference/fans/fans.segments.list
  */
-export type CountFansInput = Omit<
-  SegmentFilters,
-  "signedUpAfter" | "signedUpBefore"
-> & {
-  /**
-   * Only count fans who signed up at or after this time: a `Date`, or an ISO
-   * 8601 string with an explicit UTC offset.
-   */
-  signedUpAfter?: string | Date;
-  /**
-   * Only count fans who signed up before this time (exclusive): a `Date`, or
-   * an ISO 8601 string with an explicit UTC offset.
-   */
-  signedUpBefore?: string | Date;
-};
+export type CountFansInput = WithDateSignUpBounds<SegmentFilters>;
 
 // Statically-typed callers serialize an absent optional field as null, so null
 // means "not given" just like undefined.
@@ -154,11 +144,7 @@ export class FanSegments extends APIResource {
           excludedConversionIds: filters.excludedConversionIds,
           locations: encodeLocations(filters.locations),
           excludedLocations: encodeLocations(filters.excludedLocations),
-          signedUpAfter: isoTimestamp(filters.signedUpAfter, "signedUpAfter"),
-          signedUpBefore: isoTimestamp(
-            filters.signedUpBefore,
-            "signedUpBefore",
-          ),
+          ...isoSignUpBounds(filters),
         },
       },
       options,

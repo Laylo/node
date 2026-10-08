@@ -1,9 +1,19 @@
 import { LayloConfigurationError } from "../core/errors.js";
 import type { RequestOptions } from "../core/request-options.js";
-import type { SendSmsRequest, SendSmsResponse } from "../types.js";
+import { isoSignUpBounds, type WithDateSignUpBounds } from "../core/time.js";
+import type {
+  MessageSegment,
+  ScheduleSegmentMessageRequest,
+  SegmentMessage,
+  SendSegmentMessageRequest,
+  SendSmsRequest,
+  SendSmsResponse,
+} from "../types.js";
 import { APIResource, type ResourceContext } from "./base.js";
 
 const MAX_SMS_RECIPIENTS = 200;
+
+const isGiven = (value: unknown) => value !== undefined && value !== null;
 
 // The API refuses these too; checking here saves a round trip that would
 // only come back as a 400.
@@ -72,6 +82,177 @@ export class SmsMessages extends APIResource {
 }
 
 /**
+ * The fans a segment message goes to. Identical to the API's `segment` except
+ * the sign-up bounds also accept a `Date`, which is sent as its ISO 8601
+ * string. `signUpType` must be `"sms"`, and only one of `signedUpAfter` and
+ * `signedUpBefore` can be given.
+ * @see https://developers.laylo.com/guides/segment-messages
+ */
+export type MessageSegmentInput = WithDateSignUpBounds<MessageSegment>;
+
+/**
+ * A message to send to a fan segment now.
+ * @see https://developers.laylo.com/api-reference/messages/messages.segments.send
+ */
+export type SendSegmentMessageInput = Omit<
+  SendSegmentMessageRequest,
+  "segment"
+> & {
+  /** The fans to message. */
+  segment: MessageSegmentInput;
+};
+
+/**
+ * A message to send to a fan segment at a scheduled time.
+ * @see https://developers.laylo.com/api-reference/messages/messages.segments.schedule
+ */
+export type ScheduleSegmentMessageInput = Omit<
+  ScheduleSegmentMessageRequest,
+  "segment"
+> & {
+  /** The fans to message. */
+  segment: MessageSegmentInput;
+};
+
+/**
+ * Per-call overrides for a segment message, adding an idempotency key to the
+ * usual {@link RequestOptions}.
+ */
+export interface SegmentMessageOptions extends RequestOptions {
+  /**
+   * Makes the call safe to retry, sent as the `Idempotency-Key` header: 1 to
+   * 255 printable ASCII characters with no space at either end, unique to
+   * this message. A repeat with the same key and body within 24 hours of the
+   * first attempt finishing returns its response instead of creating another
+   * message, so with a key the SDK retries a `5xx`, a dropped connection,
+   * and a `409` from an earlier attempt that hasn't finished yet. A
+   * `ConflictError` after those retries means that attempt is still running
+   * and will probably create the message: don't send it under a new key.
+   * Calling again with the same key returns its response once it finishes,
+   * but if it never finishes, Laylo frees the key after a minute and the
+   * next call sends the message again. A timeout is never retried
+   * automatically; retry it yourself with the same key. The same key with a
+   * different body throws a `LayloAPIError` with status `422`. A dry run
+   * ignores the key, so the real send can reuse it.
+   */
+  idempotencyKey?: string | null;
+}
+
+/**
+ * Messages to a fan segment, exposed as `laylo.messages.segments`.
+ * @see https://developers.laylo.com/guides/segment-messages
+ */
+export class SegmentMessages extends APIResource {
+  /**
+   * Texts `message` to every fan in `segment` within the next few minutes.
+   * The segment takes the same filters as `laylo.fans.segments.count()`.
+   * Recipients are worked out when the message sends, and only fans
+   * currently subscribed by SMS are texted. `timezone` is the IANA zone the
+   * message is written in, used to read a time it mentions, like "tomorrow
+   * at 2pm". Only the zones in `SegmentMessageTimezone` are accepted.
+   * Pass `dryRun: true` to validate the message and get its cost `estimate`
+   * without sending anything; a dry run is retried like a read.
+   *
+   * This is a write, so a `5xx` or a dropped connection is not retried
+   * automatically unless you pass an `idempotencyKey`.
+   * @param input The message, the segment to send it to, and its time zone.
+   * @param options Per-call overrides, including an optional idempotency key.
+   * @returns The created message, with the UTC time it will send and its
+   * cost estimate. For a dry run, `id` is null and nothing was created.
+   * @example
+   * ```ts
+   * const { id, sendAt } = await laylo.messages.segments.send(
+   *   {
+   *     message: "Presale starts now: https://laylo.com/example",
+   *     segment: { signUpType: "sms", dropIds: ["drop_123"] },
+   *     timezone: "America/New_York",
+   *   },
+   *   { idempotencyKey: "presale-2026-11-20" },
+   * );
+   * ```
+   * @see https://developers.laylo.com/api-reference/messages/messages.segments.send
+   * @see https://developers.laylo.com/guides/segment-messages
+   */
+  async send(
+    input: SendSegmentMessageInput,
+    options?: SegmentMessageOptions,
+  ): Promise<SegmentMessage> {
+    return this.create("/v1/messages/segments", input, options);
+  }
+
+  /**
+   * Schedules `message` for every fan in `segment` at `sendAt`, the local
+   * date and time in `timezone` with no offset, like `"2026-11-20T19:00"`.
+   * It must be at least 5 minutes and at most 2 years away, and is rounded up
+   * to the next five-minute mark. Daylight saving is applied for that date:
+   * a time skipped when clocks spring forward is rejected, and a repeated
+   * one uses the first occurrence. Recipients are worked out when the
+   * message sends, not now. `dryRun: true` works as it does for `send()`.
+   *
+   * This is a write, so a `5xx` or a dropped connection is not retried
+   * automatically unless you pass an `idempotencyKey`.
+   * @param input The message, the segment, and when to send it.
+   * @param options Per-call overrides, including an optional idempotency key.
+   * @returns The created message, with the UTC time it will send and its
+   * cost estimate. For a dry run, `id` is null and nothing was created.
+   * @example
+   * ```ts
+   * const { sendAt } = await laylo.messages.segments.schedule({
+   *   message: "Tickets go on sale tomorrow: https://laylo.com/example",
+   *   segment: { signUpType: "sms" },
+   *   sendAt: "2026-11-20T19:00",
+   *   timezone: "America/New_York",
+   * });
+   * ```
+   * @see https://developers.laylo.com/api-reference/messages/messages.segments.schedule
+   * @see https://developers.laylo.com/guides/segment-messages
+   */
+  async schedule(
+    input: ScheduleSegmentMessageInput,
+    options?: SegmentMessageOptions,
+  ): Promise<SegmentMessage> {
+    return this.create("/v1/messages/segments/scheduled", input, options);
+  }
+
+  private async create(
+    path: string,
+    input: SendSegmentMessageInput | ScheduleSegmentMessageInput,
+    options: SegmentMessageOptions = {},
+  ): Promise<SegmentMessage> {
+    const segment = input?.segment;
+    if (segment?.signUpType !== "sms") {
+      throw new LayloConfigurationError(
+        'segment.signUpType must be "sms": only SMS segments can be messaged',
+      );
+    }
+    // A count takes both bounds, but the API refuses them together on a send.
+    if (isGiven(segment.signedUpAfter) && isGiven(segment.signedUpBefore)) {
+      throw new LayloConfigurationError(
+        "segment.signedUpAfter and segment.signedUpBefore can't be combined when messaging; pass one",
+      );
+    }
+
+    return this.request<SegmentMessage>(
+      {
+        method: "POST",
+        path,
+        body: {
+          ...input,
+          segment: { ...segment, ...isoSignUpBounds(segment, "segment.") },
+        },
+        idempotencyKey: options.idempotencyKey,
+        // An unkeyed resend after a dropped connection could text the whole
+        // segment twice.
+        ...(input.dryRun === true
+          ? { idempotent: true }
+          : !isGiven(options.idempotencyKey) && { replayUnsent: false }),
+      },
+      options,
+    );
+  }
+}
+
+/**
  * Messaging operations, exposed as `laylo.messages`.
  * @see https://developers.laylo.com/guides/sms
  */
@@ -80,11 +261,18 @@ export class Messages extends APIResource {
   readonly sms: SmsMessages;
 
   /**
+   * Segment messages: `laylo.messages.segments.send()` and
+   * `laylo.messages.segments.schedule()`.
+   */
+  readonly segments: SegmentMessages;
+
+  /**
    * @param context The client's shared transport, token provider, and default
    * customer.
    */
   constructor(context: ResourceContext) {
     super(context);
     this.sms = new SmsMessages(context);
+    this.segments = new SegmentMessages(context);
   }
 }

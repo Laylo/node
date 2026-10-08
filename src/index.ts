@@ -26,7 +26,15 @@ export type {
   SubscribeFanInput,
 } from "./resources/fans.js";
 export type { Keys } from "./resources/keys.js";
-export type { Messages, SmsMessages } from "./resources/messages.js";
+export type {
+  MessageSegmentInput,
+  Messages,
+  ScheduleSegmentMessageInput,
+  SegmentMessageOptions,
+  SegmentMessages,
+  SendSegmentMessageInput,
+  SmsMessages,
+} from "./resources/messages.js";
 export {
   AuthenticationError,
   BadRequestError,
@@ -58,9 +66,15 @@ export type {
   Drop,
   ListConversionCountsParams,
   ListConversionsParams,
+  MessageSegment,
+  ScheduleSegmentMessageRequest,
   SegmentCountResponse,
   SegmentFilters,
   SegmentLocation,
+  SegmentMessage,
+  SegmentMessageEstimate,
+  SegmentMessageTimezone,
+  SendSegmentMessageRequest,
   SendSmsRequest,
   SendSmsResponse,
   SkippedRecipient,

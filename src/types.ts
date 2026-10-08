@@ -215,3 +215,52 @@ export type SendSmsResponse = SuccessJson<operations["messages.sms.send"]>;
  * @see https://developers.laylo.com/records/skipped-recipient
  */
 export type SkippedRecipient = SendSmsResponse["skipped"][number];
+
+/**
+ * Request body for messaging a fan segment now: the `message`, the `segment`
+ * to send it to, and the `timezone` the message is written in.
+ * @see https://developers.laylo.com/api-reference/messages/messages.segments.send
+ */
+export type SendSegmentMessageRequest = RequestJson<
+  operations["messages.segments.send"]
+>;
+
+/**
+ * Request body for scheduling a message to a fan segment: the send-now body
+ * plus `sendAt`, a local date and time in `timezone` with no offset.
+ * @see https://developers.laylo.com/api-reference/messages/messages.segments.schedule
+ */
+export type ScheduleSegmentMessageRequest = RequestJson<
+  operations["messages.segments.schedule"]
+>;
+
+/**
+ * The filters picking which fans a segment message goes to. The same filters
+ * a segment count takes, except `signUpType` must be `"sms"`.
+ * @see https://developers.laylo.com/guides/segment-messages
+ */
+export type MessageSegment = SendSegmentMessageRequest["segment"];
+
+/**
+ * An IANA time zone a segment message can be written or scheduled in.
+ * @see https://developers.laylo.com/guides/segment-messages
+ */
+export type SegmentMessageTimezone = SendSegmentMessageRequest["timezone"];
+
+/**
+ * A message to a fan segment: its `id` (null for a dry run), when Laylo will
+ * send it (`sendAt`, ISO 8601 UTC), a human-readable `note`, and the
+ * `estimate` of what it costs.
+ * @see https://developers.laylo.com/records/segment-message
+ */
+export type SegmentMessage = SuccessJson<operations["messages.segments.send"]>;
+
+/**
+ * What a segment message is expected to cost, from the fans who match the
+ * segment at the time of the request: recipients and credits per channel,
+ * the total in credits and US dollars, and a `disclaimer` to show alongside.
+ * `costUsd` doesn't subtract free or prepaid credits, and fans counted under
+ * `emails` are also counted under a text channel, so it errs high.
+ * @see https://developers.laylo.com/records/segment-message-estimate
+ */
+export type SegmentMessageEstimate = SegmentMessage["estimate"];

@@ -187,6 +187,40 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
+    "/v1/messages/segments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Message a fan segment */
+        post: operations["messages.segments.send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/messages/segments/scheduled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Schedule a message to a fan segment */
+        post: operations["messages.segments.schedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/messages/sms": {
         parameters: {
             query?: never;
@@ -1660,7 +1694,7 @@ export interface operations {
                  */
                 excludedDropIds?: string[];
                 /**
-                 * @description Excluded locations as a JSON-encoded array of location objects.
+                 * @description Excluded locations as a JSON-encoded array of location objects. A fan is left out when every location Laylo has for them is excluded, matching who a segment message reaches; a fan with no known location is always left out.
                  * @example [
                  *       {
                  *         "country": "CA"
@@ -2835,6 +2869,897 @@ export interface operations {
                      *       "error": {
                      *         "code": "INTERNAL_ERROR",
                      *         "message": "An unexpected error occurred"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "messages.segments.send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A message, the segment to send it to, and the caller's time zone. Recipients are resolved when the message sends, so fans who join or leave the segment before then are included or skipped accordingly. Send an optional Idempotency-Key header (1-255 printable ASCII characters) to make retries safe: a repeat with the same key and body within 24 hours returns the first response instead of creating another message, the same key with a different body returns 422, and a repeat while the first request is still running returns 409. */
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "message": "Presale starts now: https://laylo.com/example",
+                 *       "segment": {
+                 *         "dropIds": [
+                 *           "drop_123"
+                 *         ],
+                 *         "locations": [
+                 *           {
+                 *             "country": "US"
+                 *           }
+                 *         ],
+                 *         "signUpType": "sms"
+                 *       },
+                 *       "timezone": "America/New_York"
+                 *     }
+                 */
+                "application/json": {
+                    /** @description Defaults to false. When true, nothing is created or sent: the request is validated like a real one, without the phishing screen, and the response shows the cost estimate, with a null id. A dry run doesn't use the Idempotency-Key. */
+                    dryRun?: boolean;
+                    /** @description The text to send, up to 1600 characters. The first link gets https:// added when it has no scheme. */
+                    message: string;
+                    /**
+                     * SegmentConfiguration
+                     * @description The same filters GET /v1/fans/segments counts with, as a JSON object, except only sms segments can be messaged. signedUpAfter and signedUpBefore can't both be sent, and at most 30 locations and excluded locations are allowed combined.
+                     */
+                    segment: {
+                        conversionIds?: string[];
+                        dropIds?: string[];
+                        excludedConversionIds?: string[];
+                        excludedDropIds?: string[];
+                        excludedLocations?: ({
+                            /** @description City name. */
+                            city: string;
+                            /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
+                            country: string;
+                            /** @description Miles around the city to include. */
+                            radius?: number;
+                            /** @description State or province code for the US, Canada, and Australia (e.g. `NY`, `ON`, `NSW`), or the region name elsewhere. */
+                            state: string;
+                        } | {
+                            /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
+                            country: string;
+                            /** @description State or province code for the US, Canada, and Australia (e.g. `NY`, `ON`, `NSW`), or the region name elsewhere. */
+                            state: string;
+                        } | {
+                            /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
+                            country: string;
+                        })[];
+                        locations?: ({
+                            /** @description City name. */
+                            city: string;
+                            /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
+                            country: string;
+                            /** @description Miles around the city to include. */
+                            radius?: number;
+                            /** @description State or province code for the US, Canada, and Australia (e.g. `NY`, `ON`, `NSW`), or the region name elsewhere. */
+                            state: string;
+                        } | {
+                            /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
+                            country: string;
+                            /** @description State or province code for the US, Canada, and Australia (e.g. `NY`, `ON`, `NSW`), or the region name elsewhere. */
+                            state: string;
+                        } | {
+                            /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
+                            country: string;
+                        })[];
+                        /**
+                         * Format: date-time
+                         * @description Sign-up time boundary, in ISO 8601 with an explicit UTC offset. A fan signs up when they first follow the customer.
+                         */
+                        signedUpAfter?: string;
+                        /**
+                         * Format: date-time
+                         * @description Sign-up time boundary, in ISO 8601 with an explicit UTC offset. A fan signs up when they first follow the customer.
+                         */
+                        signedUpBefore?: string;
+                        /**
+                         * @description Must be sms: only sms segments can be messaged.
+                         * @enum {string}
+                         */
+                        signUpType: "sms";
+                    };
+                    /**
+                     * Timezone
+                     * @description The IANA time zone the message is written in, used to read a time it mentions, like tomorrow at 2pm.
+                     * @enum {string}
+                     */
+                    timezone: "UTC" | "America/New_York" | "America/Chicago" | "America/Denver" | "America/Phoenix" | "America/Los_Angeles" | "America/Anchorage" | "Pacific/Honolulu" | "America/Halifax" | "America/St_Johns" | "America/Toronto" | "America/Vancouver" | "America/Mexico_City" | "America/Bogota" | "America/Lima" | "America/Santiago" | "America/Sao_Paulo" | "America/Argentina/Buenos_Aires" | "Europe/London" | "Europe/Dublin" | "Europe/Lisbon" | "Europe/Paris" | "Europe/Berlin" | "Europe/Madrid" | "Europe/Rome" | "Europe/Amsterdam" | "Europe/Brussels" | "Europe/Zurich" | "Europe/Vienna" | "Europe/Stockholm" | "Europe/Oslo" | "Europe/Copenhagen" | "Europe/Warsaw" | "Europe/Prague" | "Europe/Athens" | "Europe/Helsinki" | "Europe/Istanbul" | "Africa/Lagos" | "Africa/Johannesburg" | "Africa/Cairo" | "Africa/Nairobi" | "Asia/Dubai" | "Asia/Kolkata" | "Asia/Bangkok" | "Asia/Jakarta" | "Asia/Singapore" | "Asia/Manila" | "Asia/Hong_Kong" | "Asia/Shanghai" | "Asia/Seoul" | "Asia/Tokyo" | "Australia/Perth" | "Australia/Adelaide" | "Australia/Brisbane" | "Australia/Sydney" | "Australia/Melbourne" | "Pacific/Auckland";
+                };
+            };
+        };
+        responses: {
+            /** @description The message that was created, or for a dry run what would be, with its cost estimate. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "dryRun": false,
+                     *       "estimate": {
+                     *         "channels": {
+                     *           "domesticSms": {
+                     *             "credits": 2400,
+                     *             "creditsPerRecipient": 10,
+                     *             "recipients": 240
+                     *           },
+                     *           "emails": {
+                     *             "credits": 12,
+                     *             "creditsPerRecipient": 1,
+                     *             "recipients": 12
+                     *           },
+                     *           "internationalSms": {
+                     *             "credits": 375,
+                     *             "creditsPerRecipient": 25,
+                     *             "recipients": 15
+                     *           }
+                     *         },
+                     *         "costUsd": 5.57,
+                     *         "credits": 2787,
+                     *         "disclaimer": "This is an estimate from the fans who match the segment right now. The number of recipients and the cost can change until the message sends as fans subscribe and unsubscribe, and you are billed for the messages actually sent.",
+                     *         "recipients": 255,
+                     *         "smsSegments": 1
+                     *       },
+                     *       "id": "4b0d3a8e-6f3c-4c1e-9a55-0f7e2d8c1b2a",
+                     *       "note": "Message will start sending at sendAt, within the next few minutes",
+                     *       "sendAt": "2026-10-05T16:05:00.000Z"
+                     *     }
+                     */
+                    "application/json": {
+                        /** @description True when nothing was created or sent. */
+                        dryRun: boolean;
+                        /**
+                         * SegmentMessageEstimate
+                         * @description What the message is expected to cost, worked out the way the Laylo message composer does from the fans who match the segment at the time of the request.
+                         */
+                        estimate: {
+                            channels: {
+                                /** @description Fans with a US or Canadian phone number. */
+                                domesticSms: {
+                                    /** @description creditsPerRecipient times recipients. */
+                                    credits: number;
+                                    /** @description Credits for each recipient at the customer's prices, including any discount on their account. For texts this is the price per segment times smsSegments. */
+                                    creditsPerRecipient: number;
+                                    /** @description Fans currently counted on this channel. */
+                                    recipients: number;
+                                };
+                                /** @description Fans in the segment who also have an email address. They are counted here as well as under a text channel, so the estimate errs high. */
+                                emails: {
+                                    /** @description creditsPerRecipient times recipients. */
+                                    credits: number;
+                                    /** @description Credits for each recipient at the customer's prices, including any discount on their account. For texts this is the price per segment times smsSegments. */
+                                    creditsPerRecipient: number;
+                                    /** @description Fans currently counted on this channel. */
+                                    recipients: number;
+                                };
+                                /** @description Fans with a phone number outside the US and Canada. */
+                                internationalSms: {
+                                    /** @description creditsPerRecipient times recipients. */
+                                    credits: number;
+                                    /** @description Credits for each recipient at the customer's prices, including any discount on their account. For texts this is the price per segment times smsSegments. */
+                                    creditsPerRecipient: number;
+                                    /** @description Fans currently counted on this channel. */
+                                    recipients: number;
+                                };
+                            };
+                            /** @description credits converted to US dollars at the customer's credits-per-dollar rate, rounded to the cent. Free or prepaid credits on the account aren't subtracted. */
+                            costUsd: number;
+                            /** @description Total estimated credits across channels. */
+                            credits: number;
+                            /** @description A sentence to show people alongside the estimate: the count and cost can change until the message sends. Don't parse it. */
+                            disclaimer: string;
+                            /** @description Fans who currently match the segment. */
+                            recipients: number;
+                            /** @description SMS segments in each text as sent, after the tracked link and, unless the customer has their own sender, the name prefix and 'sent via Laylo' suffix are added. 160 GSM-7 or 70 Unicode characters fit in one segment; longer texts split at 153 or 67. */
+                            smsSegments: number;
+                        };
+                        /** @description Opaque Laylo message identifier. Null for a dry run. */
+                        id: string | null;
+                        /** @description A sentence about the send for people to read, such as a reminder that recipients are worked out when it sends. Don't parse it. */
+                        note: string;
+                        /**
+                         * Format: date-time
+                         * @description When Laylo will send the message, in ISO 8601 UTC. Messages go out on a five-minute schedule, so this can be a few minutes after the requested time.
+                         */
+                        sendAt: string;
+                    };
+                };
+            };
+            /** @description The request body is malformed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "BAD_REQUEST",
+                     *         "message": "Invalid request body"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The integrator credential or customer API key is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "UNAUTHORIZED",
+                     *         "message": "Invalid Customer API Key"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The named customer account has no paid Laylo plan or is locked, the integrator sent an X-Creator-Id for an account outside its roster, or a customer API key was sent alone to an endpoint that requires integrator credentials or a permission the key does not have. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "FORBIDDEN",
+                     *         "message": "Customer account does not have a paid Laylo plan"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description No route matches the requested path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "NOT_FOUND",
+                     *         "message": "Route not found"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The path exists, but the HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "METHOD_NOT_ALLOWED",
+                     *         "message": "Method not allowed"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The request conflicts with the current resource state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "CONFLICT",
+                     *         "message": "Resource state conflicts with this request"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The request is well formed but can't be processed as sent, such as an Idempotency-Key reused with a different request. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "UNPROCESSABLE_ENTITY",
+                     *         "message": "Idempotency-Key reused with a different request"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The rate limit for this integrator and customer pair, or for a customer calling with only their API key, is exceeded. */
+            429: {
+                headers: {
+                    /** @description Seconds until the current rate-limit window resets. */
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "RATE_LIMIT_EXCEEDED",
+                     *         "details": {
+                     *           "retryAfter": 30
+                     *         },
+                     *         "message": "Too many requests. Please try again later."
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INTERNAL_ERROR",
+                     *         "message": "An unexpected error occurred"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description A dependency this operation needs is briefly unavailable, so nothing was done. Retry with backoff. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "SERVICE_UNAVAILABLE",
+                     *         "message": "Couldn't estimate what this message would cost, so it wasn't sent. Try again shortly."
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "messages.segments.schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description A message, the segment to send it to, and when to send it. Recipients are resolved when the message sends, not when it is scheduled. Send an optional Idempotency-Key header (1-255 printable ASCII characters) to make retries safe: a repeat with the same key and body within 24 hours returns the first response instead of creating another message, the same key with a different body returns 422, and a repeat while the first request is still running returns 409. */
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "message": "Tickets go on sale tomorrow: https://laylo.com/example",
+                 *       "segment": {
+                 *         "signUpType": "sms"
+                 *       },
+                 *       "sendAt": "2026-11-20T19:00",
+                 *       "timezone": "America/New_York"
+                 *     }
+                 */
+                "application/json": {
+                    /** @description Defaults to false. When true, nothing is created or sent: the request is validated like a real one, without the phishing screen, and the response shows the cost estimate, with a null id. A dry run doesn't use the Idempotency-Key. */
+                    dryRun?: boolean;
+                    /** @description The text to send, up to 1600 characters. The first link gets https:// added when it has no scheme. */
+                    message: string;
+                    /**
+                     * SegmentConfiguration
+                     * @description The same filters GET /v1/fans/segments counts with, as a JSON object, except only sms segments can be messaged. signedUpAfter and signedUpBefore can't both be sent, and at most 30 locations and excluded locations are allowed combined.
+                     */
+                    segment: {
+                        conversionIds?: string[];
+                        dropIds?: string[];
+                        excludedConversionIds?: string[];
+                        excludedDropIds?: string[];
+                        excludedLocations?: ({
+                            /** @description City name. */
+                            city: string;
+                            /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
+                            country: string;
+                            /** @description Miles around the city to include. */
+                            radius?: number;
+                            /** @description State or province code for the US, Canada, and Australia (e.g. `NY`, `ON`, `NSW`), or the region name elsewhere. */
+                            state: string;
+                        } | {
+                            /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
+                            country: string;
+                            /** @description State or province code for the US, Canada, and Australia (e.g. `NY`, `ON`, `NSW`), or the region name elsewhere. */
+                            state: string;
+                        } | {
+                            /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
+                            country: string;
+                        })[];
+                        locations?: ({
+                            /** @description City name. */
+                            city: string;
+                            /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
+                            country: string;
+                            /** @description Miles around the city to include. */
+                            radius?: number;
+                            /** @description State or province code for the US, Canada, and Australia (e.g. `NY`, `ON`, `NSW`), or the region name elsewhere. */
+                            state: string;
+                        } | {
+                            /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
+                            country: string;
+                            /** @description State or province code for the US, Canada, and Australia (e.g. `NY`, `ON`, `NSW`), or the region name elsewhere. */
+                            state: string;
+                        } | {
+                            /** @description ISO 3166-1 alpha-2 code, e.g. `US`. A full country name also works. */
+                            country: string;
+                        })[];
+                        /**
+                         * Format: date-time
+                         * @description Sign-up time boundary, in ISO 8601 with an explicit UTC offset. A fan signs up when they first follow the customer.
+                         */
+                        signedUpAfter?: string;
+                        /**
+                         * Format: date-time
+                         * @description Sign-up time boundary, in ISO 8601 with an explicit UTC offset. A fan signs up when they first follow the customer.
+                         */
+                        signedUpBefore?: string;
+                        /**
+                         * @description Must be sms: only sms segments can be messaged.
+                         * @enum {string}
+                         */
+                        signUpType: "sms";
+                    };
+                    /** @description When to send, as the local date and time in timezone with no offset, like 2026-11-20T19:00. Must be at least 5 minutes and at most 2 years from now, and is rounded up to the next five-minute mark. */
+                    sendAt: string;
+                    /**
+                     * Timezone
+                     * @description The IANA time zone sendAt is written in. Daylight saving is applied for the date: a time skipped when clocks spring forward is rejected, and a time repeated when they fall back uses the first occurrence.
+                     * @enum {string}
+                     */
+                    timezone: "UTC" | "America/New_York" | "America/Chicago" | "America/Denver" | "America/Phoenix" | "America/Los_Angeles" | "America/Anchorage" | "Pacific/Honolulu" | "America/Halifax" | "America/St_Johns" | "America/Toronto" | "America/Vancouver" | "America/Mexico_City" | "America/Bogota" | "America/Lima" | "America/Santiago" | "America/Sao_Paulo" | "America/Argentina/Buenos_Aires" | "Europe/London" | "Europe/Dublin" | "Europe/Lisbon" | "Europe/Paris" | "Europe/Berlin" | "Europe/Madrid" | "Europe/Rome" | "Europe/Amsterdam" | "Europe/Brussels" | "Europe/Zurich" | "Europe/Vienna" | "Europe/Stockholm" | "Europe/Oslo" | "Europe/Copenhagen" | "Europe/Warsaw" | "Europe/Prague" | "Europe/Athens" | "Europe/Helsinki" | "Europe/Istanbul" | "Africa/Lagos" | "Africa/Johannesburg" | "Africa/Cairo" | "Africa/Nairobi" | "Asia/Dubai" | "Asia/Kolkata" | "Asia/Bangkok" | "Asia/Jakarta" | "Asia/Singapore" | "Asia/Manila" | "Asia/Hong_Kong" | "Asia/Shanghai" | "Asia/Seoul" | "Asia/Tokyo" | "Australia/Perth" | "Australia/Adelaide" | "Australia/Brisbane" | "Australia/Sydney" | "Australia/Melbourne" | "Pacific/Auckland";
+                };
+            };
+        };
+        responses: {
+            /** @description The message that was created, or for a dry run what would be, with its cost estimate. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "dryRun": false,
+                     *       "estimate": {
+                     *         "channels": {
+                     *           "domesticSms": {
+                     *             "credits": 2400,
+                     *             "creditsPerRecipient": 10,
+                     *             "recipients": 240
+                     *           },
+                     *           "emails": {
+                     *             "credits": 12,
+                     *             "creditsPerRecipient": 1,
+                     *             "recipients": 12
+                     *           },
+                     *           "internationalSms": {
+                     *             "credits": 375,
+                     *             "creditsPerRecipient": 25,
+                     *             "recipients": 15
+                     *           }
+                     *         },
+                     *         "costUsd": 5.57,
+                     *         "credits": 2787,
+                     *         "disclaimer": "This is an estimate from the fans who match the segment right now. The number of recipients and the cost can change until the message sends as fans subscribe and unsubscribe, and you are billed for the messages actually sent.",
+                     *         "recipients": 255,
+                     *         "smsSegments": 1
+                     *       },
+                     *       "id": "4b0d3a8e-6f3c-4c1e-9a55-0f7e2d8c1b2a",
+                     *       "note": "Number of fans to message can change between now and the scheduled message time as fans matching the segments join and unsubscribe.",
+                     *       "sendAt": "2026-11-21T00:00:00.000Z"
+                     *     }
+                     */
+                    "application/json": {
+                        /** @description True when nothing was created or sent. */
+                        dryRun: boolean;
+                        /**
+                         * SegmentMessageEstimate
+                         * @description What the message is expected to cost, worked out the way the Laylo message composer does from the fans who match the segment at the time of the request.
+                         */
+                        estimate: {
+                            channels: {
+                                /** @description Fans with a US or Canadian phone number. */
+                                domesticSms: {
+                                    /** @description creditsPerRecipient times recipients. */
+                                    credits: number;
+                                    /** @description Credits for each recipient at the customer's prices, including any discount on their account. For texts this is the price per segment times smsSegments. */
+                                    creditsPerRecipient: number;
+                                    /** @description Fans currently counted on this channel. */
+                                    recipients: number;
+                                };
+                                /** @description Fans in the segment who also have an email address. They are counted here as well as under a text channel, so the estimate errs high. */
+                                emails: {
+                                    /** @description creditsPerRecipient times recipients. */
+                                    credits: number;
+                                    /** @description Credits for each recipient at the customer's prices, including any discount on their account. For texts this is the price per segment times smsSegments. */
+                                    creditsPerRecipient: number;
+                                    /** @description Fans currently counted on this channel. */
+                                    recipients: number;
+                                };
+                                /** @description Fans with a phone number outside the US and Canada. */
+                                internationalSms: {
+                                    /** @description creditsPerRecipient times recipients. */
+                                    credits: number;
+                                    /** @description Credits for each recipient at the customer's prices, including any discount on their account. For texts this is the price per segment times smsSegments. */
+                                    creditsPerRecipient: number;
+                                    /** @description Fans currently counted on this channel. */
+                                    recipients: number;
+                                };
+                            };
+                            /** @description credits converted to US dollars at the customer's credits-per-dollar rate, rounded to the cent. Free or prepaid credits on the account aren't subtracted. */
+                            costUsd: number;
+                            /** @description Total estimated credits across channels. */
+                            credits: number;
+                            /** @description A sentence to show people alongside the estimate: the count and cost can change until the message sends. Don't parse it. */
+                            disclaimer: string;
+                            /** @description Fans who currently match the segment. */
+                            recipients: number;
+                            /** @description SMS segments in each text as sent, after the tracked link and, unless the customer has their own sender, the name prefix and 'sent via Laylo' suffix are added. 160 GSM-7 or 70 Unicode characters fit in one segment; longer texts split at 153 or 67. */
+                            smsSegments: number;
+                        };
+                        /** @description Opaque Laylo message identifier. Null for a dry run. */
+                        id: string | null;
+                        /** @description A sentence about the send for people to read, such as a reminder that recipients are worked out when it sends. Don't parse it. */
+                        note: string;
+                        /**
+                         * Format: date-time
+                         * @description When Laylo will send the message, in ISO 8601 UTC. Messages go out on a five-minute schedule, so this can be a few minutes after the requested time.
+                         */
+                        sendAt: string;
+                    };
+                };
+            };
+            /** @description The request body is malformed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "BAD_REQUEST",
+                     *         "message": "Invalid request body"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The integrator credential or customer API key is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "UNAUTHORIZED",
+                     *         "message": "Invalid Customer API Key"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The named customer account has no paid Laylo plan or is locked, the integrator sent an X-Creator-Id for an account outside its roster, or a customer API key was sent alone to an endpoint that requires integrator credentials or a permission the key does not have. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "FORBIDDEN",
+                     *         "message": "Customer account does not have a paid Laylo plan"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description No route matches the requested path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "NOT_FOUND",
+                     *         "message": "Route not found"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The path exists, but the HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "METHOD_NOT_ALLOWED",
+                     *         "message": "Method not allowed"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The request conflicts with the current resource state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "CONFLICT",
+                     *         "message": "Resource state conflicts with this request"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The request is well formed but can't be processed as sent, such as an Idempotency-Key reused with a different request. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "UNPROCESSABLE_ENTITY",
+                     *         "message": "Idempotency-Key reused with a different request"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The rate limit for this integrator and customer pair, or for a customer calling with only their API key, is exceeded. */
+            429: {
+                headers: {
+                    /** @description Seconds until the current rate-limit window resets. */
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "RATE_LIMIT_EXCEEDED",
+                     *         "details": {
+                     *           "retryAfter": 30
+                     *         },
+                     *         "message": "Too many requests. Please try again later."
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INTERNAL_ERROR",
+                     *         "message": "An unexpected error occurred"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description A dependency this operation needs is briefly unavailable, so nothing was done. Retry with backoff. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "SERVICE_UNAVAILABLE",
+                     *         "message": "Couldn't estimate what this message would cost, so it wasn't sent. Try again shortly."
                      *       }
                      *     }
                      */

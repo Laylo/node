@@ -7,7 +7,8 @@ endpoint except `POST /v1/auth/token` needs either:
   acts as the key's own account, is limited to 20 requests a minute per
   account, and can't use `X-Creator-Id`. It also needs the key to have the
   endpoint's permission: "write" for `POST /v1/fans/subscriptions`,
-  `POST /v1/conversions/events`, and `POST /v1/messages/sms`, "read" for the
+  `POST /v1/conversions/events`, `POST /v1/messages/sms`, and both
+  `POST /v1/messages/segments` routes, "read" for the
   rest except `GET /v1/keys/verify`, which needs none. "write" doesn't grant
   "read", and a key with none stored can only read (an empty list allows only
   key verification). A missing one returns 403 `FORBIDDEN`
@@ -305,6 +306,98 @@ string), with a reason of `not_subscribed`, `duplicate`, or `queue_failed`.
 Messages are billed per SMS segment (160 plain characters, 70 with emoji), and numbers outside +1 bill at the international rate. An invalid number, or one
 in a country Laylo doesn't send SMS to, returns 400 and sends nothing. 409
 means the customer has no Laylo phone number to send from.
+
+## POST /v1/messages/segments
+
+```json
+{
+  "message": "Presale starts now: https://laylo.com/example",
+  "segment": {
+    "signUpType": "sms",
+    "dropIds": ["drop_123"],
+    "locations": [{ "city": "Los Angeles", "state": "CA", "country": "US" }]
+  },
+  "timezone": "America/Los_Angeles"
+}
+```
+
+Texts every fan in `segment` within about five minutes. `segment` takes the
+same filters as `GET /v1/fans/segments`, as a JSON object with locations as
+plain objects, but `signUpType` must be `sms`, only one of `signedUpAfter`
+and `signedUpBefore` can be sent, and at most 30 locations and excluded
+locations are allowed combined. The segment matches the same fans as the
+count. Every drop and conversion id must belong to the customer. `timezone`
+is an IANA zone used to read a time the message mentions; only the 57 zones
+in the API reference's enum are accepted. Recipients are
+worked out when the message sends.
+
+```json
+{
+  "dryRun": false,
+  "estimate": {
+    "channels": {
+      "domesticSms": {
+        "credits": 2400,
+        "creditsPerRecipient": 10,
+        "recipients": 240
+      },
+      "emails": { "credits": 12, "creditsPerRecipient": 1, "recipients": 12 },
+      "internationalSms": {
+        "credits": 375,
+        "creditsPerRecipient": 25,
+        "recipients": 15
+      }
+    },
+    "costUsd": 5.57,
+    "credits": 2787,
+    "disclaimer": "This is an estimate from the fans who match the segment right now. …",
+    "recipients": 255,
+    "smsSegments": 1
+  },
+  "id": "4b0d3a8e-6f3c-4c1e-9a55-0f7e2d8c1b2a",
+  "note": "Message will start sending at sendAt, within the next few minutes",
+  "sendAt": "2026-11-20T19:05:00.000Z"
+}
+```
+
+`note` and `disclaimer` are for people to read; don't parse them. `sendAt` is
+ISO 8601 UTC. `estimate` comes from the fans who match the segment right now;
+`emails` counts fans who are also counted under a text channel, so it errs
+high, and `costUsd` doesn't subtract free or prepaid credits.
+
+Add `"dryRun": true` to either route to validate the request and get the
+estimate without sending: nothing is created, `id` is null, the phishing
+screen is skipped, and the `Idempotency-Key` is ignored. A
+`503 SERVICE_UNAVAILABLE` means the estimate couldn't be worked out and
+nothing was sent; retry with backoff.
+
+## POST /v1/messages/segments/scheduled
+
+The same body plus `sendAt`, the local date and time in `timezone` with no
+offset:
+
+```json
+{
+  "message": "Tickets go on sale tomorrow: https://laylo.com/example",
+  "segment": { "signUpType": "sms" },
+  "sendAt": "2026-11-20T19:00",
+  "timezone": "America/New_York"
+}
+```
+
+`sendAt` must be 5 minutes to 2 years away and is rounded up to the next
+five-minute mark. A time skipped by daylight saving returns 400; a repeated
+one uses the first occurrence. The response matches the send-now route.
+
+Both routes take an optional `Idempotency-Key` header (1 to 255 printable
+ASCII characters). A repeat with the same key and body within 24 hours
+returns the first response, the same key with a different body returns 422,
+and a repeat while the first is still running returns 409. Don't resend under
+a new key after a 409: the first attempt will probably send. If it never
+finishes, the key frees up after a minute and the next request with it sends
+again. A message flagged
+as possible phishing or scam content returns 403, isn't sent, and locks the
+account for review.
 
 ## Conversion actions
 

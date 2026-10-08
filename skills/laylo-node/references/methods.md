@@ -53,7 +53,8 @@ their environment variables off for all three; passing them as `undefined`
 with none in the environment is also a construction error.
 
 Each key-only call also needs a permission on the key: "write" for
-`fans.subscribe`, `conversions.events.track`, and `messages.sms.send`, "read"
+`fans.subscribe`, `conversions.events.track`, `messages.sms.send`, and
+`messages.segments.send` / `.schedule`, "read"
 for everything else except `keys.verify()`, which needs none. "write" doesn't
 grant "read", and a key with none stored can only read (an empty list allows
 only `keys.verify()`). A missing one throws `PermissionError`
@@ -285,6 +286,92 @@ type SendSmsResponse = {
 ```
 
 It isn't retried on a 5xx. Retrying only the `queue_failed` recipients is safe.
+
+## messages.segments.send(input) / messages.segments.schedule(input)
+
+```ts
+type SendSegmentMessageInput = {
+  message: string; // up to 1,600 characters
+  segment: {
+    signUpType: "sms"; // required; only SMS segments can be messaged
+    dropIds?: string[];
+    excludedDropIds?: string[];
+    conversionIds?: string[];
+    excludedConversionIds?: string[];
+    locations?: SegmentLocation[];
+    excludedLocations?: SegmentLocation[];
+    signedUpAfter?: Date | string; // send at most one of these two
+    signedUpBefore?: Date | string;
+  };
+  timezone: SegmentMessageTimezone; // one of 57 IANA zones, like "America/New_York"
+  dryRun?: boolean; // true: validate and estimate the cost, send nothing
+};
+
+type ScheduleSegmentMessageInput = SendSegmentMessageInput & {
+  sendAt: string; // local time in `timezone`, no offset: "2026-11-20T19:00"
+};
+```
+
+`send` goes out within about five minutes. `schedule` needs `sendAt` at least
+5 minutes and at most 2 years away and rounds it up to the next five-minute
+mark. A time skipped by daylight saving is rejected. The segment uses the
+same filters as `fans.segments.count` and matches the same fans. Every drop
+and conversion id must belong to the customer. Recipients are worked out when
+the message sends.
+
+`dryRun: true` validates the request like a real one and returns the
+estimate without creating or sending anything. It skips the phishing screen,
+so only a real send can be flagged, and it ignores the idempotency key.
+
+A segment that isn't `"sms"`, or one with both `signedUpAfter` and
+`signedUpBefore`, throws `LayloConfigurationError` before any request. A bad field, id, location, `timezone`, or `sendAt` throws
+`BadRequestError`. A message flagged as possible phishing or scam content
+throws `PermissionError`, isn't sent, and locks the account for review. If
+Laylo can't work out the estimate it throws `ServerError` (503) and nothing is
+sent; with an idempotency key the SDK retries it.
+
+Returns:
+
+```ts
+type SegmentMessage = {
+  id: string | null; // null for a dry run
+  dryRun: boolean;
+  note: string; // for people to read; don't parse it
+  sendAt: string; // ISO 8601 UTC
+  estimate: {
+    recipients: number; // fans who match the segment right now
+    smsSegments: number; // per text, after the link, name, and suffix are added
+    credits: number;
+    costUsd: number; // free or prepaid credits aren't subtracted
+    disclaimer: string; // show it alongside the numbers; don't parse it
+    channels: {
+      domesticSms: EstimateChannel; // US and Canadian numbers
+      internationalSms: EstimateChannel;
+      emails: EstimateChannel; // also counted under a text channel
+    };
+  };
+};
+
+type EstimateChannel = {
+  recipients: number;
+  creditsPerRecipient: number; // texts: the account's per-segment price × smsSegments
+  credits: number;
+};
+```
+
+Pass `{ idempotencyKey }` (1 to 255 printable ASCII characters, no space at
+either end) in the options to make it safe to retry: a repeat with the same
+key and body within 24 hours returns the first response. With a key the SDK
+retries a 5xx, a dropped connection, and a 409 from an attempt that hasn't
+finished. A `ConflictError` after that means the first attempt is still
+running and will probably send; don't retry under a new key. Calling again
+with the same key returns its response once it finishes, but if it never
+finishes the key frees up after a minute and the next call sends again. A
+dry run is retried like a read, with or without a key. A timeout is never retried
+automatically, so retry it with the same key. The same key with a different
+body throws a 422 `LayloAPIError`, and a malformed key throws
+`LayloConfigurationError` before any request. Without a key it isn't retried
+on a 5xx or a dropped connection.
 
 ## auth.createToken()
 

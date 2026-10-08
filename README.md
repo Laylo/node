@@ -148,7 +148,7 @@ for the full model.
    drops and fans before onboarding anyone else.
 
 Writes made this way are live. Integrator calls aren't limited by the key's
-permissions, so `messages.sms.send` texts your real fans and
+permissions, so `messages.sms.send` and `messages.segments` text your real fans and
 `fans.subscribe` and `conversions.events.track` create real records. Stick
 to reads, or send only to your own number, until you mean it.
 
@@ -188,7 +188,8 @@ access token. Compared with integrator credentials:
   `LayloConfigurationError` without sending a request, since there's no
   integrator roster to list or token to mint.
 - The key's own permissions apply. Writes (`fans.subscribe`,
-  `conversions.events.track`, `messages.sms.send`) need "write"; everything
+  `conversions.events.track`, `messages.sms.send`, `messages.segments.send`,
+  `messages.segments.schedule`) need "write"; everything
   else, including `fans.isSubscribed` and `fans.isUnsubscribed`, needs "read",
   except `keys.verify()`, which any valid key can call. The two are
   independent, so "write" doesn't grant "read". A key with no permissions
@@ -547,6 +548,65 @@ is the one exception — it only accepts `signal`).
   }
   ```
 
+- [`messages.segments.send(input, options?)`](https://developers.laylo.com/api-reference/messages/messages.segments.send) —
+  texts `message` to every fan in `segment` within the next few minutes. The
+  segment takes the same filters as `fans.segments.count`, as long as
+  `signUpType` is `"sms"`. `timezone` is the IANA zone the message is
+  written in, one of the zones in `SegmentMessageTimezone`. Recipients are worked out when the message sends, and only
+  fans currently subscribed by SMS are texted. It resolves to
+  `{ id, note, sendAt, dryRun, estimate }`, with `sendAt` in UTC and
+  `estimate` giving the recipients, credits, and `costUsd` from the fans who
+  match right now. `costUsd` doesn't subtract free or prepaid credits, and
+  fans counted under `emails` are also counted under a text channel, so it
+  errs high. Pass `dryRun: true` to get that estimate without sending
+  anything; `id` is then null.
+- [`messages.segments.schedule(input, options?)`](https://developers.laylo.com/api-reference/messages/messages.segments.schedule) —
+  the same, sent at `sendAt`: a local date and time in `timezone` with no
+  offset, like `"2026-11-20T19:00"`, at least 5 minutes and at most 2 years
+  away. It's rounded up to the next five-minute mark.
+
+  Both are writes, so they aren't retried on a server error or a dropped
+  connection unless you pass an `idempotencyKey` in the options. With one, a repeat within 24 hours
+  returns the first response instead of sending the message twice, and the
+  SDK retries server errors and dropped connections itself. A timeout isn't
+  retried; call again with the same key. A `ConflictError` with a key means
+  the first attempt is still running and will probably send, so don't retry
+  under a new key. If that attempt never finishes, the key frees up after a
+  minute and a call with it sends again. A dry run ignores the key, so the
+  real send can reuse it, and is retried like a read. `signedUpAfter` and `signedUpBefore` can't be combined
+  when messaging.
+
+  ```ts
+  import Laylo, { type ScheduleSegmentMessageInput } from "@laylo.com/node";
+
+  const laylo = new Laylo({
+    userId: process.env.LAYLO_USER_ID,
+    accessKey: process.env.LAYLO_ACCESS_KEY,
+    secretKey: process.env.LAYLO_SECRET_KEY,
+    apiKey: process.env.LAYLO_API_KEY,
+  });
+
+  const message: ScheduleSegmentMessageInput = {
+    message: "Tickets go on sale tomorrow: https://laylo.com/example",
+    segment: { signUpType: "sms", dropIds: ["drop_123"] },
+    sendAt: "2026-11-20T19:00",
+    timezone: "America/New_York",
+  };
+
+  const { estimate } = await laylo.messages.segments.schedule({
+    ...message,
+    dryRun: true,
+  });
+  console.log(
+    `About ${String(estimate.recipients)} fans, $${String(estimate.costUsd)}`,
+  );
+  console.log(estimate.disclaimer);
+
+  const { sendAt } = await laylo.messages.segments.schedule(message, {
+    idempotencyKey: "tour-onsale-2026-11-20",
+  });
+  ```
+
 The SDK mints and refreshes access tokens for you, but `laylo.auth.createToken()`
 is available if you need a raw bearer token to call the API outside the SDK.
 It needs integrator credentials; with only an API key, send the key as
@@ -605,9 +665,11 @@ A response with status `408`, `429`, `500`, `502`, `503`, or `504` is retried
 automatically with exponential backoff, up to `DEFAULT_MAX_RETRIES` (2)
 times. A `429` is retried regardless of method; the other statuses are only
 retried for idempotent requests — reads, and writes the SDK itself marks
-idempotent, such as `fans.isSubscribed` and `fans.isUnsubscribed`. A
-non-idempotent write like `conversions.events.track` or `fans.subscribe` is
-not replayed on a `5xx`, since the server may already have applied it. Each
+idempotent, such as `fans.isSubscribed` and `fans.isUnsubscribed`, and
+`messages.segments` calls given an `idempotencyKey` (which also retry a `409`
+from an attempt that hasn't finished). A non-idempotent write like
+`conversions.events.track` or `fans.subscribe` is not replayed on a `5xx`,
+since the server may already have applied it. Each
 request also has a `DEFAULT_TIMEOUT_MS` (30,000ms) timeout.
 
 `maxRetries` and the default `timeoutMs` are set once, on the client. Per
