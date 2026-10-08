@@ -241,10 +241,8 @@ export class SegmentMessages extends APIResource {
           segment: { ...segment, ...isoSignUpBounds(segment, "segment.") },
         },
         idempotencyKey: options.idempotencyKey,
-        // A dry run creates nothing, so it's as safe to retry as a read. A
-        // send without a key can't be deduplicated, and a dropped connection
-        // may still have reached the server, so resending could text the
-        // whole segment twice.
+        // An unkeyed resend after a dropped connection could text the whole
+        // segment twice.
         ...(input.dryRun === true
           ? { idempotent: true }
           : !isGiven(options.idempotencyKey) && { replayUnsent: false }),
