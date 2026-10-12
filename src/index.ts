@@ -72,6 +72,7 @@ export type {
   SegmentFilters,
   SegmentLocation,
   SegmentMessage,
+  SegmentMessageEmail,
   SegmentMessageEstimate,
   SegmentMessageTimezone,
   SendSegmentMessageRequest,

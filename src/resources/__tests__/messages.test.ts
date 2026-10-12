@@ -206,16 +206,57 @@ describe("Messages", () => {
       });
     });
 
-    it("refuses a segment that isn't sms before any request", async () => {
+    it("sends an email segment with its email details", async () => {
+      const { context, apiCalls } = fakeContext([json(200, created)], {
+        apiKey: "customer-key-1",
+      });
+      const emailPresale: SendSegmentMessageInput = {
+        ...presale,
+        segment: { signUpType: "email", dropIds: ["drop_123"] },
+        email: {
+          subject: "The presale is live",
+          ctaUrl: "https://tickets.example.com/presale",
+          ctaText: "Get Tickets",
+        },
+      };
+
+      await new Messages(context).segments.send(emailPresale);
+
+      expect(bodyOf(apiCalls()[0])).toEqual(emailPresale);
+    });
+
+    it("refuses a segment that isn't sms or email before any request", async () => {
+      const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
+      const pushSegment = {
+        ...presale,
+        segment: { signUpType: "push" },
+      } as unknown as SendSegmentMessageInput;
+
+      await expect(
+        new Messages(context).segments.send(pushSegment),
+      ).rejects.toThrow(LayloConfigurationError);
+      expect(calls).toHaveLength(0);
+    });
+
+    it("refuses an email segment without email, or email on sms, before any request", async () => {
       const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
       const segments = new Messages(context).segments;
-      const emailSegment = {
+      const subject = { subject: "The presale is live" };
+
+      const emailWithoutDetails = {
         ...presale,
         segment: { signUpType: "email" },
       } as unknown as SendSegmentMessageInput;
+      const smsWithEmail = {
+        ...presale,
+        email: subject,
+      } as unknown as SendSegmentMessageInput;
 
-      await expect(segments.send(emailSegment)).rejects.toThrow(
-        LayloConfigurationError,
+      await expect(segments.send(emailWithoutDetails)).rejects.toThrow(
+        'email is required when segment.signUpType is "email"',
+      );
+      await expect(segments.send(smsWithEmail)).rejects.toThrow(
+        "email can only be sent with an email segment",
       );
       expect(calls).toHaveLength(0);
     });

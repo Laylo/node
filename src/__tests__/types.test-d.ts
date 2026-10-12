@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, test } from "vitest";
 
 import type { CountFansInput, SubscribeFanInput } from "../resources/fans.js";
+import type { SendSegmentMessageInput } from "../resources/messages.js";
 import type {
   Contact,
   Conversion,
@@ -197,6 +198,20 @@ describe("request aliases", () => {
       emailMarketingConsent: true;
       consentGrantedAt: Date;
     }>().not.toMatchTypeOf<SubscribeFanInput>();
+  });
+
+  test("SendSegmentMessageInput requires email for an email segment and refuses it for sms", () => {
+    type Base = { message: string; timezone: "America/New_York" };
+    type Email = { subject: string };
+    expectTypeOf<
+      Base & { segment: { signUpType: "email" }; email: Email }
+    >().toMatchTypeOf<SendSegmentMessageInput>();
+    expectTypeOf<
+      Base & { segment: { signUpType: "email" } }
+    >().not.toMatchTypeOf<SendSegmentMessageInput>();
+    expectTypeOf<
+      Base & { segment: { signUpType: "sms" }; email: Email }
+    >().not.toMatchTypeOf<SendSegmentMessageInput>();
   });
 });
 

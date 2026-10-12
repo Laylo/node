@@ -31,8 +31,8 @@ are in [references/endpoints.md](references/endpoints.md).
 | `GET /v1/fans/segments`                | How many fans match a segment (channel, drops, place, date)?   |
 | `POST /v1/fans/subscriptions`          | Subscribe a fan with a consent record, optionally RSVP (write) |
 | `POST /v1/messages/sms`                | Text up to 200 subscribed phone numbers (write)                |
-| `POST /v1/messages/segments`           | Text every SMS fan in a segment, now (write)                   |
-| `POST /v1/messages/segments/scheduled` | Text every SMS fan in a segment at a set local time (write)    |
+| `POST /v1/messages/segments`           | Text or email every fan in a segment, now (write)              |
+| `POST /v1/messages/segments/scheduled` | Text or email a segment at a set local time (write)            |
 
 (\*) Needs integrator credentials; with only an API key it returns 403.
 
@@ -67,8 +67,9 @@ haven't seen here. The ones that are easiest to get wrong:
   array of up to 200), and returns `{ "queued": 1, "skipped": [{ "index": 1,
 "reason": "not_subscribed" }] }`.
 - `POST /v1/messages/segments` takes `message`, `segment` (the segment
-  count's filters as a JSON object, with `signUpType: "sms"` and `locations`
-  as plain objects), and `timezone`. `POST /v1/messages/segments/scheduled`
+  count's filters as a JSON object, with `signUpType` `sms` or `email` and
+  `locations` as plain objects), and `timezone`. An email segment also needs
+  `email: { subject, ctaUrl?, ctaText? }`. `POST /v1/messages/segments/scheduled`
   adds `sendAt`, a local time in `timezone` with no offset
   (`"2026-11-20T19:00"`). Both return `id`, `note`, `sendAt`, `dryRun`, and
   `estimate`, which has the recipients, credits, and `costUsd`. Add
@@ -119,7 +120,7 @@ request except the token mint carries two things:
    card on the same page and send it as `X-Api-Key`, so calls act on their
    own account. Warn them that writes made this way are live and not limited
    by the key's permissions: `POST /v1/messages/sms` and
-   `POST /v1/messages/segments` text their real fans.
+   `POST /v1/messages/segments` text or email their real fans.
 2. **The customer**, meaning the Laylo account the call acts on, in exactly
    one header:
    - `X-Api-Key: <key>`. The account owner generates the key at
@@ -280,8 +281,8 @@ Common mappings:
   the program. Never write it to a file, including temp files.
 - **Confirm writes first.** `POST /v1/fans/subscriptions`,
   `POST /v1/conversions/events`, `POST /v1/messages/sms`, and the
-  `POST /v1/messages/segments` routes change real fan data or text real
-  people. Show the user the exact request body, and for a segment message
+  `POST /v1/messages/segments` routes change real fan data or text or email
+  real people. Show the user the exact request body, and for a segment message
   the estimated recipients and cost from a dry run, and get a yes before
   sending any of them to a live account. Reads,
   including the two `POST` subscription checks, can run freely.

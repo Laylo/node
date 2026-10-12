@@ -30,8 +30,8 @@ trailing `RequestOptions` (`apiKey`, `creatorId`, `signal`, `timeoutMs`,
 | `fans.segments.count(filters)`      | How many fans match a segment (channel, drops, place, date)?      |
 | `fans.subscribe(fan)`               | Subscribe a fan with a consent record, optionally RSVP (write)    |
 | `messages.sms.send(sms)`            | Text up to 200 subscribed phone numbers (write)                   |
-| `messages.segments.send(input)`     | Text every SMS fan in a segment, now (write)                      |
-| `messages.segments.schedule(input)` | Text every SMS fan in a segment at a set local time (write)       |
+| `messages.segments.send(input)`     | Text or email every fan in a segment, now (write)                 |
+| `messages.segments.schedule(input)` | Text or email a segment at a set local time (write)               |
 | `auth.createToken()`                | A raw bearer token, only for calling the API outside the SDK (\*) |
 
 (\*) Needs integrator credentials. On a client with only an API key, both
@@ -66,8 +66,9 @@ call you haven't seen here. The ones that are easiest to get wrong:
   optional `dropId`. Given both, the two records are linked as the same person and each keeps its own id.
 - `messages.sms.send` takes `message` and `to` (one E.164 number or an array
   of up to 200), and resolves to `{ queued, skipped: [{ index, reason }] }`.
-- `messages.segments.send` takes `message`, `segment` (the count's filters
-  with `signUpType: "sms"`), and `timezone`; `.schedule` adds `sendAt`, a
+- `messages.segments.send` takes `message`, `segment` (the count's filters,
+  `signUpType` `"sms"` or `"email"`), and `timezone`, plus
+  `email: { subject, ctaUrl?, ctaText? }` for an email segment; `.schedule` adds `sendAt`, a
   local time in `timezone` with no offset (`"2026-11-20T19:00"`). Both
   resolve to `{ id, note, sendAt, dryRun, estimate }`, where `estimate` has
   the recipients, credits, and `costUsd`. Add `dryRun: true` to the input to
@@ -110,7 +111,7 @@ to the next.
    same page and use it as the customer, so the integration acts on their own
    account. Warn them that writes made this way are live and not limited by
    the key's permissions: `messages.sms.send` and `messages.segments` text
-   their real fans.
+   or email their real fans.
 4. **Name the customer.** Every call acts on one Laylo account, named in one of
    two ways. Use one or the other, never both. Ask the user which situation
    they're in rather than assuming an API key (see
@@ -254,7 +255,7 @@ access token, so creating them is cheap.
   secret.
 - **Confirm writes first.** `fans.subscribe`, `conversions.events.track`,
   `messages.sms.send`, and `messages.segments` change real fan data or text
-  real people. Show the user exactly what will be sent and get a yes before
+  or email real people. Show the user exactly what will be sent and get a yes before
   running any of them against a live account. For a segment message, do a
   dry run first and tell them the estimated recipients and cost, along with
   its `disclaimer`. Reads can run freely.
