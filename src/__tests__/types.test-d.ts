@@ -199,6 +199,20 @@ describe("request aliases", () => {
       consentGrantedAt: Date;
     }>().not.toMatchTypeOf<SubscribeFanInput>();
   });
+
+  test("SendSegmentMessageInput requires email for an email segment and refuses it for sms", () => {
+    type Base = { message: string; timezone: "America/New_York" };
+    type Email = { subject: string };
+    expectTypeOf<
+      Base & { segment: { signUpType: "email" }; email: Email }
+    >().toMatchTypeOf<SendSegmentMessageInput>();
+    expectTypeOf<
+      Base & { segment: { signUpType: "email" } }
+    >().not.toMatchTypeOf<SendSegmentMessageInput>();
+    expectTypeOf<
+      Base & { segment: { signUpType: "sms" }; email: Email }
+    >().not.toMatchTypeOf<SendSegmentMessageInput>();
+  });
 });
 
 describe("response aliases", () => {
@@ -242,27 +256,5 @@ describe("response aliases", () => {
     expectTypeOf<SubscribeFanResponse["rsvp"]>().toEqualTypeOf<
       { dropId: string; status: "confirmed" } | undefined
     >();
-  });
-});
-
-describe("segment message input", () => {
-  const base = { message: "Presale", timezone: "America/New_York" } as const;
-  const email = { subject: "The presale is live" };
-
-  test("email is required for an email segment and refused for sms", () => {
-    expectTypeOf({
-      ...base,
-      segment: { signUpType: "email" as const },
-      email,
-    }).toMatchTypeOf<SendSegmentMessageInput>();
-    expectTypeOf({
-      ...base,
-      segment: { signUpType: "email" as const },
-    }).not.toMatchTypeOf<SendSegmentMessageInput>();
-    expectTypeOf({
-      ...base,
-      segment: { signUpType: "sms" as const },
-      email,
-    }).not.toMatchTypeOf<SendSegmentMessageInput>();
   });
 });
