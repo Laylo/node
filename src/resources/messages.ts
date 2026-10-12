@@ -84,8 +84,8 @@ export class SmsMessages extends APIResource {
 /**
  * The fans a segment message goes to. Identical to the API's `segment` except
  * the sign-up bounds also accept a `Date`, which is sent as its ISO 8601
- * string. `signUpType` must be `"sms"`, and only one of `signedUpAfter` and
- * `signedUpBefore` can be given.
+ * string. `signUpType` is `"sms"` or `"email"`, and only one of
+ * `signedUpAfter` and `signedUpBefore` can be given.
  * @see https://developers.laylo.com/guides/segment-messages
  */
 export type MessageSegmentInput = WithDateSignUpBounds<MessageSegment>;
@@ -144,10 +144,13 @@ export interface SegmentMessageOptions extends RequestOptions {
  */
 export class SegmentMessages extends APIResource {
   /**
-   * Texts `message` to every fan in `segment` within the next few minutes.
+   * Sends `message` to every fan in `segment` within the next few minutes.
    * The segment takes the same filters as `laylo.fans.segments.count()`.
-   * Recipients are worked out when the message sends, and only fans
-   * currently subscribed by SMS are texted. `timezone` is the IANA zone the
+   * An `"sms"` segment is texted to fans currently subscribed by SMS. An
+   * `"email"` segment needs `email` with a `subject`, and optionally a main
+   * button as `ctaUrl` and `ctaText`; Laylo lays the email out from
+   * `message`, turning its links into buttons. Recipients are worked out
+   * when the message sends. `timezone` is the IANA zone the
    * message is written in, used to read a time it mentions, like "tomorrow
    * at 2pm". Only the zones in `SegmentMessageTimezone` are accepted.
    * Pass `dryRun: true` to validate the message and get its cost `estimate`
@@ -169,6 +172,17 @@ export class SegmentMessages extends APIResource {
    *   },
    *   { idempotencyKey: "presale-2026-11-20" },
    * );
+   *
+   * await laylo.messages.segments.send({
+   *   message: "Presale starts now: https://laylo.com/example",
+   *   segment: { signUpType: "email", dropIds: ["drop_123"] },
+   *   email: {
+   *     subject: "The presale is live",
+   *     ctaUrl: "https://tickets.example.com/presale",
+   *     ctaText: "Get Tickets",
+   *   },
+   *   timezone: "America/New_York",
+   * });
    * ```
    * @see https://developers.laylo.com/api-reference/messages/messages.segments.send
    * @see https://developers.laylo.com/guides/segment-messages
@@ -220,9 +234,17 @@ export class SegmentMessages extends APIResource {
     options: SegmentMessageOptions = {},
   ): Promise<SegmentMessage> {
     const segment = input?.segment;
-    if (segment?.signUpType !== "sms") {
+    if (segment?.signUpType !== "sms" && segment?.signUpType !== "email") {
       throw new LayloConfigurationError(
-        'segment.signUpType must be "sms": only SMS segments can be messaged',
+        'segment.signUpType must be "sms" or "email"',
+      );
+    }
+    const isEmailSegment = segment.signUpType === "email";
+    if (isEmailSegment !== isGiven(input.email)) {
+      throw new LayloConfigurationError(
+        isEmailSegment
+          ? 'email is required when segment.signUpType is "email"'
+          : "email can only be sent with an email segment",
       );
     }
     // A count takes both bounds, but the API refuses them together on a send.

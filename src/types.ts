@@ -218,7 +218,8 @@ export type SkippedRecipient = SendSmsResponse["skipped"][number];
 
 /**
  * Request body for messaging a fan segment now: the `message`, the `segment`
- * to send it to, and the `timezone` the message is written in.
+ * to send it to, the `timezone` the message is written in, and `email` for
+ * an email segment.
  * @see https://developers.laylo.com/api-reference/messages/messages.segments.send
  */
 export type SendSegmentMessageRequest = RequestJson<
@@ -236,10 +237,19 @@ export type ScheduleSegmentMessageRequest = RequestJson<
 
 /**
  * The filters picking which fans a segment message goes to. The same filters
- * a segment count takes, except `signUpType` must be `"sms"`.
+ * a segment count takes.
  * @see https://developers.laylo.com/guides/segment-messages
  */
 export type MessageSegment = SendSegmentMessageRequest["segment"];
+
+/**
+ * The email details an `"email"` segment message needs: a `subject`, and
+ * optionally a main button as `ctaUrl` and `ctaText`, sent together.
+ * @see https://developers.laylo.com/guides/segment-messages
+ */
+export type SegmentMessageEmail = NonNullable<
+  SendSegmentMessageRequest["email"]
+>;
 
 /**
  * An IANA time zone a segment message can be written or scheduled in.
@@ -259,8 +269,9 @@ export type SegmentMessage = SuccessJson<operations["messages.segments.send"]>;
  * What a segment message is expected to cost, from the fans who match the
  * segment at the time of the request: recipients and credits per channel,
  * the total in credits and US dollars, and a `disclaimer` to show alongside.
- * `costUsd` doesn't subtract free or prepaid credits, and fans counted under
- * `emails` are also counted under a text channel, so it errs high.
+ * `costUsd` doesn't subtract free or prepaid credits, and fans with both a
+ * phone number and an email address are counted under `emails` as well as a
+ * text channel, so it errs high.
  * @see https://developers.laylo.com/records/segment-message-estimate
  */
 export type SegmentMessageEstimate = SegmentMessage["estimate"];

@@ -2912,13 +2912,28 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @description Defaults to false. When true, nothing is created or sent: the request is validated like a real one, without the phishing screen, and the response shows the cost estimate, with a null id. A dry run doesn't use the Idempotency-Key. */
+                    /** @description Defaults to false. When true, nothing is created or sent: the request is validated like a real one, without the phishing screen or building the email, and the response shows the cost estimate, with a null id. A dry run doesn't use the Idempotency-Key. */
                     dryRun?: boolean;
-                    /** @description The text to send, up to 1600 characters. The first link gets https:// added when it has no scheme. */
+                    /**
+                     * SegmentMessageEmail
+                     * @description Required when segment.signUpType is email, and not allowed for sms. The email body is laid out from message the way the Laylo message composer's magic template does it: the text becomes headings and paragraphs and its links become buttons.
+                     */
+                    email?: {
+                        /** @description The main button's text, up to 50 characters. Send it with ctaUrl. */
+                        ctaText?: string;
+                        /**
+                         * Format: uri
+                         * @description The main button's link: an absolute http or https URL with no username or password. Send it with ctaText. The first link in message becomes a second button unless it's the same URL. Clicks are tracked like any other link in the email.
+                         */
+                        ctaUrl?: string;
+                        /** @description The email subject line, up to 255 characters. */
+                        subject: string;
+                    };
+                    /** @description The text to send, up to 1600 characters. The first link gets https:// added when it has no scheme. For an email segment this is the content the email is built from. */
                     message: string;
                     /**
                      * SegmentConfiguration
-                     * @description The same filters GET /v1/fans/segments counts with, as a JSON object, except only sms segments can be messaged. signedUpAfter and signedUpBefore can't both be sent, and at most 30 locations and excluded locations are allowed combined.
+                     * @description The same filters GET /v1/fans/segments counts with, as a JSON object. signedUpAfter and signedUpBefore can't both be sent, and at most 30 locations and excluded locations are allowed combined.
                      */
                     segment: {
                         conversionIds?: string[];
@@ -2972,10 +2987,10 @@ export interface operations {
                          */
                         signedUpBefore?: string;
                         /**
-                         * @description Must be sms: only sms segments can be messaged.
+                         * @description sms texts fans with a phone number; email emails fans with an email address and needs the email object.
                          * @enum {string}
                          */
-                        signUpType: "sms";
+                        signUpType: "sms" | "email";
                     };
                     /**
                      * Timezone
@@ -3043,7 +3058,7 @@ export interface operations {
                                     /** @description Fans currently counted on this channel. */
                                     recipients: number;
                                 };
-                                /** @description Fans in the segment who also have an email address. They are counted here as well as under a text channel, so the estimate errs high. */
+                                /** @description Fans in the segment who have an email address. Fans with both a phone number and an email address are counted here as well as under a text channel, as the Laylo message composer counts them, so the estimate errs high. */
                                 emails: {
                                     /** @description creditsPerRecipient times recipients. */
                                     credits: number;
@@ -3344,22 +3359,42 @@ export interface operations {
             content: {
                 /**
                  * @example {
-                 *       "message": "Tickets go on sale tomorrow: https://laylo.com/example",
+                 *       "email": {
+                 *         "ctaText": "Get Tickets",
+                 *         "ctaUrl": "https://laylo.com/example",
+                 *         "subject": "Tickets go on sale tomorrow"
+                 *       },
+                 *       "message": "Tickets go on sale tomorrow at 10am. Set a reminder now: https://laylo.com/example",
                  *       "segment": {
-                 *         "signUpType": "sms"
+                 *         "signUpType": "email"
                  *       },
                  *       "sendAt": "2026-11-20T19:00",
                  *       "timezone": "America/New_York"
                  *     }
                  */
                 "application/json": {
-                    /** @description Defaults to false. When true, nothing is created or sent: the request is validated like a real one, without the phishing screen, and the response shows the cost estimate, with a null id. A dry run doesn't use the Idempotency-Key. */
+                    /** @description Defaults to false. When true, nothing is created or sent: the request is validated like a real one, without the phishing screen or building the email, and the response shows the cost estimate, with a null id. A dry run doesn't use the Idempotency-Key. */
                     dryRun?: boolean;
-                    /** @description The text to send, up to 1600 characters. The first link gets https:// added when it has no scheme. */
+                    /**
+                     * SegmentMessageEmail
+                     * @description Required when segment.signUpType is email, and not allowed for sms. The email body is laid out from message the way the Laylo message composer's magic template does it: the text becomes headings and paragraphs and its links become buttons.
+                     */
+                    email?: {
+                        /** @description The main button's text, up to 50 characters. Send it with ctaUrl. */
+                        ctaText?: string;
+                        /**
+                         * Format: uri
+                         * @description The main button's link: an absolute http or https URL with no username or password. Send it with ctaText. The first link in message becomes a second button unless it's the same URL. Clicks are tracked like any other link in the email.
+                         */
+                        ctaUrl?: string;
+                        /** @description The email subject line, up to 255 characters. */
+                        subject: string;
+                    };
+                    /** @description The text to send, up to 1600 characters. The first link gets https:// added when it has no scheme. For an email segment this is the content the email is built from. */
                     message: string;
                     /**
                      * SegmentConfiguration
-                     * @description The same filters GET /v1/fans/segments counts with, as a JSON object, except only sms segments can be messaged. signedUpAfter and signedUpBefore can't both be sent, and at most 30 locations and excluded locations are allowed combined.
+                     * @description The same filters GET /v1/fans/segments counts with, as a JSON object. signedUpAfter and signedUpBefore can't both be sent, and at most 30 locations and excluded locations are allowed combined.
                      */
                     segment: {
                         conversionIds?: string[];
@@ -3413,10 +3448,10 @@ export interface operations {
                          */
                         signedUpBefore?: string;
                         /**
-                         * @description Must be sms: only sms segments can be messaged.
+                         * @description sms texts fans with a phone number; email emails fans with an email address and needs the email object.
                          * @enum {string}
                          */
-                        signUpType: "sms";
+                        signUpType: "sms" | "email";
                     };
                     /** @description When to send, as the local date and time in timezone with no offset, like 2026-11-20T19:00. Must be at least 5 minutes and at most 2 years from now, and is rounded up to the next five-minute mark. */
                     sendAt: string;
@@ -3486,7 +3521,7 @@ export interface operations {
                                     /** @description Fans currently counted on this channel. */
                                     recipients: number;
                                 };
-                                /** @description Fans in the segment who also have an email address. They are counted here as well as under a text channel, so the estimate errs high. */
+                                /** @description Fans in the segment who have an email address. Fans with both a phone number and an email address are counted here as well as under a text channel, as the Laylo message composer counts them, so the estimate errs high. */
                                 emails: {
                                     /** @description creditsPerRecipient times recipients. */
                                     credits: number;

@@ -321,15 +321,37 @@ means the customer has no Laylo phone number to send from.
 }
 ```
 
-Texts every fan in `segment` within about five minutes. `segment` takes the
+Messages every fan in `segment` within about five minutes. `segment` takes the
 same filters as `GET /v1/fans/segments`, as a JSON object with locations as
-plain objects, but `signUpType` must be `sms`, only one of `signedUpAfter`
-and `signedUpBefore` can be sent, and at most 30 locations and excluded
+plain objects, but only one of `signedUpAfter` and `signedUpBefore` can be
+sent, and at most 30 locations and excluded
 locations are allowed combined. The segment matches the same fans as the
 count. Every drop and conversion id must belong to the customer. `timezone`
 is an IANA zone used to read a time the message mentions; only the 57 zones
 in the API reference's enum are accepted. Recipients are
 worked out when the message sends.
+
+An `sms` segment is texted. An `email` segment is emailed and needs an
+`email` object (it's refused on an `sms` segment):
+
+```json
+{
+  "message": "Presale starts now: https://laylo.com/example",
+  "segment": { "signUpType": "email", "dropIds": ["drop_123"] },
+  "email": {
+    "subject": "The presale is live",
+    "ctaUrl": "https://tickets.example.com/presale",
+    "ctaText": "Get Tickets"
+  },
+  "timezone": "America/Los_Angeles"
+}
+```
+
+`subject` is up to 255 characters. `ctaUrl` (an absolute http or https URL)
+and `ctaText` (up to 50 characters) are optional but go together and add the
+main button. The email is laid out from `message` like the dashboard's
+message composer does it, and its first link becomes a second button unless
+it's the same URL.
 
 ```json
 {
@@ -362,8 +384,8 @@ worked out when the message sends.
 
 `note` and `disclaimer` are for people to read; don't parse them. `sendAt` is
 ISO 8601 UTC. `estimate` comes from the fans who match the segment right now;
-`emails` counts fans who are also counted under a text channel, so it errs
-high, and `costUsd` doesn't subtract free or prepaid credits.
+fans with both a phone number and an email address are counted under
+`emails` as well as a text channel, so it errs high, and `costUsd` doesn't subtract free or prepaid credits.
 
 Add `"dryRun": true` to either route to validate the request and get the
 estimate without sending: nothing is created, `id` is null, the phishing

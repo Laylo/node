@@ -293,7 +293,7 @@ It isn't retried on a 5xx. Retrying only the `queue_failed` recipients is safe.
 type SendSegmentMessageInput = {
   message: string; // up to 1,600 characters
   segment: {
-    signUpType: "sms"; // required; only SMS segments can be messaged
+    signUpType: "sms" | "email"; // required
     dropIds?: string[];
     excludedDropIds?: string[];
     conversionIds?: string[];
@@ -304,7 +304,14 @@ type SendSegmentMessageInput = {
     signedUpBefore?: Date | string;
   };
   timezone: SegmentMessageTimezone; // one of 57 IANA zones, like "America/New_York"
+  email?: SegmentMessageEmail; // required for an "email" segment, refused for "sms"
   dryRun?: boolean; // true: validate and estimate the cost, send nothing
+};
+
+type SegmentMessageEmail = {
+  subject: string; // up to 255 characters
+  ctaUrl?: string; // main button: absolute http(s) URL; send with ctaText
+  ctaText?: string; // up to 50 characters; send with ctaUrl
 };
 
 type ScheduleSegmentMessageInput = SendSegmentMessageInput & {
@@ -319,12 +326,18 @@ same filters as `fans.segments.count` and matches the same fans. Every drop
 and conversion id must belong to the customer. Recipients are worked out when
 the message sends.
 
+An `"sms"` segment is texted. An `"email"` segment is emailed: Laylo lays the
+email out from `message` the way the dashboard's message composer does, and
+its links become buttons. `ctaUrl` and `ctaText` add a main button, with the
+first link in `message` as a second one unless it's the same URL.
+
 `dryRun: true` validates the request like a real one and returns the
 estimate without creating or sending anything. It skips the phishing screen,
 so only a real send can be flagged, and it ignores the idempotency key.
 
-A segment that isn't `"sms"`, or one with both `signedUpAfter` and
-`signedUpBefore`, throws `LayloConfigurationError` before any request. A bad field, id, location, `timezone`, or `sendAt` throws
+A `signUpType` other than `"sms"` or `"email"`, an email segment without
+`email` (or `email` on an SMS segment), or a segment with both
+`signedUpAfter` and `signedUpBefore` throws `LayloConfigurationError` before any request. A bad field, id, location, `timezone`, or `sendAt` throws
 `BadRequestError`. A message flagged as possible phishing or scam content
 throws `PermissionError`, isn't sent, and locks the account for review. If
 Laylo can't work out the estimate it throws `ServerError` (503) and nothing is
@@ -347,7 +360,7 @@ type SegmentMessage = {
     channels: {
       domesticSms: EstimateChannel; // US and Canadian numbers
       internationalSms: EstimateChannel;
-      emails: EstimateChannel; // also counted under a text channel
+      emails: EstimateChannel; // fans with a phone too are also under a text channel
     };
   };
 };

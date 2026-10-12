@@ -549,16 +549,19 @@ is the one exception — it only accepts `signal`).
   ```
 
 - [`messages.segments.send(input, options?)`](https://developers.laylo.com/api-reference/messages/messages.segments.send) —
-  texts `message` to every fan in `segment` within the next few minutes. The
-  segment takes the same filters as `fans.segments.count`, as long as
-  `signUpType` is `"sms"`. `timezone` is the IANA zone the message is
-  written in, one of the zones in `SegmentMessageTimezone`. Recipients are worked out when the message sends, and only
-  fans currently subscribed by SMS are texted. It resolves to
+  sends `message` to every fan in `segment` within the next few minutes. The
+  segment takes the same filters as `fans.segments.count`. An `"sms"`
+  segment is texted to fans currently subscribed by SMS. An `"email"`
+  segment also needs `email: { subject, ctaUrl?, ctaText? }`: Laylo lays the
+  email out from `message`, its links become buttons, and `ctaUrl` with
+  `ctaText` adds a main button. `timezone` is the IANA zone the message is
+  written in, one of the zones in `SegmentMessageTimezone`. Recipients are
+  worked out when the message sends. It resolves to
   `{ id, note, sendAt, dryRun, estimate }`, with `sendAt` in UTC and
   `estimate` giving the recipients, credits, and `costUsd` from the fans who
   match right now. `costUsd` doesn't subtract free or prepaid credits, and
-  fans counted under `emails` are also counted under a text channel, so it
-  errs high. Pass `dryRun: true` to get that estimate without sending
+  fans with both a phone number and an email address are counted under
+  `emails` as well as a text channel, so it errs high. Pass `dryRun: true` to get that estimate without sending
   anything; `id` is then null.
 - [`messages.segments.schedule(input, options?)`](https://developers.laylo.com/api-reference/messages/messages.segments.schedule) —
   the same, sent at `sendAt`: a local date and time in `timezone` with no
@@ -604,6 +607,16 @@ is the one exception — it only accepts `signal`).
 
   const { sendAt } = await laylo.messages.segments.schedule(message, {
     idempotencyKey: "tour-onsale-2026-11-20",
+  });
+
+  await laylo.messages.segments.schedule({
+    ...message,
+    segment: { signUpType: "email", dropIds: ["drop_123"] },
+    email: {
+      subject: "Tickets go on sale tomorrow",
+      ctaUrl: "https://tickets.example.com/tour",
+      ctaText: "Get Tickets",
+    },
   });
   ```
 

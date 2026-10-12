@@ -66,8 +66,9 @@ call you haven't seen here. The ones that are easiest to get wrong:
   optional `dropId`. Given both, the two records are linked as the same person and each keeps its own id.
 - `messages.sms.send` takes `message` and `to` (one E.164 number or an array
   of up to 200), and resolves to `{ queued, skipped: [{ index, reason }] }`.
-- `messages.segments.send` takes `message`, `segment` (the count's filters
-  with `signUpType: "sms"`), and `timezone`; `.schedule` adds `sendAt`, a
+- `messages.segments.send` takes `message`, `segment` (the count's filters,
+  `signUpType` `"sms"` or `"email"`), and `timezone`, plus
+  `email: { subject, ctaUrl?, ctaText? }` for an email segment; `.schedule` adds `sendAt`, a
   local time in `timezone` with no offset (`"2026-11-20T19:00"`). Both
   resolve to `{ id, note, sendAt, dryRun, estimate }`, where `estimate` has
   the recipients, credits, and `costUsd`. Add `dryRun: true` to the input to
