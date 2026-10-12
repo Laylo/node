@@ -243,12 +243,21 @@ describe("Messages", () => {
       const segments = new Messages(context).segments;
       const subject = { subject: "The presale is live" };
 
-      await expect(
-        segments.send({ ...presale, segment: { signUpType: "email" } }),
-      ).rejects.toThrow('email is required when segment.signUpType is "email"');
-      await expect(
-        segments.send({ ...presale, email: subject }),
-      ).rejects.toThrow("email can only be sent with an email segment");
+      const emailWithoutDetails = {
+        ...presale,
+        segment: { signUpType: "email" },
+      } as unknown as SendSegmentMessageInput;
+      const smsWithEmail = {
+        ...presale,
+        email: subject,
+      } as unknown as SendSegmentMessageInput;
+
+      await expect(segments.send(emailWithoutDetails)).rejects.toThrow(
+        'email is required when segment.signUpType is "email"',
+      );
+      await expect(segments.send(smsWithEmail)).rejects.toThrow(
+        "email can only be sent with an email segment",
+      );
       expect(calls).toHaveLength(0);
     });
 

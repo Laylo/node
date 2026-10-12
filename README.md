@@ -148,9 +148,10 @@ for the full model.
    drops and fans before onboarding anyone else.
 
 Writes made this way are live. Integrator calls aren't limited by the key's
-permissions, so `messages.sms.send` and `messages.segments` text your real fans and
-`fans.subscribe` and `conversions.events.track` create real records. Stick
-to reads, or send only to your own number, until you mean it.
+permissions, so `messages.sms.send` texts your real fans, `messages.segments`
+texts or emails them, and `fans.subscribe` and `conversions.events.track`
+create real records. Stick to reads and dry runs, or send only to your own
+number, until you mean it.
 
 ### Using only an API key
 
@@ -609,15 +610,18 @@ is the one exception — it only accepts `signal`).
     idempotencyKey: "tour-onsale-2026-11-20",
   });
 
-  await laylo.messages.segments.schedule({
-    ...message,
-    segment: { signUpType: "email", dropIds: ["drop_123"] },
-    email: {
-      subject: "Tickets go on sale tomorrow",
-      ctaUrl: "https://tickets.example.com/tour",
-      ctaText: "Get Tickets",
+  await laylo.messages.segments.schedule(
+    {
+      ...message,
+      segment: { signUpType: "email", dropIds: ["drop_123"] },
+      email: {
+        subject: "Tickets go on sale tomorrow",
+        ctaUrl: "https://tickets.example.com/tour",
+        ctaText: "Get Tickets",
+      },
     },
-  });
+    { idempotencyKey: "tour-onsale-email-2026-11-20" },
+  );
   ```
 
 The SDK mints and refreshes access tokens for you, but `laylo.auth.createToken()`

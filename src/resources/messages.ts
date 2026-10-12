@@ -5,6 +5,7 @@ import type {
   MessageSegment,
   ScheduleSegmentMessageRequest,
   SegmentMessage,
+  SegmentMessageEmail,
   SendSegmentMessageRequest,
   SendSmsRequest,
   SendSmsResponse,
@@ -90,29 +91,40 @@ export class SmsMessages extends APIResource {
  */
 export type MessageSegmentInput = WithDateSignUpBounds<MessageSegment>;
 
+type SegmentMessageTarget =
+  | {
+      /** The fans to text. */
+      segment: MessageSegmentInput & { signUpType: "sms" };
+      email?: undefined;
+    }
+  | {
+      /** The fans to email. */
+      segment: MessageSegmentInput & { signUpType: "email" };
+      /** The subject and optional main button of the email. */
+      email: SegmentMessageEmail;
+    };
+
 /**
- * A message to send to a fan segment now.
+ * A message to send to a fan segment now. An `"email"` segment needs
+ * `email`; an `"sms"` segment can't have it.
  * @see https://developers.laylo.com/api-reference/messages/messages.segments.send
  */
 export type SendSegmentMessageInput = Omit<
   SendSegmentMessageRequest,
-  "segment"
-> & {
-  /** The fans to message. */
-  segment: MessageSegmentInput;
-};
+  "segment" | "email"
+> &
+  SegmentMessageTarget;
 
 /**
- * A message to send to a fan segment at a scheduled time.
+ * A message to send to a fan segment at a scheduled time. An `"email"`
+ * segment needs `email`; an `"sms"` segment can't have it.
  * @see https://developers.laylo.com/api-reference/messages/messages.segments.schedule
  */
 export type ScheduleSegmentMessageInput = Omit<
   ScheduleSegmentMessageRequest,
-  "segment"
-> & {
-  /** The fans to message. */
-  segment: MessageSegmentInput;
-};
+  "segment" | "email"
+> &
+  SegmentMessageTarget;
 
 /**
  * Per-call overrides for a segment message, adding an idempotency key to the
@@ -263,8 +275,8 @@ export class SegmentMessages extends APIResource {
           segment: { ...segment, ...isoSignUpBounds(segment, "segment.") },
         },
         idempotencyKey: options.idempotencyKey,
-        // An unkeyed resend after a dropped connection could text the whole
-        // segment twice.
+        // An unkeyed resend after a dropped connection could message the
+        // whole segment twice.
         ...(input.dryRun === true
           ? { idempotent: true }
           : !isGiven(options.idempotencyKey) && { replayUnsent: false }),

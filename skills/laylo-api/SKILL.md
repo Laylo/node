@@ -120,7 +120,7 @@ request except the token mint carries two things:
    card on the same page and send it as `X-Api-Key`, so calls act on their
    own account. Warn them that writes made this way are live and not limited
    by the key's permissions: `POST /v1/messages/sms` and
-   `POST /v1/messages/segments` text their real fans.
+   `POST /v1/messages/segments` text or email their real fans.
 2. **The customer**, meaning the Laylo account the call acts on, in exactly
    one header:
    - `X-Api-Key: <key>`. The account owner generates the key at
@@ -281,8 +281,8 @@ Common mappings:
   the program. Never write it to a file, including temp files.
 - **Confirm writes first.** `POST /v1/fans/subscriptions`,
   `POST /v1/conversions/events`, `POST /v1/messages/sms`, and the
-  `POST /v1/messages/segments` routes change real fan data or text real
-  people. Show the user the exact request body, and for a segment message
+  `POST /v1/messages/segments` routes change real fan data or text or email
+  real people. Show the user the exact request body, and for a segment message
   the estimated recipients and cost from a dry run, and get a yes before
   sending any of them to a live account. Reads,
   including the two `POST` subscription checks, can run freely.
