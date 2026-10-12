@@ -252,11 +252,15 @@ export class SegmentMessages extends APIResource {
       );
     }
     const isEmailSegment = segment.signUpType === "email";
-    if (isEmailSegment !== isGiven(input.email)) {
+    const hasEmail = isGiven(input.email);
+    if (isEmailSegment && !hasEmail) {
       throw new LayloConfigurationError(
-        isEmailSegment
-          ? 'email is required when segment.signUpType is "email"'
-          : "email can only be sent with an email segment",
+        'email is required when segment.signUpType is "email"',
+      );
+    }
+    if (!isEmailSegment && hasEmail) {
+      throw new LayloConfigurationError(
+        "email can only be sent with an email segment",
       );
     }
     // A count takes both bounds, but the API refuses them together on a send.
