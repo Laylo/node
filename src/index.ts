@@ -10,6 +10,11 @@ export {
 } from "./client.js";
 export type { Auth } from "./resources/auth.js";
 export type {
+  Billing,
+  BillingCreditUsage,
+  GetProductCreditUsageInput,
+} from "./resources/billing.js";
+export type {
   ConversionCounts,
   ConversionEvents,
   Conversions,
@@ -55,6 +60,7 @@ export type { LayloAPIErrorOptions } from "./core/errors.js";
 export { VERSION } from "./version.js";
 export type { RequestOptions } from "./core/request-options.js";
 export type {
+  ChannelCreditUsage,
   Contact,
   Conversion,
   ConversionAction,
@@ -62,8 +68,17 @@ export type {
   ConversionCountBucket,
   ConversionCountsReport,
   ConversionSubject,
+  CreditChannel,
+  CreditRates,
+  CreditUsage,
+  CreditUsageBucket,
+  CreditUsageByProductReport,
+  CreditUsageInterval,
+  CreditUsageReport,
   CustomerAccount,
   Drop,
+  GetCreditUsageParams,
+  GetProductCreditUsageParams,
   ListConversionCountsParams,
   ListConversionsParams,
   MessageSegment,

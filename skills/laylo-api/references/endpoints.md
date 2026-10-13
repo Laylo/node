@@ -359,19 +359,19 @@ it's the same URL.
   "estimate": {
     "channels": {
       "domesticSms": {
-        "credits": 2400,
-        "creditsPerRecipient": 10,
+        "credits": 1200,
+        "creditsPerRecipient": 5,
         "recipients": 240
       },
-      "emails": { "credits": 12, "creditsPerRecipient": 1, "recipients": 12 },
+      "emails": { "credits": 24, "creditsPerRecipient": 2, "recipients": 12 },
       "internationalSms": {
-        "credits": 375,
-        "creditsPerRecipient": 25,
+        "credits": 180,
+        "creditsPerRecipient": 12,
         "recipients": 15
       }
     },
-    "costUsd": 5.57,
-    "credits": 2787,
+    "costUsd": 7.02,
+    "credits": 1404,
     "disclaimer": "This is an estimate from the fans who match the segment right now. …",
     "recipients": 255,
     "smsSegments": 1
@@ -420,6 +420,74 @@ finishes, the key frees up after a minute and the next request with it sends
 again. A message flagged
 as possible phishing or scam content returns 403, isn't sent, and locks the
 account for review.
+
+## GET /v1/billing/credit-usage
+
+| Query       | Notes                                                                    |
+| ----------- | ------------------------------------------------------------------------ |
+| `startDate` | UTC day as `YYYY-MM-DD`, inclusive. Default: first of `endDate`'s month. |
+| `endDate`   | UTC day as `YYYY-MM-DD`, inclusive. Default: today. At most 366 days.    |
+| `interval`  | `day` (default), `week`, or `month`.                                     |
+
+```json
+{
+  "startDate": "2026-09-01",
+  "endDate": "2026-09-30",
+  "interval": "month",
+  "rates": {
+    "creditsPerDollar": 200,
+    "domesticSms": 5,
+    "emails": 2,
+    "instagram": 3,
+    "internationalSms": 12,
+    "mms": 12
+  },
+  "series": [
+    {
+      "start": "2026-09-01",
+      "channels": {
+        "domesticSms": { "count": 100, "credits": 500, "costUsd": 2.5 },
+        "emails": { "count": 120, "credits": 240, "costUsd": 1.2 },
+        "instagram": { "count": 0, "credits": 0, "costUsd": 0 },
+        "internationalSms": { "count": 1, "credits": 12, "costUsd": 0.06 },
+        "mms": { "count": 0, "credits": 0, "costUsd": 0 }
+      },
+      "count": 221,
+      "credits": 752,
+      "costUsd": 3.76
+    }
+  ],
+  "total": {
+    "channels": {
+      "domesticSms": { "count": 100, "credits": 500, "costUsd": 2.5 },
+      "emails": { "count": 120, "credits": 240, "costUsd": 1.2 },
+      "instagram": { "count": 0, "credits": 0, "costUsd": 0 },
+      "internationalSms": { "count": 1, "credits": 12, "costUsd": 0.06 },
+      "mms": { "count": 0, "credits": 0, "costUsd": 0 }
+    },
+    "count": 221,
+    "credits": 752,
+    "costUsd": 3.76
+  }
+}
+```
+
+The series has one bucket for every day, week, or month in the window,
+including empty ones. Weeks start on Monday and months on the 1st, except the
+first bucket, which starts at `startDate`. `count` is billed units, not
+messages: most texts count once per segment. `internationalSms` includes
+WhatsApp. Credits are priced at the customer's current `rates`, and `costUsd`
+is `credits / creditsPerDollar` rounded to the cent. It's usage, not an
+invoice: prepaid and free credits aren't applied.
+
+## GET /v1/billing/credit-usage/products
+
+The same query plus `productId`, repeated for each drop or segment message,
+1 to 50: `?productId=drop_123&productId=message_456`. The response is the
+report summed across them, plus `productIds`, de-duplicated. A drop includes
+its sub-drops. A product the customer doesn't own returns `404 NOT_FOUND`
+naming the missing ids; drops that expand to more than 200 products with
+their sub-drops return `400 BAD_REQUEST`.
 
 ## Conversion actions
 

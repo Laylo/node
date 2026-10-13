@@ -17,6 +17,40 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
+    "/v1/billing/credit-usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get message credit usage */
+        get: operations["billing.usage.get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/credit-usage/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get message credit usage for products */
+        get: operations["billing.usage.products.get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/conversions": {
         parameters: {
             query?: never;
@@ -396,6 +430,1034 @@ export interface operations {
             /** @description The rate limit for this caller address is exceeded. */
             429: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "RATE_LIMIT_EXCEEDED",
+                     *         "details": {
+                     *           "retryAfter": 30
+                     *         },
+                     *         "message": "Too many requests. Please try again later."
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INTERNAL_ERROR",
+                     *         "message": "An unexpected error occurred"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "billing.usage.get": {
+        parameters: {
+            query?: {
+                /**
+                 * @description Last UTC day of the window (inclusive), as YYYY-MM-DD. Defaults to today. The window can span at most 366 days.
+                 * @example 2026-09-30
+                 */
+                endDate?: string;
+                /**
+                 * @description How to bucket the series. Defaults to day.
+                 * @example week
+                 */
+                interval?: "day" | "week" | "month";
+                /**
+                 * @description First UTC day of the window (inclusive), as YYYY-MM-DD. Defaults to the first day of endDate's month.
+                 * @example 2026-09-01
+                 */
+                startDate?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Message credits used over the window, per channel, with a series bucketed by interval. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "endDate": "2026-09-02",
+                     *       "interval": "day",
+                     *       "rates": {
+                     *         "creditsPerDollar": 200,
+                     *         "domesticSms": 5,
+                     *         "emails": 2,
+                     *         "instagram": 3,
+                     *         "internationalSms": 12,
+                     *         "mms": 12
+                     *       },
+                     *       "series": [
+                     *         {
+                     *           "channels": {
+                     *             "domesticSms": {
+                     *               "costUsd": 2.5,
+                     *               "count": 100,
+                     *               "credits": 500
+                     *             },
+                     *             "emails": {
+                     *               "costUsd": 1.2,
+                     *               "count": 120,
+                     *               "credits": 240
+                     *             },
+                     *             "instagram": {
+                     *               "costUsd": 0,
+                     *               "count": 0,
+                     *               "credits": 0
+                     *             },
+                     *             "internationalSms": {
+                     *               "costUsd": 0.06,
+                     *               "count": 1,
+                     *               "credits": 12
+                     *             },
+                     *             "mms": {
+                     *               "costUsd": 0,
+                     *               "count": 0,
+                     *               "credits": 0
+                     *             }
+                     *           },
+                     *           "costUsd": 3.76,
+                     *           "count": 221,
+                     *           "credits": 752,
+                     *           "start": "2026-09-01"
+                     *         },
+                     *         {
+                     *           "channels": {
+                     *             "domesticSms": {
+                     *               "costUsd": 0,
+                     *               "count": 0,
+                     *               "credits": 0
+                     *             },
+                     *             "emails": {
+                     *               "costUsd": 0,
+                     *               "count": 0,
+                     *               "credits": 0
+                     *             },
+                     *             "instagram": {
+                     *               "costUsd": 0,
+                     *               "count": 0,
+                     *               "credits": 0
+                     *             },
+                     *             "internationalSms": {
+                     *               "costUsd": 0.12,
+                     *               "count": 2,
+                     *               "credits": 24
+                     *             },
+                     *             "mms": {
+                     *               "costUsd": 0.06,
+                     *               "count": 1,
+                     *               "credits": 12
+                     *             }
+                     *           },
+                     *           "costUsd": 0.18,
+                     *           "count": 3,
+                     *           "credits": 36,
+                     *           "start": "2026-09-02"
+                     *         }
+                     *       ],
+                     *       "startDate": "2026-09-01",
+                     *       "total": {
+                     *         "channels": {
+                     *           "domesticSms": {
+                     *             "costUsd": 2.5,
+                     *             "count": 100,
+                     *             "credits": 500
+                     *           },
+                     *           "emails": {
+                     *             "costUsd": 1.2,
+                     *             "count": 120,
+                     *             "credits": 240
+                     *           },
+                     *           "instagram": {
+                     *             "costUsd": 0,
+                     *             "count": 0,
+                     *             "credits": 0
+                     *           },
+                     *           "internationalSms": {
+                     *             "costUsd": 0.18,
+                     *             "count": 3,
+                     *             "credits": 36
+                     *           },
+                     *           "mms": {
+                     *             "costUsd": 0.06,
+                     *             "count": 1,
+                     *             "credits": 12
+                     *           }
+                     *         },
+                     *         "costUsd": 3.94,
+                     *         "count": 224,
+                     *         "credits": 788
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        /**
+                         * Format: date
+                         * @description Last UTC day of the window (inclusive), as YYYY-MM-DD.
+                         */
+                        endDate: string;
+                        /**
+                         * @description How the series is bucketed.
+                         * @enum {string}
+                         */
+                        interval: "day" | "week" | "month";
+                        /** @description The customer's current prices: credits per billed unit on each channel, and credits per US dollar. */
+                        rates: {
+                            /** @description Credits per US dollar. */
+                            creditsPerDollar: number;
+                            /** @description Credits per billed unit on domesticSms. */
+                            domesticSms: number;
+                            /** @description Credits per billed unit on emails. */
+                            emails: number;
+                            /** @description Credits per billed unit on instagram. */
+                            instagram: number;
+                            /** @description Credits per billed unit on internationalSms. */
+                            internationalSms: number;
+                            /** @description Credits per billed unit on mms. */
+                            mms: number;
+                        };
+                        /** @description One bucket per day, week (starting Monday), or month across the whole window, oldest first, including buckets with no sends. */
+                        series: {
+                            /** @description Usage per channel. Every channel is always present, with zeros when nothing was sent. internationalSms includes WhatsApp text messages, which bill at the same rate. */
+                            channels: {
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                domesticSms: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                emails: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                instagram: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                internationalSms: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                mms: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                            };
+                            /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. Channel costs are rounded separately, so their sum can differ from this by a few cents. */
+                            costUsd: number;
+                            /** @description Sum of the channels' counts. */
+                            count: number;
+                            /** @description Sum of the channels' credits. */
+                            credits: number;
+                            /**
+                             * Format: date
+                             * @description First UTC day of the bucket, as YYYY-MM-DD. The first bucket starts at startDate even when its week or month began earlier.
+                             */
+                            start: string;
+                        }[];
+                        /**
+                         * Format: date
+                         * @description First UTC day of the window (inclusive), as YYYY-MM-DD.
+                         */
+                        startDate: string;
+                        /**
+                         * CreditUsage
+                         * @description Message credit usage across the whole window. count and credits sum the series exactly; costUsd is rounded from the total credits, so it can differ from the sum of the buckets' costUsd.
+                         */
+                        total: {
+                            /** @description Usage per channel. Every channel is always present, with zeros when nothing was sent. internationalSms includes WhatsApp text messages, which bill at the same rate. */
+                            channels: {
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                domesticSms: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                emails: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                instagram: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                internationalSms: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                mms: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                            };
+                            /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. Channel costs are rounded separately, so their sum can differ from this by a few cents. */
+                            costUsd: number;
+                            /** @description Sum of the channels' counts. */
+                            count: number;
+                            /** @description Sum of the channels' credits. */
+                            credits: number;
+                        };
+                    };
+                };
+            };
+            /** @description The request body is malformed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "BAD_REQUEST",
+                     *         "message": "Invalid request body"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The integrator credential or customer API key is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "UNAUTHORIZED",
+                     *         "message": "Invalid Customer API Key"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The named customer account has no paid Laylo plan or is locked, the integrator sent an X-Creator-Id for an account outside its roster, or a customer API key was sent alone to an endpoint that requires integrator credentials or a permission the key does not have. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "FORBIDDEN",
+                     *         "message": "Customer account does not have a paid Laylo plan"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description No route matches the requested path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "NOT_FOUND",
+                     *         "message": "Route not found"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The path exists, but the HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "METHOD_NOT_ALLOWED",
+                     *         "message": "Method not allowed"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The rate limit for this integrator and customer pair, or for a customer calling with only their API key, is exceeded. */
+            429: {
+                headers: {
+                    /** @description Seconds until the current rate-limit window resets. */
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "RATE_LIMIT_EXCEEDED",
+                     *         "details": {
+                     *           "retryAfter": 30
+                     *         },
+                     *         "message": "Too many requests. Please try again later."
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "INTERNAL_ERROR",
+                     *         "message": "An unexpected error occurred"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "billing.usage.products.get": {
+        parameters: {
+            query: {
+                /**
+                 * @description Last UTC day of the window (inclusive), as YYYY-MM-DD. Defaults to today. The window can span at most 366 days.
+                 * @example 2026-09-30
+                 */
+                endDate?: string;
+                /**
+                 * @description How to bucket the series. Defaults to day.
+                 * @example week
+                 */
+                interval?: "day" | "week" | "month";
+                /**
+                 * @description Drops or messages to sum. Repeat the parameter for several, up to 50. Each must belong to the customer.
+                 * @example [
+                 *       "drop_123",
+                 *       "message_456"
+                 *     ]
+                 */
+                productId: string[];
+                /**
+                 * @description First UTC day of the window (inclusive), as YYYY-MM-DD. Defaults to the first day of endDate's month.
+                 * @example 2026-09-01
+                 */
+                startDate?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Message credits the products used over the window, summed into one report, with a series bucketed by interval. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "productIds": [
+                     *         "drop_123",
+                     *         "message_456"
+                     *       ],
+                     *       "endDate": "2026-09-02",
+                     *       "interval": "day",
+                     *       "rates": {
+                     *         "creditsPerDollar": 200,
+                     *         "domesticSms": 5,
+                     *         "emails": 2,
+                     *         "instagram": 3,
+                     *         "internationalSms": 12,
+                     *         "mms": 12
+                     *       },
+                     *       "series": [
+                     *         {
+                     *           "channels": {
+                     *             "domesticSms": {
+                     *               "costUsd": 2.5,
+                     *               "count": 100,
+                     *               "credits": 500
+                     *             },
+                     *             "emails": {
+                     *               "costUsd": 1.2,
+                     *               "count": 120,
+                     *               "credits": 240
+                     *             },
+                     *             "instagram": {
+                     *               "costUsd": 0,
+                     *               "count": 0,
+                     *               "credits": 0
+                     *             },
+                     *             "internationalSms": {
+                     *               "costUsd": 0.06,
+                     *               "count": 1,
+                     *               "credits": 12
+                     *             },
+                     *             "mms": {
+                     *               "costUsd": 0,
+                     *               "count": 0,
+                     *               "credits": 0
+                     *             }
+                     *           },
+                     *           "costUsd": 3.76,
+                     *           "count": 221,
+                     *           "credits": 752,
+                     *           "start": "2026-09-01"
+                     *         },
+                     *         {
+                     *           "channels": {
+                     *             "domesticSms": {
+                     *               "costUsd": 0,
+                     *               "count": 0,
+                     *               "credits": 0
+                     *             },
+                     *             "emails": {
+                     *               "costUsd": 0,
+                     *               "count": 0,
+                     *               "credits": 0
+                     *             },
+                     *             "instagram": {
+                     *               "costUsd": 0,
+                     *               "count": 0,
+                     *               "credits": 0
+                     *             },
+                     *             "internationalSms": {
+                     *               "costUsd": 0.12,
+                     *               "count": 2,
+                     *               "credits": 24
+                     *             },
+                     *             "mms": {
+                     *               "costUsd": 0.06,
+                     *               "count": 1,
+                     *               "credits": 12
+                     *             }
+                     *           },
+                     *           "costUsd": 0.18,
+                     *           "count": 3,
+                     *           "credits": 36,
+                     *           "start": "2026-09-02"
+                     *         }
+                     *       ],
+                     *       "startDate": "2026-09-01",
+                     *       "total": {
+                     *         "channels": {
+                     *           "domesticSms": {
+                     *             "costUsd": 2.5,
+                     *             "count": 100,
+                     *             "credits": 500
+                     *           },
+                     *           "emails": {
+                     *             "costUsd": 1.2,
+                     *             "count": 120,
+                     *             "credits": 240
+                     *           },
+                     *           "instagram": {
+                     *             "costUsd": 0,
+                     *             "count": 0,
+                     *             "credits": 0
+                     *           },
+                     *           "internationalSms": {
+                     *             "costUsd": 0.18,
+                     *             "count": 3,
+                     *             "credits": 36
+                     *           },
+                     *           "mms": {
+                     *             "costUsd": 0.06,
+                     *             "count": 1,
+                     *             "credits": 12
+                     *           }
+                     *         },
+                     *         "costUsd": 3.94,
+                     *         "count": 224,
+                     *         "credits": 788
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        /**
+                         * Format: date
+                         * @description Last UTC day of the window (inclusive), as YYYY-MM-DD.
+                         */
+                        endDate: string;
+                        /**
+                         * @description How the series is bucketed.
+                         * @enum {string}
+                         */
+                        interval: "day" | "week" | "month";
+                        /** @description The products that were summed, as requested, de-duplicated. */
+                        productIds: string[];
+                        /** @description The customer's current prices: credits per billed unit on each channel, and credits per US dollar. */
+                        rates: {
+                            /** @description Credits per US dollar. */
+                            creditsPerDollar: number;
+                            /** @description Credits per billed unit on domesticSms. */
+                            domesticSms: number;
+                            /** @description Credits per billed unit on emails. */
+                            emails: number;
+                            /** @description Credits per billed unit on instagram. */
+                            instagram: number;
+                            /** @description Credits per billed unit on internationalSms. */
+                            internationalSms: number;
+                            /** @description Credits per billed unit on mms. */
+                            mms: number;
+                        };
+                        /** @description One bucket per day, week (starting Monday), or month across the whole window, oldest first, including buckets with no sends. */
+                        series: {
+                            /** @description Usage per channel. Every channel is always present, with zeros when nothing was sent. internationalSms includes WhatsApp text messages, which bill at the same rate. */
+                            channels: {
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                domesticSms: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                emails: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                instagram: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                internationalSms: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                mms: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                            };
+                            /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. Channel costs are rounded separately, so their sum can differ from this by a few cents. */
+                            costUsd: number;
+                            /** @description Sum of the channels' counts. */
+                            count: number;
+                            /** @description Sum of the channels' credits. */
+                            credits: number;
+                            /**
+                             * Format: date
+                             * @description First UTC day of the bucket, as YYYY-MM-DD. The first bucket starts at startDate even when its week or month began earlier.
+                             */
+                            start: string;
+                        }[];
+                        /**
+                         * Format: date
+                         * @description First UTC day of the window (inclusive), as YYYY-MM-DD.
+                         */
+                        startDate: string;
+                        /**
+                         * CreditUsage
+                         * @description Message credit usage across the whole window. count and credits sum the series exactly; costUsd is rounded from the total credits, so it can differ from the sum of the buckets' costUsd.
+                         */
+                        total: {
+                            /** @description Usage per channel. Every channel is always present, with zeros when nothing was sent. internationalSms includes WhatsApp text messages, which bill at the same rate. */
+                            channels: {
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                domesticSms: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                emails: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                instagram: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                internationalSms: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                                /**
+                                 * ChannelCreditUsage
+                                 * @description Sends and credits on one channel.
+                                 */
+                                mms: {
+                                    /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. */
+                                    costUsd: number;
+                                    /** @description Billed units: messages, except that most texts count one per segment, so a long text can count as several. */
+                                    count: number;
+                                    /** @description Credits charged, at the customer's current rates, rounded to 2 decimal places. */
+                                    credits: number;
+                                };
+                            };
+                            /** @description credits divided by creditsPerDollar, in US dollars, rounded to the cent. Channel costs are rounded separately, so their sum can differ from this by a few cents. */
+                            costUsd: number;
+                            /** @description Sum of the channels' counts. */
+                            count: number;
+                            /** @description Sum of the channels' credits. */
+                            credits: number;
+                        };
+                    };
+                };
+            };
+            /** @description The request body is malformed. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "BAD_REQUEST",
+                     *         "message": "Invalid request body"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The integrator credential or customer API key is invalid, or the customer named by X-Api-Key or X-Creator-Id could not be resolved to a Laylo account. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "UNAUTHORIZED",
+                     *         "message": "Invalid Customer API Key"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The named customer account has no paid Laylo plan or is locked, the integrator sent an X-Creator-Id for an account outside its roster, or a customer API key was sent alone to an endpoint that requires integrator credentials or a permission the key does not have. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "FORBIDDEN",
+                     *         "message": "Customer account does not have a paid Laylo plan"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description No route matches the requested path. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "NOT_FOUND",
+                     *         "message": "Route not found"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The path exists, but the HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "METHOD_NOT_ALLOWED",
+                     *         "message": "Method not allowed"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The rate limit for this integrator and customer pair, or for a customer calling with only their API key, is exceeded. */
+            429: {
+                headers: {
+                    /** @description Seconds until the current rate-limit window resets. */
+                    "Retry-After"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -3014,23 +4076,23 @@ export interface operations {
                      *       "estimate": {
                      *         "channels": {
                      *           "domesticSms": {
-                     *             "credits": 2400,
-                     *             "creditsPerRecipient": 10,
+                     *             "credits": 1200,
+                     *             "creditsPerRecipient": 5,
                      *             "recipients": 240
                      *           },
                      *           "emails": {
-                     *             "credits": 12,
-                     *             "creditsPerRecipient": 1,
+                     *             "credits": 24,
+                     *             "creditsPerRecipient": 2,
                      *             "recipients": 12
                      *           },
                      *           "internationalSms": {
-                     *             "credits": 375,
-                     *             "creditsPerRecipient": 25,
+                     *             "credits": 180,
+                     *             "creditsPerRecipient": 12,
                      *             "recipients": 15
                      *           }
                      *         },
-                     *         "costUsd": 5.57,
-                     *         "credits": 2787,
+                     *         "costUsd": 7.02,
+                     *         "credits": 1404,
                      *         "disclaimer": "This is an estimate from the fans who match the segment right now. The number of recipients and the cost can change until the message sends as fans subscribe and unsubscribe, and you are billed for the messages actually sent.",
                      *         "recipients": 255,
                      *         "smsSegments": 1
@@ -3477,23 +4539,23 @@ export interface operations {
                      *       "estimate": {
                      *         "channels": {
                      *           "domesticSms": {
-                     *             "credits": 2400,
-                     *             "creditsPerRecipient": 10,
+                     *             "credits": 1200,
+                     *             "creditsPerRecipient": 5,
                      *             "recipients": 240
                      *           },
                      *           "emails": {
-                     *             "credits": 12,
-                     *             "creditsPerRecipient": 1,
+                     *             "credits": 24,
+                     *             "creditsPerRecipient": 2,
                      *             "recipients": 12
                      *           },
                      *           "internationalSms": {
-                     *             "credits": 375,
-                     *             "creditsPerRecipient": 25,
+                     *             "credits": 180,
+                     *             "creditsPerRecipient": 12,
                      *             "recipients": 15
                      *           }
                      *         },
-                     *         "costUsd": 5.57,
-                     *         "credits": 2787,
+                     *         "costUsd": 7.02,
+                     *         "credits": 1404,
                      *         "disclaimer": "This is an estimate from the fans who match the segment right now. The number of recipients and the cost can change until the message sends as fans subscribe and unsubscribe, and you are billed for the messages actually sent.",
                      *         "recipients": 255,
                      *         "smsSegments": 1

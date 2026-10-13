@@ -386,6 +386,66 @@ body throws a 422 `LayloAPIError`, and a malformed key throws
 `LayloConfigurationError` before any request. Without a key it isn't retried
 on a 5xx or a dropped connection.
 
+## billing.creditUsage.get(params?)
+
+| Param       | Type                          | Default                    |
+| ----------- | ----------------------------- | -------------------------- |
+| `startDate` | `string` (UTC day, inclusive) | first of `endDate`'s month |
+| `endDate`   | `string` (UTC day, inclusive) | today                      |
+| `interval`  | `"day" \| "week" \| "month"`  | `"day"`                    |
+
+Days are `"YYYY-MM-DD"` strings; a `Date` isn't accepted, so convert it to
+the UTC day you mean. The window can span at most 366 days.
+
+Returns:
+
+```ts
+type CreditUsageReport = {
+  startDate: string; // the window actually applied, YYYY-MM-DD
+  endDate: string;
+  interval: "day" | "week" | "month";
+  rates: {
+    creditsPerDollar: number;
+    domesticSms: number; // credits per billed unit on each channel
+    emails: number;
+    instagram: number;
+    internationalSms: number;
+    mms: number;
+  };
+  series: CreditUsageBucket[]; // every bucket in the window, oldest first
+  total: CreditUsage;
+};
+
+type CreditUsage = {
+  count: number;
+  credits: number;
+  costUsd: number;
+  channels: Record<
+    CreditChannel,
+    { count: number; credits: number; costUsd: number }
+  >;
+};
+
+type CreditUsageBucket = CreditUsage & { start: string }; // YYYY-MM-DD
+```
+
+Weeks start on Monday and months on the 1st, except the first bucket, which
+starts at `startDate`. `count` is billed units, not messages: most texts count
+once per segment. `internationalSms` includes WhatsApp. Credits are priced at
+the customer's current `rates`, and `costUsd` is rounded to the cent, so
+rounded costs can be off by a few cents when summed. Prepaid and free credits
+aren't applied.
+
+## billing.creditUsage.getForProducts(params)
+
+The same params plus `productIds: string[]`, required: 1 to 50 distinct drop
+or segment message ids. Repeats are sent once. Resolves to the same report
+summed across them, plus `productIds`. A drop includes its sub-drops. An
+empty `productIds` throws `LayloConfigurationError`. More than 50 distinct
+ids, or drops that expand to more than 200 products with their sub-drops,
+throw `BadRequestError`; a product the customer doesn't own throws
+`NotFoundError`.
+
 ## auth.createToken()
 
 Returns `{ access_token: string; expires_in: number; token_type: "Bearer" }`.

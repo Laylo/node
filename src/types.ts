@@ -275,3 +275,80 @@ export type SegmentMessage = SuccessJson<operations["messages.segments.send"]>;
  * @see https://developers.laylo.com/records/segment-message-estimate
  */
 export type SegmentMessageEstimate = SegmentMessage["estimate"];
+
+/**
+ * Message credits a customer used over a window of UTC days, per channel,
+ * with a series bucketed by day, week, or month. Priced at the customer's
+ * current `rates`. It is usage, not an invoice: the window isn't tied to the
+ * billing period, and prepaid and free credits aren't applied.
+ * @see https://developers.laylo.com/records/credit-usage-report
+ */
+export type CreditUsageReport = SuccessJson<operations["billing.usage.get"]>;
+
+/**
+ * A credit usage report for a set of drops and segment messages, summed
+ * together, plus the de-duplicated `productIds` that were summed. A drop
+ * includes its sub-drops.
+ * @see https://developers.laylo.com/records/credit-usage-by-product-report
+ */
+export type CreditUsageByProductReport = SuccessJson<
+  operations["billing.usage.products.get"]
+>;
+
+/**
+ * The customer's current prices: credits per billed unit on each channel, and
+ * credits per US dollar.
+ * @see https://developers.laylo.com/records/credit-usage-report
+ */
+export type CreditRates = CreditUsageReport["rates"];
+
+/**
+ * Credit usage across a whole window: totals and a breakdown per channel.
+ * `count` and `credits` add up exactly; `costUsd` is rounded to the cent, so
+ * it can differ from the sum of its parts by a few cents.
+ * @see https://developers.laylo.com/records/credit-usage
+ */
+export type CreditUsage = CreditUsageReport["total"];
+
+/**
+ * Credit usage for one day, week, or month of the window, starting at
+ * `start` (`YYYY-MM-DD`).
+ * @see https://developers.laylo.com/records/credit-usage-bucket
+ */
+export type CreditUsageBucket = CreditUsageReport["series"][number];
+
+/**
+ * A channel credits are counted on, such as `"domesticSms"` or `"emails"`.
+ * International SMS includes WhatsApp text messages.
+ * @see https://developers.laylo.com/records/credit-usage
+ */
+export type CreditChannel = keyof CreditUsage["channels"];
+
+/**
+ * Billed units, credits, and cost on one channel. `count` is billed units,
+ * not messages: most texts count once per segment.
+ * @see https://developers.laylo.com/records/channel-credit-usage
+ */
+export type ChannelCreditUsage = CreditUsage["channels"][CreditChannel];
+
+/**
+ * How a credit usage series is bucketed: `"day"`, `"week"` (starting Monday),
+ * or `"month"`.
+ * @see https://developers.laylo.com/api-reference/billing/billing.usage.get
+ */
+export type CreditUsageInterval = CreditUsageReport["interval"];
+
+/**
+ * Query parameters accepted when getting credit usage.
+ * @see https://developers.laylo.com/api-reference/billing/billing.usage.get
+ */
+export type GetCreditUsageParams = QueryOf<operations["billing.usage.get"]>;
+
+/**
+ * Query parameters accepted when getting credit usage for products. The SDK
+ * takes `productId` as a `productIds` array.
+ * @see https://developers.laylo.com/api-reference/billing/billing.usage.products.get
+ */
+export type GetProductCreditUsageParams = QueryOf<
+  operations["billing.usage.products.get"]
+>;

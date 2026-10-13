@@ -17,22 +17,24 @@ retries, and errors for you. Mention it if the user is on Node.
 These are the only endpoints this skill covers. Request and response shapes
 are in [references/endpoints.md](references/endpoints.md).
 
-| Endpoint                               | Answers                                                        |
-| -------------------------------------- | -------------------------------------------------------------- |
-| `POST /v1/auth/token`                  | Mint a bearer token from the integrator credentials            |
-| `GET /v1/keys/verify`                  | Is this customer API key valid?                                |
-| `GET /v1/customers`                    | Which accounts sit under my integration's own account? (\*)    |
-| `GET /v1/drops`                        | What active public drops does the customer have?               |
-| `GET /v1/conversions`                  | What conversion definitions exist (tickets, merch, RSVPs, …)?  |
-| `GET /v1/conversions/counts`           | How many conversion events per action over a window, by day?   |
-| `POST /v1/conversions/events`          | Record a purchase, check-in, click, etc. for a fan (write)     |
-| `POST /v1/fans/subscribed`             | Does this email or phone currently subscribe?                  |
-| `POST /v1/fans/unsubscribed`           | Did this contact subscribe once and later unsubscribe?         |
-| `GET /v1/fans/segments`                | How many fans match a segment (channel, drops, place, date)?   |
-| `POST /v1/fans/subscriptions`          | Subscribe a fan with a consent record, optionally RSVP (write) |
-| `POST /v1/messages/sms`                | Text up to 200 subscribed phone numbers (write)                |
-| `POST /v1/messages/segments`           | Text or email every fan in a segment, now (write)              |
-| `POST /v1/messages/segments/scheduled` | Text or email a segment at a set local time (write)            |
+| Endpoint                                | Answers                                                         |
+| --------------------------------------- | --------------------------------------------------------------- |
+| `POST /v1/auth/token`                   | Mint a bearer token from the integrator credentials             |
+| `GET /v1/keys/verify`                   | Is this customer API key valid?                                 |
+| `GET /v1/customers`                     | Which accounts sit under my integration's own account? (\*)     |
+| `GET /v1/drops`                         | What active public drops does the customer have?                |
+| `GET /v1/conversions`                   | What conversion definitions exist (tickets, merch, RSVPs, …)?   |
+| `GET /v1/conversions/counts`            | How many conversion events per action over a window, by day?    |
+| `POST /v1/conversions/events`           | Record a purchase, check-in, click, etc. for a fan (write)      |
+| `POST /v1/fans/subscribed`              | Does this email or phone currently subscribe?                   |
+| `POST /v1/fans/unsubscribed`            | Did this contact subscribe once and later unsubscribe?          |
+| `GET /v1/fans/segments`                 | How many fans match a segment (channel, drops, place, date)?    |
+| `POST /v1/fans/subscriptions`           | Subscribe a fan with a consent record, optionally RSVP (write)  |
+| `POST /v1/messages/sms`                 | Text up to 200 subscribed phone numbers (write)                 |
+| `POST /v1/messages/segments`            | Text or email every fan in a segment, now (write)               |
+| `POST /v1/messages/segments/scheduled`  | Text or email a segment at a set local time (write)             |
+| `GET /v1/billing/credit-usage`          | How many message credits were used, per channel, over a window? |
+| `GET /v1/billing/credit-usage/products` | How many credits did these drops or messages use?               |
 
 (\*) Needs integrator credentials; with only an API key it returns 403.
 
@@ -74,6 +76,12 @@ haven't seen here. The ones that are easiest to get wrong:
   (`"2026-11-20T19:00"`). Both return `id`, `note`, `sendAt`, `dryRun`, and
   `estimate`, which has the recipients, credits, and `costUsd`. Add
   `"dryRun": true` to get the estimate without sending (`id` is then null).
+- `GET /v1/billing/credit-usage` query: `startDate`, `endDate` (UTC days,
+  `YYYY-MM-DD`), `interval` (`day`, `week`, `month`). The response has
+  `startDate`, `endDate`, `interval`, `rates`, `series`, and `total`; `total`
+  and each `series` bucket carry `count`, `credits`, `costUsd`, and
+  `channels`. `GET /v1/billing/credit-usage/products` adds `productId`,
+  singular and repeated, 1 to 50, and returns `productIds` too.
 
 ## How authentication works
 

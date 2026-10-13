@@ -13,6 +13,7 @@ import { Laylo } from "../client.js";
 import { VERSION } from "../version.js";
 import { LayloConfigurationError } from "../core/errors.js";
 import { Auth } from "../resources/auth.js";
+import { Billing } from "../resources/billing.js";
 import { Conversions } from "../resources/conversions.js";
 import { Customers } from "../resources/customers.js";
 import { Drops } from "../resources/drops.js";
@@ -582,6 +583,7 @@ describe("resources", () => {
     expect(laylo.conversions).toBe(laylo.conversions);
     expect(laylo.fans).toBe(laylo.fans);
     expect(laylo.messages).toBe(laylo.messages);
+    expect(laylo.billing).toBe(laylo.billing);
     expect(laylo.auth).toBe(laylo.auth);
   });
 
@@ -594,6 +596,7 @@ describe("resources", () => {
     expect(laylo.conversions).toBeInstanceOf(Conversions);
     expect(laylo.fans).toBeInstanceOf(Fans);
     expect(laylo.messages).toBeInstanceOf(Messages);
+    expect(laylo.billing).toBeInstanceOf(Billing);
     expect(laylo.auth).toBeInstanceOf(Auth);
   });
 

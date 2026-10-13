@@ -9,6 +9,7 @@ import { HttpClient } from "./core/http.js";
 import { DEFAULT_MAX_RETRIES } from "./core/retry.js";
 import { Auth } from "./resources/auth.js";
 import type { ResourceContext } from "./resources/base.js";
+import { Billing } from "./resources/billing.js";
 import { Conversions } from "./resources/conversions.js";
 import { Customers } from "./resources/customers.js";
 import { Drops } from "./resources/drops.js";
@@ -307,6 +308,7 @@ export class Laylo {
   private conversionsResource: Conversions | undefined;
   private fansResource: Fans | undefined;
   private messagesResource: Messages | undefined;
+  private billingResource: Billing | undefined;
   private authResource: Auth | undefined;
 
   /**
@@ -436,6 +438,14 @@ export class Laylo {
    */
   get messages(): Messages {
     return (this.messagesResource ??= new Messages(this.context()));
+  }
+
+  /**
+   * @returns Message credit usage: `laylo.billing.creditUsage.get()` and
+   * `.getForProducts()`.
+   */
+  get billing(): Billing {
+    return (this.billingResource ??= new Billing(this.context()));
   }
 
   /**
