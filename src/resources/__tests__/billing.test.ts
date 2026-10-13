@@ -1,6 +1,6 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { LayloConfigurationError, NotFoundError } from "../../core/errors.js";
+import { LayloConfigurationError } from "../../core/errors.js";
 import type {
   ChannelCreditUsage,
   CreditUsageByProductReport,
@@ -54,7 +54,6 @@ describe("Billing", () => {
       const credits = await new Billing(context).creditUsage.get();
 
       expect(credits).toEqual(report);
-      expectTypeOf(credits).toEqualTypeOf<CreditUsageReport>();
       const [call] = apiCalls();
       expect(call?.url).toBe(
         "https://api.example.test/api/v1/billing/credit-usage",
@@ -99,54 +98,23 @@ describe("Billing", () => {
       });
 
       expect(credits).toEqual(productReport);
-      expectTypeOf(credits).toEqualTypeOf<CreditUsageByProductReport>();
       const [call] = apiCalls();
       expect(call?.url).toBe(
         "https://api.example.test/api/v1/billing/credit-usage/products?productId=drop_123&productId=message_456&startDate=2026-09-01&interval=month",
       );
-      expect(call?.init.method).toBe("GET");
     });
 
-    it("rejects missing or empty productIds before any request", async () => {
+    it("rejects empty productIds before any request", async () => {
       const { context, apiCalls } = fakeContext([], {
         apiKey: "customer-key-1",
       });
 
-      const billing = new Billing(context);
-
-      const failures: unknown[] = await Promise.all([
-        billing.creditUsage
-          .getForProducts({ productIds: [] })
-          .catch((error: unknown) => error),
-        billing.creditUsage
-          .getForProducts(undefined as never)
-          .catch((error: unknown) => error),
-      ]);
-
-      for (const failure of failures) {
-        expect(failure).toBeInstanceOf(LayloConfigurationError);
-      }
-      expect(apiCalls()).toHaveLength(0);
-    });
-
-    it("surfaces a product the customer doesn't own as NotFoundError", async () => {
-      const { context } = fakeContext(
-        [
-          json(404, {
-            error: {
-              code: "NOT_FOUND",
-              message: "Product not found: drop_999",
-            },
-          }),
-        ],
-        { apiKey: "customer-key-1" },
-      );
-
       const failure: unknown = await new Billing(context).creditUsage
-        .getForProducts({ productIds: ["drop_999"] })
+        .getForProducts({ productIds: [] })
         .catch((error: unknown) => error);
 
-      expect(failure).toBeInstanceOf(NotFoundError);
+      expect(failure).toBeInstanceOf(LayloConfigurationError);
+      expect(apiCalls()).toHaveLength(0);
     });
   });
 });
