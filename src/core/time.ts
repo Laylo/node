@@ -27,30 +27,6 @@ export const isoTimestamp = <Value extends string | Date | undefined>(
 };
 
 /**
- * Normalizes a calendar-day argument for the wire: a `Date` becomes its UTC
- * day as `YYYY-MM-DD`, a string is passed through, and `undefined` stays
- * absent so an optional field is simply omitted.
- * @param value The `Date` or `YYYY-MM-DD` string given by the caller.
- * @param field The field's name, for the error message.
- * @returns The `YYYY-MM-DD` string to send, or `undefined` when none was given.
- * @throws LayloConfigurationError When the `Date` is invalid.
- */
-export const utcDay = <Value extends string | Date | undefined>(
-  value: Value,
-  field: string,
-): IsoOf<Value> => {
-  if (value instanceof Date) {
-    if (Number.isNaN(value.getTime())) {
-      throw new LayloConfigurationError(
-        `${field} is an invalid Date; pass a valid Date or a YYYY-MM-DD string`,
-      );
-    }
-    return value.toISOString().slice(0, 10) as IsoOf<Value>;
-  }
-  return value as IsoOf<Value>;
-};
-
-/**
  * Segment filters with their sign-up bounds also accepting a `Date`, which is
  * sent as its ISO 8601 string.
  */

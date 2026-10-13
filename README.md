@@ -635,7 +635,7 @@ It needs integrator credentials; with only an API key, send the key as
   the message credits the customer used over a window of UTC days, per
   channel, with a series bucketed by `interval` (`"day"`, the default,
   `"week"`, or `"month"`). `startDate` and `endDate` are inclusive and take a
-  `YYYY-MM-DD` string or a `Date`, which is sent as its UTC day. `endDate`
+  UTC day as a `"YYYY-MM-DD"` string, not a `Date`. `endDate`
   defaults to today and `startDate` to the first of `endDate`'s month, and
   the window can span at most 366 days. Every bucket in the window is in
   `series`, empty ones included. `count` is billed units, not messages: most
@@ -662,7 +662,8 @@ It needs integrator credentials; with only an API key, send the key as
 
 - [`billing.creditUsage.getForProducts(params, options?)`](https://developers.laylo.com/api-reference/billing/billing.usage.products.get) —
   the same report for specific drops and segment messages, summed together.
-  Pass 1 to 50 ids as `productIds`; the report adds them back, de-duplicated.
+  Pass 1 to 50 distinct ids as `productIds`; repeats are sent once, and the
+  report lists the ids it summed.
   A drop includes its sub-drops, and a product named twice counts once. The
   report is summed, so call once per product for a per-product breakdown. A
   product that isn't the customer's throws `NotFoundError`, and drops that

@@ -1,77 +1,36 @@
 import { LayloConfigurationError } from "../core/errors.js";
 import type { RequestOptions } from "../core/request-options.js";
-import { utcDay } from "../core/time.js";
 import type {
   CreditUsageByProductReport,
   CreditUsageReport,
   GetCreditUsageParams,
+  GetProductCreditUsageParams,
 } from "../types.js";
 import { APIResource, type ResourceContext } from "./base.js";
 
 /**
- * The window and bucketing for a credit usage report. Identical to the API's
- * query parameters except the bounds also accept a `Date`, which is sent as
- * its UTC day.
- * @see https://developers.laylo.com/api-reference/billing/billing.usage.get
- */
-export type GetCreditUsageInput = Omit<
-  GetCreditUsageParams,
-  "startDate" | "endDate"
-> & {
-  /**
-   * First UTC day of the window, inclusive: a `Date`, or a `YYYY-MM-DD`
-   * string. Defaults to the first of `endDate`'s month.
-   */
-  startDate?: string | Date;
-  /**
-   * Last UTC day of the window, inclusive: a `Date`, or a `YYYY-MM-DD`
-   * string. Defaults to today. The window can span at most 366 days.
-   */
-  endDate?: string | Date;
-};
-
-/**
  * The drops and segment messages to sum credit usage for, with the same
- * window and bucketing as {@link GetCreditUsageInput}.
+ * window and bucketing as {@link GetCreditUsageParams}. Identical to the
+ * API's query parameters except the repeated `productId` is passed as a
+ * `productIds` array.
  * @see https://developers.laylo.com/api-reference/billing/billing.usage.products.get
  */
-export type GetProductCreditUsageInput = GetCreditUsageInput & {
+export type GetProductCreditUsageInput = Omit<
+  GetProductCreditUsageParams,
+  "productId"
+> & {
   /**
-   * Drop and segment message ids, 1 to 50, each belonging to the customer.
-   * Sent as one repeated `productId` query parameter.
+   * Drop and segment message ids, 1 to 50 distinct, each belonging to the
+   * customer. Repeats are sent once.
    */
-  productIds: string[];
+  productIds: readonly string[];
 };
-
-const MAX_PRODUCT_IDS = 50;
-
-// The API de-duplicates before applying its limit, so repeats don't count.
-const assertProductCount = (productIds: string[] | undefined) => {
-  if (!Array.isArray(productIds) || productIds.length === 0) {
-    throw new LayloConfigurationError(
-      "productIds must be an array of at least one drop or message id",
-    );
-  }
-
-  const productCount = new Set(productIds).size;
-  if (productCount > MAX_PRODUCT_IDS) {
-    throw new LayloConfigurationError(
-      `productIds must contain at most ${String(MAX_PRODUCT_IDS)} distinct ids, received ${String(productCount)}`,
-    );
-  }
-};
-
-const toUsageQuery = (params: GetCreditUsageInput | undefined) => ({
-  startDate: utcDay(params?.startDate, "startDate"),
-  endDate: utcDay(params?.endDate, "endDate"),
-  interval: params?.interval,
-});
 
 /**
  * Message credit usage reads, exposed as `laylo.billing.creditUsage`.
  * @see https://developers.laylo.com/guides/credit-usage
  */
-export class CreditUsageReads extends APIResource {
+export class BillingCreditUsage extends APIResource {
   /**
    * Gets the message credits the customer used over a window of UTC days,
    * per channel, with a series that has a bucket for every day, week, or
@@ -93,14 +52,18 @@ export class CreditUsageReads extends APIResource {
    * @see https://developers.laylo.com/api-reference/billing/billing.usage.get
    */
   async get(
-    params?: GetCreditUsageInput,
+    params?: GetCreditUsageParams,
     options?: RequestOptions,
   ): Promise<CreditUsageReport> {
     return this.request<CreditUsageReport>(
       {
         method: "GET",
         path: "/v1/billing/credit-usage",
-        query: toUsageQuery(params),
+        query: {
+          startDate: params?.startDate,
+          endDate: params?.endDate,
+          interval: params?.interval,
+        },
       },
       options,
     );
@@ -130,13 +93,22 @@ export class CreditUsageReads extends APIResource {
     params: GetProductCreditUsageInput,
     options?: RequestOptions,
   ): Promise<CreditUsageByProductReport> {
-    assertProductCount(params?.productIds);
+    if (!Array.isArray(params?.productIds) || params.productIds.length === 0) {
+      throw new LayloConfigurationError(
+        "productIds must be an array of at least one drop or message id",
+      );
+    }
 
     return this.request<CreditUsageByProductReport>(
       {
         method: "GET",
         path: "/v1/billing/credit-usage/products",
-        query: { productId: params.productIds, ...toUsageQuery(params) },
+        query: {
+          productId: [...new Set(params.productIds)],
+          startDate: params.startDate,
+          endDate: params.endDate,
+          interval: params.interval,
+        },
       },
       options,
     );
@@ -151,7 +123,7 @@ export class Billing extends APIResource {
   /**
    * Credit usage: `laylo.billing.creditUsage.get()` and `.getForProducts()`.
    */
-  readonly creditUsage: CreditUsageReads;
+  readonly creditUsage: BillingCreditUsage;
 
   /**
    * @param context The client's shared transport, token provider, and default
@@ -159,6 +131,6 @@ export class Billing extends APIResource {
    */
   constructor(context: ResourceContext) {
     super(context);
-    this.creditUsage = new CreditUsageReads(context);
+    this.creditUsage = new BillingCreditUsage(context);
   }
 }

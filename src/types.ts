@@ -343,3 +343,12 @@ export type CreditUsageInterval = CreditUsageReport["interval"];
  * @see https://developers.laylo.com/api-reference/billing/billing.usage.get
  */
 export type GetCreditUsageParams = QueryOf<operations["billing.usage.get"]>;
+
+/**
+ * Query parameters accepted when getting credit usage for products. The SDK
+ * takes `productId` as a `productIds` array.
+ * @see https://developers.laylo.com/api-reference/billing/billing.usage.products.get
+ */
+export type GetProductCreditUsageParams = QueryOf<
+  operations["billing.usage.products.get"]
+>;

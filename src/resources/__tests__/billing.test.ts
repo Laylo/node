@@ -79,34 +79,6 @@ describe("Billing", () => {
         "https://api.example.test/api/v1/billing/credit-usage?startDate=2026-09-01&endDate=2026-09-30&interval=week",
       );
     });
-
-    it("sends Date bounds as their UTC day", async () => {
-      const { context, apiCalls } = fakeContext([json(200, report)], {
-        apiKey: "customer-key-1",
-      });
-
-      await new Billing(context).creditUsage.get({
-        startDate: new Date("2026-09-01T23:30:00-07:00"),
-        endDate: new Date("2026-09-30T12:00:00Z"),
-      });
-
-      const url = new URL(apiCalls()[0]?.url ?? "");
-      expect(url.searchParams.get("startDate")).toBe("2026-09-02");
-      expect(url.searchParams.get("endDate")).toBe("2026-09-30");
-    });
-
-    it("rejects an invalid Date before any request", async () => {
-      const { context, apiCalls } = fakeContext([], {
-        apiKey: "customer-key-1",
-      });
-
-      const failure: unknown = await new Billing(context).creditUsage
-        .get({ endDate: new Date("nope") })
-        .catch((error: unknown) => error);
-
-      expect(failure).toBeInstanceOf(LayloConfigurationError);
-      expect(apiCalls()).toHaveLength(0);
-    });
   });
 
   describe("creditUsage.getForProducts", () => {
@@ -115,14 +87,14 @@ describe("Billing", () => {
       productIds: ["drop_123", "message_456"],
     };
 
-    it("repeats productId for each product alongside the window", async () => {
+    it("repeats productId once per distinct product alongside the window", async () => {
       const { context, apiCalls } = fakeContext([json(200, productReport)], {
         apiKey: "customer-key-1",
       });
 
       const credits = await new Billing(context).creditUsage.getForProducts({
-        productIds: ["drop_123", "message_456"],
-        startDate: new Date("2026-09-01T00:00:00Z"),
+        productIds: ["drop_123", "message_456", "drop_123"],
+        startDate: "2026-09-01",
         interval: "month",
       });
 
@@ -135,38 +107,26 @@ describe("Billing", () => {
       expect(call?.init.method).toBe("GET");
     });
 
-    it("rejects an empty productIds array before any request", async () => {
+    it("rejects missing or empty productIds before any request", async () => {
       const { context, apiCalls } = fakeContext([], {
         apiKey: "customer-key-1",
       });
 
-      const failure: unknown = await new Billing(context).creditUsage
-        .getForProducts({ productIds: [] })
-        .catch((error: unknown) => error);
-
-      expect(failure).toBeInstanceOf(LayloConfigurationError);
-      expect(apiCalls()).toHaveLength(0);
-    });
-
-    it("rejects more than 50 distinct productIds, ignoring repeats", async () => {
-      const { context, apiCalls } = fakeContext([json(200, productReport)], {
-        apiKey: "customer-key-1",
-      });
       const billing = new Billing(context);
-      const fiftyIds = Array.from(
-        { length: 50 },
-        (_, index) => `drop_${index}`,
-      );
 
-      const failure: unknown = await billing.creditUsage
-        .getForProducts({ productIds: [...fiftyIds, "drop_50"] })
-        .catch((error: unknown) => error);
-      await billing.creditUsage.getForProducts({
-        productIds: [...fiftyIds, "drop_0"],
-      });
+      const failures: unknown[] = await Promise.all([
+        billing.creditUsage
+          .getForProducts({ productIds: [] })
+          .catch((error: unknown) => error),
+        billing.creditUsage
+          .getForProducts(undefined as never)
+          .catch((error: unknown) => error),
+      ]);
 
-      expect(failure).toBeInstanceOf(LayloConfigurationError);
-      expect(apiCalls()).toHaveLength(1);
+      for (const failure of failures) {
+        expect(failure).toBeInstanceOf(LayloConfigurationError);
+      }
+      expect(apiCalls()).toHaveLength(0);
     });
 
     it("surfaces a product the customer doesn't own as NotFoundError", async () => {

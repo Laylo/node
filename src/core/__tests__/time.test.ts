@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 import { LayloConfigurationError } from "../errors.js";
-import { isoTimestamp, utcDay } from "../time.js";
+import { isoTimestamp } from "../time.js";
 
 describe("isoTimestamp", () => {
   it("renders a Date as its ISO 8601 string", () => {
@@ -34,23 +34,5 @@ describe("isoTimestamp", () => {
     expectTypeOf(
       isoTimestamp(undefined as string | Date | undefined, "startDate"),
     ).toEqualTypeOf<string | undefined>();
-  });
-});
-
-describe("utcDay", () => {
-  it("renders a Date as its UTC day", () => {
-    expect(utcDay(new Date("2026-08-25T23:30:00-07:00"), "endDate")).toBe(
-      "2026-08-26",
-    );
-  });
-
-  it("passes a string through untouched", () => {
-    expect(utcDay("2026-08-25", "endDate")).toBe("2026-08-25");
-  });
-
-  it("rejects an invalid Date, naming the field", () => {
-    expect(() => utcDay(new Date("nope"), "startDate")).toThrow(
-      /^startDate is an invalid Date/,
-    );
   });
 });

@@ -388,14 +388,14 @@ on a 5xx or a dropped connection.
 
 ## billing.creditUsage.get(params?)
 
-| Param       | Type                                  | Default                    |
-| ----------- | ------------------------------------- | -------------------------- |
-| `startDate` | `Date \| string` (UTC day, inclusive) | first of `endDate`'s month |
-| `endDate`   | `Date \| string` (UTC day, inclusive) | today                      |
-| `interval`  | `"day" \| "week" \| "month"`          | `"day"`                    |
+| Param       | Type                          | Default                    |
+| ----------- | ----------------------------- | -------------------------- |
+| `startDate` | `string` (UTC day, inclusive) | first of `endDate`'s month |
+| `endDate`   | `string` (UTC day, inclusive) | today                      |
+| `interval`  | `"day" \| "week" \| "month"`  | `"day"`                    |
 
-A string is `"YYYY-MM-DD"`; a `Date` is sent as its UTC day. The window can
-span at most 366 days.
+Days are `"YYYY-MM-DD"` strings; a `Date` isn't accepted, so convert it to
+the UTC day you mean. The window can span at most 366 days.
 
 Returns:
 
@@ -439,12 +439,12 @@ aren't applied.
 ## billing.creditUsage.getForProducts(params)
 
 The same params plus `productIds: string[]`, required: 1 to 50 distinct drop
-or segment message ids. Resolves to the same report summed across them, plus
-`productIds`, de-duplicated. A drop includes its sub-drops. An empty
-`productIds`, or more than 50 distinct ids, throws `LayloConfigurationError`.
-A product the customer doesn't own throws `NotFoundError`, and drops that
-expand to more than 200 products with their sub-drops throw
-`BadRequestError`.
+or segment message ids. Repeats are sent once. Resolves to the same report
+summed across them, plus `productIds`. A drop includes its sub-drops. An
+empty `productIds` throws `LayloConfigurationError`. More than 50 distinct
+ids, or drops that expand to more than 200 products with their sub-drops,
+throw `BadRequestError`; a product the customer doesn't own throws
+`NotFoundError`.
 
 ## auth.createToken()
 

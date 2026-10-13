@@ -359,19 +359,19 @@ it's the same URL.
   "estimate": {
     "channels": {
       "domesticSms": {
-        "credits": 2400,
-        "creditsPerRecipient": 10,
+        "credits": 1200,
+        "creditsPerRecipient": 5,
         "recipients": 240
       },
-      "emails": { "credits": 12, "creditsPerRecipient": 1, "recipients": 12 },
+      "emails": { "credits": 24, "creditsPerRecipient": 2, "recipients": 12 },
       "internationalSms": {
-        "credits": 375,
-        "creditsPerRecipient": 25,
+        "credits": 180,
+        "creditsPerRecipient": 12,
         "recipients": 15
       }
     },
-    "costUsd": 5.57,
-    "credits": 2787,
+    "costUsd": 7.02,
+    "credits": 1404,
     "disclaimer": "This is an estimate from the fans who match the segment right now. …",
     "recipients": 255,
     "smsSegments": 1
@@ -433,7 +433,7 @@ account for review.
 {
   "startDate": "2026-09-01",
   "endDate": "2026-09-30",
-  "interval": "week",
+  "interval": "month",
   "rates": {
     "creditsPerDollar": 200,
     "domesticSms": 5,

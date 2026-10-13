@@ -11,8 +11,7 @@ export {
 export type { Auth } from "./resources/auth.js";
 export type {
   Billing,
-  CreditUsageReads,
-  GetCreditUsageInput,
+  BillingCreditUsage,
   GetProductCreditUsageInput,
 } from "./resources/billing.js";
 export type {
@@ -79,6 +78,7 @@ export type {
   CustomerAccount,
   Drop,
   GetCreditUsageParams,
+  GetProductCreditUsageParams,
   ListConversionCountsParams,
   ListConversionsParams,
   MessageSegment,

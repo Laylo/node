@@ -77,7 +77,7 @@ call you haven't seen here. The ones that are easiest to get wrong:
   get the estimate without sending (`id` is then null). Pass
   `{ idempotencyKey }` as the second argument so a retry can't send twice.
 - `billing.creditUsage.get` takes `startDate`, `endDate` (UTC days as
-  `"YYYY-MM-DD"` or a `Date`), and `interval` (`"day"`, `"week"`,
+  `"YYYY-MM-DD"` strings), and `interval` (`"day"`, `"week"`,
   `"month"`). It resolves to `startDate`, `endDate`, `interval`, `rates`,
   `series`, and `total`, where `total` and each `series` bucket carry
   `count`, `credits`, `costUsd`, and `channels`. `.getForProducts` also takes
@@ -279,7 +279,8 @@ access token, so creating them is cheap.
 - Phone numbers must be E.164, like `+12025550100`.
 - Contact checks take exactly one of `{ email }` or `{ phone }`.
 - Dates you send accept a `Date` or an ISO 8601 string with an explicit offset
-  (`Z` or `-07:00`). Dates in drop and customer responses (`createdAt`,
+  (`Z` or `-07:00`), except `billing.creditUsage`'s, which are UTC days as
+  `"YYYY-MM-DD"` strings. Dates in drop and customer responses (`createdAt`,
   `endDate`) are Unix epoch **milliseconds**.
 - In `fans.segments.count`, an empty array switches that filter off. It does
   not mean "match nothing." Leave the key out rather than passing `[]`.
