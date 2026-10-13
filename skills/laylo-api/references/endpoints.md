@@ -5,7 +5,8 @@ endpoint except `POST /v1/auth/token` needs either:
 
 - **Only an API key:** `X-Api-Key` and no `Authorization` header. The call
   acts as the key's own account, is limited to 20 requests a minute per
-  account, and can't use `X-Creator-Id`. It also needs the key to have the
+  account by default (Laylo can raise the limit on a specific key, which then
+  gets its own budget), and can't use `X-Creator-Id`. It also needs the key to have the
   endpoint's permission: "write" for `POST /v1/fans/subscriptions`,
   `POST /v1/conversions/events`, `POST /v1/messages/sms`, and both
   `POST /v1/messages/segments` routes, "read" for the

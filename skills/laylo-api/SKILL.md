@@ -93,8 +93,9 @@ script, a report, a backend for their own site). Send the key as
 The owner generates the key at https://laylo.com/settings?tab=Integrations.
 In this mode:
 
-- Requests are limited to 20 a minute per account. Past that the API returns
-  429 with `Retry-After`.
+- Requests are limited to 20 a minute per account by default; Laylo can raise the
+  limit on a specific key, which then gets its own budget. Past that the API
+  returns 429 with `Retry-After`.
 - Only the key's own account can be acted on. `X-Creator-Id` isn't accepted.
 - `GET /v1/customers` returns 403, since there's no integrator roster to
   list, and `POST /v1/auth/token` doesn't apply.
@@ -240,7 +241,7 @@ Errors come back as
 | 401    | If `error.apiKeyStatus` is `"invalid"`, the customer key is wrong or revoked. Otherwise the token expired or the client credentials are bad: mint a fresh token and retry once.                                                                    |
 | 403    | The account has no paid Laylo plan, is locked, the creator id isn't under the integration's account, `GET /v1/customers` was called with only an API key, or the key lacks the "read" or "write" permission the call needs (the message names it). |
 | 404    | Unknown path, or a `dropId` that isn't one of the customer's drops.                                                                                                                                                                                |
-| 429    | Rate limited. Wait for the `Retry-After` header (seconds), or `error.details.retryAfter`. With only an API key the limit is 20 requests a minute per account.                                                                                      |
+| 429    | Rate limited. Wait for the `Retry-After` header (seconds), or `error.details.retryAfter`. With only an API key the limit is 20 requests a minute per account by default; Laylo can raise it on a specific key, which then gets its own budget.     |
 | 5xx    | Laylo-side failure. Retry reads with backoff. See the retry rules below for writes.                                                                                                                                                                |
 
 Include the `apigw-requestid` response header when

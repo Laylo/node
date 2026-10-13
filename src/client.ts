@@ -33,7 +33,8 @@ const AUTH_DOCS = "https://developers.laylo.com/authentication";
  * credentials (`userId`, `accessKey`, and `secretKey`), to act on behalf of
  * many customers, or with a customer `apiKey` on its own, to act as that one
  * account. An API-key-only client sends no access token, is limited to 20
- * requests a minute per account, cannot name customers by `creatorId`, and
+ * requests a minute per account by default (Laylo can raise the limit on a
+ * specific key, which then gets its own budget), cannot name customers by `creatorId`, and
  * cannot call `customers.list()` or `auth.createToken()`. Its calls are also
  * bound by the key's own permissions. Keys can't be granted "write" yet, so
  * for now these clients are read-only and writes such as `fans.subscribe`
@@ -274,7 +275,8 @@ const mask = (apiKey: string | undefined) => {
  * reach every endpoint through its resources; access tokens are minted and
  * refreshed for you. An account calling its own data can instead construct
  * it with only that account's API key, which is sent on every request in
- * place of an access token and is limited to 20 requests a minute.
+ * place of an access token and is limited to 20 requests a minute by default;
+ * Laylo can raise the limit on a specific key, which then gets its own budget.
  * @example
  * ```ts
  * const laylo = new Laylo({
