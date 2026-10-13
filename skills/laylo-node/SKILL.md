@@ -91,7 +91,8 @@ to the next.
      key. They generate it at https://laylo.com/settings?tab=Integrations and
      put it in `.env` as `LAYLO_API_KEY`, with no other Laylo variables set.
      Skip to step 5. This mode is limited to 20 requests a minute per
-     account, can't use `creatorId` or `customers.list()`, and only acts on
+     account by default (Laylo can raise the limit on a specific key, which
+     then gets its own budget), can't use `creatorId` or `customers.list()`, and only acts on
      the key's own account. The key is a secret: keep it server-side, like
      the integrator secret key below. The key can also be read-only (see
      [Key permissions](#key-permissions)). Keys can't be granted "write"
@@ -200,7 +201,7 @@ customer, and a creator id isn't accepted.
 | `AuthenticationError` with `apiKeyStatus: "invalid"` | The customer API key is wrong or was revoked. Generate a new key in Laylo settings.                                                                                                              |
 | `AuthenticationError` otherwise                      | The access key or secret key was rejected, or a creator id no longer resolves to an account.                                                                                                     |
 | `PermissionError`                                    | The account has no paid Laylo plan, is locked, the creator id isn't under the integration's account, or the key lacks the "read" or "write" permission the call needs (the message names it).    |
-| `RateLimitError`                                     | Too many requests. Wait `error.retryAfter` seconds. With only an API key the limit is 20 a minute per account.                                                                                   |
+| `RateLimitError`                                     | Too many requests. Wait `error.retryAfter` seconds. With only an API key the limit is 20 a minute per account by default; Laylo can raise it on a specific key, which then gets its own budget.  |
 | `LayloConnectionError` / `LayloTimeoutError`         | Network trouble. The request never got a usable response.                                                                                                                                        |
 
 Every API error carries `status`, `code`, and `message`. When contacting
@@ -287,7 +288,8 @@ access token, so creating them is cheap.
   everywhere, are retried up to twice.
 - `customers.list()` is scoped to the integration, but a customer must still
   be named on the call.
-- With only an API key, requests are capped at 20 a minute per account. A
+- With only an API key, requests are capped at 20 a minute per account by default (Laylo can raise the limit on a
+  specific key, which then gets its own budget). A
   script that loops over many calls (one `fans.isSubscribed` per contact, say)
   will hit it; space the calls out, or prefer one aggregate call such as
   `fans.segments.count` where it answers the question.

@@ -179,7 +179,8 @@ alone. To act for several accounts this way, construct with one account's key
 and scope to the others with `forCustomer(apiKey)`. Every request carries just the `X-Api-Key` header, with no
 access token. Compared with integrator credentials:
 
-- Requests are limited to 20 a minute per account. Past that, a call throws
+- Requests are limited to 20 a minute per account by default; Laylo can raise the limit on a
+  specific key, which then gets its own budget. Past that, a call throws
   `RateLimitError`, whose `retryAfter` says when to try again.
 - Only the key's own account can be acted on. `creatorId` isn't accepted —
   not in the constructor, `LAYLO_CREATOR_ID`, `forCustomer`, or a call's

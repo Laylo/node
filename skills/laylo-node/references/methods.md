@@ -45,7 +45,8 @@ const own = new Laylo({ apiKey });
 
 With none of `userId`, `accessKey`, and `secretKey` set, the client sends only
 `X-Api-Key`, with no access token. It is limited to 20 requests a minute per
-account, `creatorId` throws `LayloConfigurationError` wherever it's passed,
+account by default (Laylo can raise the limit on a specific key, which then
+gets its own budget), `creatorId` throws `LayloConfigurationError` wherever it's passed,
 and `customers.list()` and `auth.createToken()` reject with
 `LayloConfigurationError` before any request. Setting some but not all of the
 three is a construction error. Naming any of them in code, even as `""`, turns
