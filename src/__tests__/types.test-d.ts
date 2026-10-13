@@ -3,6 +3,7 @@ import { describe, expectTypeOf, test } from "vitest";
 import type { CountFansInput, SubscribeFanInput } from "../resources/fans.js";
 import type { SendSegmentMessageInput } from "../resources/messages.js";
 import type {
+  ChannelCreditUsage,
   Contact,
   Conversion,
   ConversionAction,
@@ -10,6 +11,11 @@ import type {
   ConversionCountBucket,
   ConversionCountsReport,
   ConversionSubject,
+  CreditChannel,
+  CreditUsage,
+  CreditUsageBucket,
+  CreditUsageByProductReport,
+  CreditUsageReport,
   CustomerAccount,
   Drop,
   ListConversionCountsParams,
@@ -75,6 +81,26 @@ describe("record aliases", () => {
       count: number;
       time: string;
     }>();
+  });
+
+  test("credit usage records nest report > bucket > channel", () => {
+    expectTypeOf<CreditUsageReport["series"]>().toEqualTypeOf<
+      CreditUsageBucket[]
+    >();
+    expectTypeOf<CreditUsageReport["total"]>().toEqualTypeOf<CreditUsage>();
+    expectTypeOf<CreditUsageBucket["start"]>().toEqualTypeOf<string>();
+    expectTypeOf<CreditChannel>().toEqualTypeOf<
+      "domesticSms" | "emails" | "instagram" | "internationalSms" | "mms"
+    >();
+    expectTypeOf<ChannelCreditUsage>().toEqualTypeOf<{
+      costUsd: number;
+      count: number;
+      credits: number;
+    }>();
+    expectTypeOf<CreditUsageByProductReport>().toMatchTypeOf<CreditUsageReport>();
+    expectTypeOf<CreditUsageByProductReport["productIds"]>().toEqualTypeOf<
+      string[]
+    >();
   });
 
   test("SegmentLocation is a country, a state, or a city", () => {

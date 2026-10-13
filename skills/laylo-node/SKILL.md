@@ -17,22 +17,24 @@ trailing `RequestOptions` (`apiKey`, `creatorId`, `signal`, `timeoutMs`,
 `retry`). Parameters and response shapes are in
 [references/methods.md](references/methods.md).
 
-| Method                              | Answers                                                           |
-| ----------------------------------- | ----------------------------------------------------------------- |
-| `keys.verify()`                     | Is this customer API key valid?                                   |
-| `customers.list()`                  | Which accounts sit under my integration's own account? (\*)       |
-| `drops.list()`                      | What active public drops does the customer have?                  |
-| `conversions.list(params?)`         | What conversion definitions exist (tickets, merch, RSVPs, …)?     |
-| `conversions.counts.list(params?)`  | How many conversion events per action over a window, by day?      |
-| `conversions.events.track(event)`   | Record a purchase, check-in, click, etc. for a fan (write)        |
-| `fans.isSubscribed(contact)`        | Does this email or phone currently subscribe?                     |
-| `fans.isUnsubscribed(contact)`      | Did this contact subscribe once and later unsubscribe?            |
-| `fans.segments.count(filters)`      | How many fans match a segment (channel, drops, place, date)?      |
-| `fans.subscribe(fan)`               | Subscribe a fan with a consent record, optionally RSVP (write)    |
-| `messages.sms.send(sms)`            | Text up to 200 subscribed phone numbers (write)                   |
-| `messages.segments.send(input)`     | Text or email every fan in a segment, now (write)                 |
-| `messages.segments.schedule(input)` | Text or email a segment at a set local time (write)               |
-| `auth.createToken()`                | A raw bearer token, only for calling the API outside the SDK (\*) |
+| Method                                       | Answers                                                           |
+| -------------------------------------------- | ----------------------------------------------------------------- |
+| `keys.verify()`                              | Is this customer API key valid?                                   |
+| `customers.list()`                           | Which accounts sit under my integration's own account? (\*)       |
+| `drops.list()`                               | What active public drops does the customer have?                  |
+| `conversions.list(params?)`                  | What conversion definitions exist (tickets, merch, RSVPs, …)?     |
+| `conversions.counts.list(params?)`           | How many conversion events per action over a window, by day?      |
+| `conversions.events.track(event)`            | Record a purchase, check-in, click, etc. for a fan (write)        |
+| `fans.isSubscribed(contact)`                 | Does this email or phone currently subscribe?                     |
+| `fans.isUnsubscribed(contact)`               | Did this contact subscribe once and later unsubscribe?            |
+| `fans.segments.count(filters)`               | How many fans match a segment (channel, drops, place, date)?      |
+| `fans.subscribe(fan)`                        | Subscribe a fan with a consent record, optionally RSVP (write)    |
+| `messages.sms.send(sms)`                     | Text up to 200 subscribed phone numbers (write)                   |
+| `messages.segments.send(input)`              | Text or email every fan in a segment, now (write)                 |
+| `messages.segments.schedule(input)`          | Text or email a segment at a set local time (write)               |
+| `billing.creditUsage.get(params?)`           | How many message credits were used, per channel, over a window?   |
+| `billing.creditUsage.getForProducts(params)` | How many credits did these drops or messages use?                 |
+| `auth.createToken()`                         | A raw bearer token, only for calling the API outside the SDK (\*) |
 
 (\*) Needs integrator credentials. On a client with only an API key, both
 reject with `LayloConfigurationError` before sending anything.
@@ -74,6 +76,13 @@ call you haven't seen here. The ones that are easiest to get wrong:
   the recipients, credits, and `costUsd`. Add `dryRun: true` to the input to
   get the estimate without sending (`id` is then null). Pass
   `{ idempotencyKey }` as the second argument so a retry can't send twice.
+- `billing.creditUsage.get` takes `startDate`, `endDate` (UTC days as
+  `"YYYY-MM-DD"` or a `Date`), and `interval` (`"day"`, `"week"`,
+  `"month"`). It resolves to `startDate`, `endDate`, `interval`, `rates`,
+  `series`, and `total`, where `total` and each `series` bucket carry
+  `count`, `credits`, `costUsd`, and `channels`. `.getForProducts` also takes
+  `productIds` (plural, 1 to 50) and adds them to the result. It's usage, not
+  an invoice: prepaid and free credits aren't applied.
 
 ## Setting up authentication
 

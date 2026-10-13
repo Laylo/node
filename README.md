@@ -629,6 +629,58 @@ is available if you need a raw bearer token to call the API outside the SDK.
 It needs integrator credentials; with only an API key, send the key as
 `X-Api-Key` and no token.
 
+### `billing`
+
+- [`billing.creditUsage.get(params?, options?)`](https://developers.laylo.com/api-reference/billing/billing.usage.get) —
+  the message credits the customer used over a window of UTC days, per
+  channel, with a series bucketed by `interval` (`"day"`, the default,
+  `"week"`, or `"month"`). `startDate` and `endDate` are inclusive and take a
+  `YYYY-MM-DD` string or a `Date`, which is sent as its UTC day. `endDate`
+  defaults to today and `startDate` to the first of `endDate`'s month, and
+  the window can span at most 366 days. Every bucket in the window is in
+  `series`, empty ones included. `count` is billed units, not messages: most
+  texts count once per segment. Credits are priced at the customer's current
+  `rates`, and `costUsd` is `credits / creditsPerDollar` rounded to the cent.
+  This is usage, not an invoice: the window isn't tied to the billing period,
+  and prepaid and free credits aren't applied.
+
+  ```ts
+  import Laylo from "@laylo.com/node";
+
+  const laylo = new Laylo({ apiKey: process.env.LAYLO_API_KEY });
+
+  const usage = await laylo.billing.creditUsage.get({
+    startDate: "2026-09-01",
+    endDate: "2026-09-30",
+    interval: "week",
+  });
+  for (const week of usage.series) {
+    console.log(week.start, week.credits, week.costUsd);
+  }
+  console.log(usage.total.channels.domesticSms.count);
+  ```
+
+- [`billing.creditUsage.getForProducts(params, options?)`](https://developers.laylo.com/api-reference/billing/billing.usage.products.get) —
+  the same report for specific drops and segment messages, summed together.
+  Pass 1 to 50 ids as `productIds`; the report adds them back, de-duplicated.
+  A drop includes its sub-drops, and a product named twice counts once. The
+  report is summed, so call once per product for a per-product breakdown. A
+  product that isn't the customer's throws `NotFoundError`, and drops that
+  expand to more than 200 products with their sub-drops throw
+  `BadRequestError`.
+
+  ```ts
+  import Laylo from "@laylo.com/node";
+
+  const laylo = new Laylo({ apiKey: process.env.LAYLO_API_KEY });
+
+  const usage = await laylo.billing.creditUsage.getForProducts({
+    productIds: ["drop_123", "message_456"],
+    interval: "month",
+  });
+  console.log(usage.productIds, usage.total.credits);
+  ```
+
 ## Errors
 
 Every error the SDK throws is a subclass of `LayloError`. A failed API
