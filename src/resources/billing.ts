@@ -99,12 +99,14 @@ export class BillingCreditUsage extends APIResource {
       );
     }
 
+    const distinctProductIds = [...new Set(params.productIds)];
+
     return this.request<CreditUsageByProductReport>(
       {
         method: "GET",
         path: "/v1/billing/credit-usage/products",
         query: {
-          productId: [...new Set(params.productIds)],
+          productId: distinctProductIds,
           startDate: params.startDate,
           endDate: params.endDate,
           interval: params.interval,

@@ -51,9 +51,9 @@ describe("Billing", () => {
         apiKey: "customer-key-1",
       });
 
-      const credits = await new Billing(context).creditUsage.get();
+      const creditUsage = await new Billing(context).creditUsage.get();
 
-      expect(credits).toEqual(report);
+      expect(creditUsage).toEqual(report);
       const [call] = apiCalls();
       expect(call?.url).toBe(
         "https://api.example.test/api/v1/billing/credit-usage",
@@ -91,13 +91,15 @@ describe("Billing", () => {
         apiKey: "customer-key-1",
       });
 
-      const credits = await new Billing(context).creditUsage.getForProducts({
-        productIds: ["drop_123", "message_456", "drop_123"],
-        startDate: "2026-09-01",
-        interval: "month",
-      });
+      const creditUsage = await new Billing(context).creditUsage.getForProducts(
+        {
+          productIds: ["drop_123", "message_456", "drop_123"],
+          startDate: "2026-09-01",
+          interval: "month",
+        },
+      );
 
-      expect(credits).toEqual(productReport);
+      expect(creditUsage).toEqual(productReport);
       const [call] = apiCalls();
       expect(call?.url).toBe(
         "https://api.example.test/api/v1/billing/credit-usage/products?productId=drop_123&productId=message_456&startDate=2026-09-01&interval=month",
