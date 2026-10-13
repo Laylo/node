@@ -1,5 +1,15 @@
 # @laylo.com/node
 
+## 0.8.0
+
+### Minor Changes
+
+- 055502f: New `laylo.billing.creditUsage` resource for the public API's credit usage endpoints. `get(params?)` returns the message credits a customer used over a window of UTC days, per channel, with a series bucketed by day, week, or month. `getForProducts({ productIds, ...params })` returns the same report summed across specific drops and segment messages. `startDate` and `endDate` are UTC days as `YYYY-MM-DD` strings. New types: `CreditUsageReport`, `CreditUsageByProductReport`, `CreditUsage`, `CreditUsageBucket`, `ChannelCreditUsage`, `CreditChannel`, `CreditRates`, `CreditUsageInterval`, `GetCreditUsageParams`, `GetProductCreditUsageParams`, and `GetProductCreditUsageInput`.
+
+### Patch Changes
+
+- 4eb705c: Docs: an API-key-only client is limited to 20 requests a minute per account by default, and Laylo can raise the limit on a specific key, which then gets its own budget.
+
 ## 0.7.0
 
 ### Minor Changes
