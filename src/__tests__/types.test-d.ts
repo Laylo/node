@@ -100,11 +100,11 @@ describe("record aliases", () => {
 });
 
 describe("request aliases", () => {
-  test("TrackConversionRequest takes a ConversionAction", () => {
+  test("TrackConversionRequest takes every documented ConversionAction but RSVP", () => {
     expectTypeOf<TrackConversionRequest["action"]>().toMatchTypeOf<string>();
-    expectTypeOf<
-      TrackConversionRequest["action"]
-    >().toEqualTypeOf<ConversionAction>();
+    expectTypeOf<TrackConversionRequest["action"]>().toEqualTypeOf<
+      Exclude<ConversionAction, "RSVP">
+    >();
   });
 
   test("list params are all optional", () => {
