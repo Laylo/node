@@ -2012,40 +2012,56 @@ export interface operations {
                  *       "timestamp": "2026-08-25T12:30:00-07:00",
                  *       "user": {
                  *         "email": "fan@example.com",
-                 *         "emailMarketingConsent": true
+                 *         "emailMarketingConsent": true,
+                 *         "phone": "+12025550100",
+                 *         "smsMarketingConsent": true
                  *       }
                  *     }
                  */
                 "application/json": {
                     /**
-                     * ConversionAction
                      * @description The action represented by the conversion.
                      * @enum {string}
                      */
-                    action: "PURCHASE" | "STORE_PURCHASE" | "TICKET_PURCHASE" | "CHECK_IN" | "ADD_TO_CART" | "LINK_CLICK" | "UPSELL_CLICK" | "UPSELL_REMINDER_CLICK" | "VIP_CLICK" | "RSVP" | "OPT_OUT" | "DIRECT_MESSAGE" | "CALL" | "FOLLOW" | "SOCIAL_ENGAGEMENT" | "WAITLIST_SIGNUP" | "SECONDARY_LISTING_CREATED" | "ABANDONED_CART_CLICK" | "TICKET_SALES_CLICK" | "ABANDONED_CART_CREATED" | "ABANDONED_CART_UPDATED" | "FORM_SUBMISSION" | "QUESTION_RESPONSE";
+                    action: "PURCHASE" | "STORE_PURCHASE" | "TICKET_PURCHASE" | "CHECK_IN" | "ADD_TO_CART" | "LINK_CLICK" | "UPSELL_CLICK" | "UPSELL_REMINDER_CLICK" | "VIP_CLICK" | "OPT_OUT" | "DIRECT_MESSAGE" | "CALL" | "FOLLOW" | "SOCIAL_ENGAGEMENT" | "WAITLIST_SIGNUP" | "SECONDARY_LISTING_CREATED" | "ABANDONED_CART_CLICK" | "TICKET_SALES_CLICK" | "ABANDONED_CART_CREATED" | "ABANDONED_CART_UPDATED" | "FORM_SUBMISSION" | "QUESTION_RESPONSE";
                     /**
                      * Format: date-time
                      * @description When marketing consent was granted, in ISO 8601 with an explicit UTC offset.
                      */
                     consentGrantedAt?: string;
-                    /** @description Whether downstream processing should create the conversion event in Laylo data. */
-                    createNeoRecord?: boolean;
-                    /** @description Integration-defined event metadata. `uniqueId` is the idempotency key; `productId`, `currency`, `totalCost`, and `totalPrice` are recognized fields. */
+                    /** @description Integration-defined event metadata. Additional fields are accepted but not displayed in the Laylo UI. */
                     metadata: {
+                        /** @description The fan's city. When `city` and `country` are both provided, Laylo attaches that location to the fan if they don't already have one. */
+                        city?: string;
+                        /** @description The fan's country. Required with `city` to attach a location. */
+                        country?: string;
+                        /** @description ISO 4217 currency code for `totalCost` or `totalPrice`, e.g. `USD`. */
+                        currency?: string;
+                        /** @description Laylo product the event relates to. */
+                        productId?: string;
+                        /** @description The fan's state or region. Optional, narrows the location match. */
+                        state?: string;
+                        /** @description Order total, counted as the event's revenue. */
+                        totalCost?: number;
+                        /** @description Counted as the event's revenue when `totalCost` is absent. */
+                        totalPrice?: number;
+                        /** @description Idempotency key, such as an order ID. Events with the same `uniqueId` are merged, so retries don't double-count. */
+                        uniqueId?: string;
+                    } & {
                         [key: string]: unknown;
                     };
                     /** @description A non-empty, human-readable event name. */
                     name: string;
                     /** @description Optional integration session identifier. */
                     sessionId?: string;
-                    /** @description Optional name of the integration source. */
+                    /** @description Optional name of the integration source. Defaults to the `X-Laylo-Source` header, then to the API key's label. */
                     source?: string;
                     /**
                      * Format: date-time
                      * @description When the event occurred, in ISO 8601 with an explicit UTC offset.
                      */
                     timestamp: string;
-                    /** @description The event subject. Supply a valid email, E.164 phone number, or a non-anonymous fingerprint ID. */
+                    /** @description The event subject. Supply a valid email or E.164 phone number. Additional fields are accepted but not displayed in the Laylo UI or echoed in the response. */
                     user: {
                         /**
                          * Format: email
@@ -2054,16 +2070,14 @@ export interface operations {
                         email?: string;
                         /** @description Whether the subject consented to email marketing. */
                         emailMarketingConsent?: boolean;
-                        /** @description Optional non-anonymous browser or device identifier. */
-                        fingerprintId?: string;
-                        /** @description Whether the subject is anonymous. */
-                        isAnonymous?: boolean;
                         /** @description Deprecated consent flag that applies to both email and SMS marketing. */
                         marketingConsent?: boolean;
                         /** @description Optional E.164 phone number including the national code, for example +12025550100. */
                         phone?: string;
                         /** @description Whether the subject consented to SMS marketing. */
                         smsMarketingConsent?: boolean;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -2090,7 +2104,8 @@ export interface operations {
                      *         "user": {
                      *           "emailMarketingConsent": true,
                      *           "hasEmail": true,
-                     *           "hasPhone": false
+                     *           "hasPhone": true,
+                     *           "smsMarketingConsent": true
                      *         }
                      *       }
                      *     }
@@ -2117,8 +2132,6 @@ export interface operations {
                              * @description Optional marketing-consent time.
                              */
                             consentGrantedAt?: string;
-                            /** @description Whether downstream creation is enabled. */
-                            createNeoRecord?: boolean;
                             /** @description Accepted event metadata. */
                             metadata: {
                                 [key: string]: unknown;
@@ -2141,14 +2154,10 @@ export interface operations {
                             user: {
                                 /** @description Accepted email-marketing consent. */
                                 emailMarketingConsent?: boolean;
-                                /** @description Optional accepted fingerprint identifier. */
-                                fingerprintId?: string;
                                 /** @description Whether an email was accepted. */
                                 hasEmail: boolean;
                                 /** @description Whether a phone number was accepted. */
                                 hasPhone: boolean;
-                                /** @description Whether the subject is anonymous. */
-                                isAnonymous?: boolean;
                                 /** @description Accepted legacy marketing consent. */
                                 marketingConsent?: boolean;
                                 /** @description Accepted SMS-marketing consent. */

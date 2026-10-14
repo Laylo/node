@@ -150,7 +150,7 @@ calendar. Counts are events, not distinct fans.
 
 ```ts
 type TrackConversionEventInput = {
-  action: ConversionAction;
+  action: Exclude<ConversionAction, "RSVP">;
   name: string; // non-empty, e.g. "VIP ticket"
   timestamp: Date | string; // when it happened
   metadata: {
@@ -159,20 +159,22 @@ type TrackConversionEventInput = {
     currency?: string;
     totalPrice?: number;
     totalCost?: number;
-    [key: string]: unknown;
+    city?: string; // with country, attaches the location to the fan
+    state?: string;
+    country?: string;
+    [key: string]: unknown; // stored, not shown in the Laylo UI
   };
   user: {
-    // need one of email, phone, or fingerprintId
+    // need email or phone
     email?: string;
     phone?: string; // E.164
-    fingerprintId?: string;
-    isAnonymous?: boolean;
     emailMarketingConsent?: boolean;
     smsMarketingConsent?: boolean;
+    [key: string]: unknown; // stored, not echoed back
   };
   consentGrantedAt?: string; // ISO 8601 with offset
   sessionId?: string;
-  source?: string;
+  source?: string; // defaults to the X-Laylo-Source header, then the API key's label
 };
 ```
 

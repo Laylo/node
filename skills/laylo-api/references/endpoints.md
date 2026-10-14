@@ -154,13 +154,18 @@ events, not distinct fans.
 ```
 
 - `metadata.uniqueId` is the idempotency key, and repeats are merged. The
-  API also recognizes `productId`, `currency`, `totalPrice`, and `totalCost`.
-  Other keys are passed through.
-- `user` needs one of `email`, `phone` (E.164), or a non-anonymous
-  `fingerprintId`. Optional flags: `emailMarketingConsent`,
-  `smsMarketingConsent`, `isAnonymous`.
+  API also recognizes `productId`, `currency`, `totalPrice`, `totalCost`,
+  `city`, `state`, and `country`. With both `city` and `country`, Laylo
+  attaches that location to the fan if they don't have one. Other keys are
+  passed through but not shown in the Laylo UI.
+- `user` needs `email` or `phone` (E.164). Optional flags:
+  `emailMarketingConsent`, `smsMarketingConsent`. Extra keys are stored but
+  not echoed back; `user.phoneNumber` is rejected, so send `phone`.
+- `action` takes any conversion action except `RSVP` (fans subscribing to a
+  drop go through `POST /v1/fans/subscriptions`).
 - Optional top-level fields: `consentGrantedAt` (ISO 8601), `sessionId`,
-  `source`.
+  `source`. `source` defaults to the `X-Laylo-Source` header, then to the
+  API key's label.
 
 ```json
 {
