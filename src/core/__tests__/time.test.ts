@@ -21,11 +21,11 @@ describe("isoTimestamp", () => {
   });
 
   it("rejects an invalid Date, naming the field", () => {
-    expect(() => isoTimestamp(new Date("nope"), "consentGrantedAt")).toThrow(
+    expect(() => isoTimestamp(new Date("nope"), "startDate")).toThrow(
       LayloConfigurationError,
     );
-    expect(() => isoTimestamp(new Date("nope"), "consentGrantedAt")).toThrow(
-      /^consentGrantedAt is an invalid Date/,
+    expect(() => isoTimestamp(new Date("nope"), "startDate")).toThrow(
+      /^startDate is an invalid Date/,
     );
   });
 

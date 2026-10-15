@@ -134,47 +134,24 @@ describe("request aliases", () => {
     }>().not.toMatchTypeOf<SegmentFilters>();
   });
 
-  test("SubscribeFanRequest requires each channel sent to carry its consent", () => {
-    expectTypeOf<{
-      email: string;
-      emailMarketingConsent: true;
-      consentGrantedAt: string;
-    }>().toMatchTypeOf<SubscribeFanRequest>();
+  test("SubscribeFanRequest takes an email, a phone, or both", () => {
+    expectTypeOf<{ email: string }>().toMatchTypeOf<SubscribeFanRequest>();
     expectTypeOf<{
       phone: string;
-      smsMarketingConsent: true;
-      consentGrantedAt: string;
       dropId: string;
     }>().toMatchTypeOf<SubscribeFanRequest>();
     expectTypeOf<{
       email: string;
-      emailMarketingConsent: false;
-      consentGrantedAt: string;
-    }>().not.toMatchTypeOf<SubscribeFanRequest>();
-    expectTypeOf<{
-      email: string;
       phone: string;
-      emailMarketingConsent: true;
-      smsMarketingConsent: true;
-      consentGrantedAt: string;
     }>().toMatchTypeOf<SubscribeFanRequest>();
-    expectTypeOf<{
-      email: string;
-      phone: string;
-      emailMarketingConsent: true;
-      consentGrantedAt: string;
-    }>().not.toMatchTypeOf<SubscribeFanRequest>();
-    expectTypeOf<{
-      email: string;
-      consentGrantedAt: string;
-    }>().not.toMatchTypeOf<SubscribeFanRequest>();
+    expectTypeOf<{ dropId: string }>().not.toMatchTypeOf<SubscribeFanRequest>();
   });
 
-  test("SubscribeFanInput keeps the channel union, including both channels, while accepting a Date", () => {
+  test("SubscribeFanInput still accepts the deprecated consent fields older callers pass", () => {
+    expectTypeOf<{ email: string }>().toMatchTypeOf<SubscribeFanInput>();
     expectTypeOf<{
       email: string;
-      emailMarketingConsent: true;
-      consentGrantedAt: Date;
+      phone: string;
     }>().toMatchTypeOf<SubscribeFanInput>();
     expectTypeOf<{
       phone: string;
@@ -183,21 +160,14 @@ describe("request aliases", () => {
     }>().toMatchTypeOf<SubscribeFanInput>();
     expectTypeOf<{
       phone: string;
-      consentGrantedAt: Date;
+      smsMarketingConsent: false;
     }>().not.toMatchTypeOf<SubscribeFanInput>();
     expectTypeOf<{
       email: string;
-      phone: string;
       emailMarketingConsent: true;
-      smsMarketingConsent: true;
-      consentGrantedAt: Date;
+      smsMarketingConsent: false;
     }>().toMatchTypeOf<SubscribeFanInput>();
-    expectTypeOf<{
-      email: string;
-      phone: string;
-      emailMarketingConsent: true;
-      consentGrantedAt: Date;
-    }>().not.toMatchTypeOf<SubscribeFanInput>();
+    expectTypeOf<{ dropId: string }>().not.toMatchTypeOf<SubscribeFanInput>();
   });
 
   test("SendSegmentMessageInput requires email for an email segment and refuses it for sms", () => {

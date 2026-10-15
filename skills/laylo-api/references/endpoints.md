@@ -248,36 +248,25 @@ curl -sS -G https://events.laylo.com/api/v1/fans/segments \
 One of:
 
 ```json
-{
-  "email": "fan@example.com",
-  "emailMarketingConsent": true,
-  "consentGrantedAt": "2026-08-25T12:30:00-07:00",
-  "dropId": "drop_123"
-}
+{ "email": "fan@example.com", "dropId": "drop_123" }
 ```
 
 ```json
-{
-  "phone": "+12025550100",
-  "smsMarketingConsent": true,
-  "consentGrantedAt": "2026-08-25T12:30:00-07:00"
-}
+{ "phone": "+12025550100" }
 ```
 
 ```json
-{
-  "email": "fan@example.com",
-  "emailMarketingConsent": true,
-  "phone": "+12025550100",
-  "smsMarketingConsent": true,
-  "consentGrantedAt": "2026-08-25T12:30:00-07:00"
-}
+{ "email": "fan@example.com", "phone": "+12025550100" }
 ```
 
 With both, each channel is subscribed and the two records are linked as the
 same person. Each keeps its own id, returned as `emailFanId` and `phoneFanId`.
+If only one subscribes, the other comes back in `rejected` with its `channel`,
+`code`, and `message`.
 
-`consentGrantedAt` becomes the sign-up time and can't be in the future.
+The fan's sign-up time is the time of the call. `consentGrantedAt`,
+`emailMarketingConsent`, and `smsMarketingConsent` are deprecated: the API
+still accepts them but ignores them, so don't send them.
 `dropId` is optional and also RSVPs the fan. An id that isn't one of the
 customer's drops returns 404 and writes nothing. Subscribing an existing fan
 refreshes their record and clears any earlier unsubscribe.
@@ -290,8 +279,8 @@ refreshes their record and clears any earlier unsubscribe.
 }
 ```
 
-`emailFanId` and `phoneFanId` are present for the contacts sent, and `rsvp`
-only when `dropId` was sent. Contact details are never returned.
+`emailFanId` and `phoneFanId` are present for the contacts that subscribed,
+`rejected` only on a partial success, and `rsvp` only when `dropId` was sent. Contact details are never returned.
 
 ## POST /v1/messages/sms
 
