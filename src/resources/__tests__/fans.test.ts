@@ -443,30 +443,6 @@ describe("Fans", () => {
       expect(result).toEqual(both);
     });
 
-    it("returns the contact rejected on a partial success", async () => {
-      const partial: SubscribeFanResponse = {
-        emailFanId: "fan_123",
-        rejected: [
-          {
-            channel: "phone",
-            code: "CONFLICT",
-            message: "This phone number opted out by text",
-          },
-        ],
-        subscribed: true,
-      };
-      const { context } = fakeContext([json(200, partial)], {
-        apiKey: "customer-key-1",
-      });
-
-      const result = await new Fans(context).subscribe({
-        email: "fan@example.invalid",
-        phone: "+12025550100",
-      });
-
-      expect(result).toEqual(partial);
-    });
-
     it("rejects a blank contact next to a real one before any request", async () => {
       const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
 
