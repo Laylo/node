@@ -244,8 +244,14 @@ Returns:
 ```ts
 type SubscribeFanResponse = {
   subscribed: boolean;
-  emailFanId?: string; // only when email was given
-  phoneFanId?: string; // only when phone was given
+  emailFanId?: string; // only when the email subscribed
+  phoneFanId?: string; // only when the phone subscribed
+  rejected?: {
+    // only on a partial success
+    channel: "email" | "phone";
+    code: "CONFLICT" | "UNPROCESSABLE_ENTITY" | "INTERNAL_ERROR";
+    message: string;
+  }[];
   rsvp?: { dropId: string; status: "confirmed" }; // only when dropId was given
 };
 ```

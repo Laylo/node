@@ -279,8 +279,8 @@ refreshes their record and clears any earlier unsubscribe.
 }
 ```
 
-`emailFanId` and `phoneFanId` are present for the contacts sent, and `rsvp`
-only when `dropId` was sent. Contact details are never returned.
+`emailFanId` and `phoneFanId` are present for the contacts that subscribed,
+`rejected` only on a partial success, and `rsvp` only when `dropId` was sent. Contact details are never returned.
 
 ## POST /v1/messages/sms
 
