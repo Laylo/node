@@ -4,6 +4,7 @@ import type { CountFansInput, SubscribeFanInput } from "../resources/fans.js";
 import type { SendSegmentMessageInput } from "../resources/messages.js";
 import type {
   Contact,
+  ContactBatch,
   Conversion,
   ConversionAction,
   ConversionCount,
@@ -50,6 +51,17 @@ describe("record aliases", () => {
       phone: string;
     }>().not.toMatchTypeOf<Contact>();
     expectTypeOf<Record<never, never>>().not.toMatchTypeOf<Contact>();
+    expectTypeOf<{ email: string[] }>().not.toMatchTypeOf<Contact>();
+  });
+
+  test("ContactBatch takes an array on exactly one channel", () => {
+    expectTypeOf<{ email: string[] }>().toMatchTypeOf<ContactBatch>();
+    expectTypeOf<{ phone: string[] }>().toMatchTypeOf<ContactBatch>();
+    expectTypeOf<{ phone: string }>().not.toMatchTypeOf<ContactBatch>();
+    expectTypeOf<{
+      email: string[];
+      phone: string[];
+    }>().not.toMatchTypeOf<ContactBatch>();
   });
 
   test("CustomerAccount carries nullable profile fields and epoch millis", () => {
@@ -114,7 +126,7 @@ describe("request aliases", () => {
       Record<never, never>
     >().toMatchTypeOf<ListConversionCountsParams>();
     expectTypeOf<ListConversionCountsParams["action"]>().toEqualTypeOf<
-      ConversionAction[] | undefined
+      Exclude<ConversionAction, "RSVP">[] | undefined
     >();
   });
 
@@ -205,10 +217,10 @@ describe("response aliases", () => {
 
   test("subscription check responses", () => {
     expectTypeOf<SubscriptionCheckResponse>().toEqualTypeOf<{
-      isSubscribed: boolean;
+      isSubscribed: boolean | boolean[];
     }>();
     expectTypeOf<UnsubscriptionCheckResponse>().toEqualTypeOf<{
-      isUnsubscribed: boolean;
+      isUnsubscribed: boolean | boolean[];
     }>();
   });
 

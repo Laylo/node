@@ -50,12 +50,31 @@ export type TrackedConversion = SuccessJson<
  */
 export type ConversionSubject = TrackedConversion["user"];
 
+type ContactCheckRequest = RequestJson<operations["fans.subscribed.check"]>;
+
+// Narrows the given channel of each union member to string or string[],
+// keeping the other channel's `null` slot.
+type ContactWith<Value> = ContactCheckRequest extends infer Member
+  ? Member extends { email: unknown }
+    ? { email: Extract<Member["email"], Value>; phone?: null }
+    : Member extends { phone: unknown }
+      ? { email?: null; phone: Extract<Member["phone"], Value> }
+      : never
+  : never;
+
 /**
  * A single contact channel: exactly one of an email address or an E.164
  * phone number.
  * @see https://developers.laylo.com/api-reference/fans/fans.subscribed.check
  */
-export type Contact = RequestJson<operations["fans.subscribed.check"]>;
+export type Contact = ContactWith<string>;
+
+/**
+ * A batch of contacts on one channel: exactly one of an array of 1 to 500
+ * email addresses or an array of 1 to 500 E.164 phone numbers.
+ * @see https://developers.laylo.com/api-reference/fans/fans.subscribed.check
+ */
+export type ContactBatch = ContactWith<string[]>;
 
 /**
  * Request body for tracking a conversion event.
@@ -95,7 +114,8 @@ export type TrackConversionResponse = SuccessJson<
 >;
 
 /**
- * Response reporting whether a contact currently subscribes to the customer.
+ * Response reporting whether a contact currently subscribes to the customer:
+ * a boolean for one contact, or booleans in request order for a batch.
  * @see https://developers.laylo.com/api-reference/fans/fans.subscribed.check
  */
 export type SubscriptionCheckResponse = SuccessJson<
@@ -103,7 +123,8 @@ export type SubscriptionCheckResponse = SuccessJson<
 >;
 
 /**
- * Response reporting whether a contact unsubscribed from the customer.
+ * Response reporting whether a contact unsubscribed from the customer: a
+ * boolean for one contact, or booleans in request order for a batch.
  * @see https://developers.laylo.com/api-reference/fans/fans.unsubscribed.check
  */
 export type UnsubscriptionCheckResponse = SuccessJson<

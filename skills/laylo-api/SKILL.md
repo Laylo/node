@@ -61,7 +61,9 @@ haven't seen here. The ones that are easiest to get wrong:
   up an extra bucket for the day before.
   Response: `{ startDate, endDate, counts: [{ action, total, series }] }`.
 - `POST /v1/fans/subscribed` returns `{ "isSubscribed": true }`, and
-  `POST /v1/fans/unsubscribed` returns `{ "isUnsubscribed": false }`.
+  `POST /v1/fans/unsubscribed` returns `{ "isUnsubscribed": false }`. Send
+  `email` or `phone` as an array of up to 500 to get an array of booleans in
+  request order.
 - `POST /v1/fans/subscriptions` takes `email`, `phone`, or both, and an
   optional `dropId`. Given both, the two records are linked as the same person
   and each keeps its own id; if only one subscribes, the other comes back in

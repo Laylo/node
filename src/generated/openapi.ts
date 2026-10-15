@@ -9,7 +9,7 @@ export type paths = {
         };
         get?: never;
         put?: never;
-        /** Create an integrator access token */
+        /** Create an integrator or enterprise access token */
         post: operations["auth.token.create"];
         delete?: never;
         options?: never;
@@ -1514,11 +1514,11 @@ export interface operations {
                 /**
                  * @description Only return conversions with one of these actions.
                  * @example [
-                 *       "purchase",
-                 *       "signup"
+                 *       "TICKET_PURCHASE",
+                 *       "STORE_PURCHASE"
                  *     ]
                  */
-                action?: string[];
+                action?: ("PURCHASE" | "STORE_PURCHASE" | "TICKET_PURCHASE" | "CHECK_IN" | "ADD_TO_CART" | "LINK_CLICK" | "UPSELL_CLICK" | "UPSELL_REMINDER_CLICK" | "VIP_CLICK" | "OPT_OUT" | "DIRECT_MESSAGE" | "CALL" | "FOLLOW" | "SOCIAL_ENGAGEMENT" | "WAITLIST_SIGNUP" | "SECONDARY_LISTING_CREATED" | "ABANDONED_CART_CLICK" | "TICKET_SALES_CLICK" | "ABANDONED_CART_CREATED" | "ABANDONED_CART_UPDATED" | "FORM_SUBMISSION" | "QUESTION_RESPONSE")[];
                 /**
                  * @description Only return conversions associated with this product ID.
                  * @example product_123
@@ -1540,7 +1540,7 @@ export interface operations {
                     /**
                      * @example [
                      *       {
-                     *         "action": "purchase",
+                     *         "action": "PURCHASE",
                      *         "id": "conversion_123",
                      *         "name": "Album purchase"
                      *       }
@@ -1720,7 +1720,7 @@ export interface operations {
                  *       "PURCHASE"
                  *     ]
                  */
-                action?: ("PURCHASE" | "STORE_PURCHASE" | "TICKET_PURCHASE" | "CHECK_IN" | "ADD_TO_CART" | "LINK_CLICK" | "UPSELL_CLICK" | "UPSELL_REMINDER_CLICK" | "VIP_CLICK" | "RSVP" | "OPT_OUT" | "DIRECT_MESSAGE" | "CALL" | "FOLLOW" | "SOCIAL_ENGAGEMENT" | "WAITLIST_SIGNUP" | "SECONDARY_LISTING_CREATED" | "ABANDONED_CART_CLICK" | "TICKET_SALES_CLICK" | "ABANDONED_CART_CREATED" | "ABANDONED_CART_UPDATED" | "FORM_SUBMISSION" | "QUESTION_RESPONSE")[];
+                action?: ("PURCHASE" | "STORE_PURCHASE" | "TICKET_PURCHASE" | "CHECK_IN" | "ADD_TO_CART" | "LINK_CLICK" | "UPSELL_CLICK" | "UPSELL_REMINDER_CLICK" | "VIP_CLICK" | "OPT_OUT" | "DIRECT_MESSAGE" | "CALL" | "FOLLOW" | "SOCIAL_ENGAGEMENT" | "WAITLIST_SIGNUP" | "SECONDARY_LISTING_CREATED" | "ABANDONED_CART_CLICK" | "TICKET_SALES_CLICK" | "ABANDONED_CART_CREATED" | "ABANDONED_CART_UPDATED" | "FORM_SUBMISSION" | "QUESTION_RESPONSE")[];
                 /**
                  * @description End of the window (inclusive). Defaults to now.
                  * @example 2026-08-29T00:00:00Z
@@ -1762,7 +1762,7 @@ export interface operations {
                      *           "total": 8
                      *         },
                      *         {
-                     *           "action": "RSVP",
+                     *           "action": "TICKET_PURCHASE",
                      *           "series": [
                      *             {
                      *               "count": 40,
@@ -2037,7 +2037,7 @@ export interface operations {
                         country?: string;
                         /** @description ISO 4217 currency code for `totalCost` or `totalPrice`, e.g. `USD`. */
                         currency?: string;
-                        /** @description Laylo product the event relates to. */
+                        /** @description Laylo drop the event relates to. */
                         productId?: string;
                         /** @description The fan's state or region. Optional, narrows the location match. */
                         state?: string;
@@ -2050,7 +2050,7 @@ export interface operations {
                     } & {
                         [key: string]: unknown;
                     };
-                    /** @description A non-empty, human-readable event name. */
+                    /** @description A non-empty, human-readable name for what the fan converted on, such as an event name (Summer Tour 2026 - Los Angeles) or a merch item name (Tour Hoodie). */
                     name: string;
                     /** @description Optional integration session identifier. */
                     sessionId?: string;
@@ -3036,7 +3036,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        /** @description The fan contact to check. Supply exactly one of an email or a phone number in E.164 format. */
+        /** @description The fan contact to check. Supply exactly one of an email or a phone number in E.164 format, or an array of up to 500 of either. Any invalid entry rejects the whole request. */
         requestBody: {
             content: {
                 /**
@@ -3045,23 +3045,20 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /**
-                     * Format: email
-                     * @description Email address of the fan to check.
-                     */
-                    email: string;
+                    /** @description Email address of the fan to check. Send one as a string, or up to 500 as an array. */
+                    email: string | string[];
                     /** @description Must be null or omitted when 'email' is supplied. */
                     phone?: null;
                 } | {
                     /** @description Must be null or omitted when 'phone' is supplied. */
                     email?: null;
-                    /** @description E.164 phone number including the national code, for example +12025550100. */
-                    phone: string;
+                    /** @description E.164 phone number of the fan to check, including the national code, for example +12025550100. Send one as a string, or up to 500 as an array. */
+                    phone: string | string[];
                 };
             };
         };
         responses: {
-            /** @description Whether the contact currently subscribes to the customer. */
+            /** @description Whether each contact currently subscribes to the customer. Contacts are answered by their position in the request, never echoed back. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3073,8 +3070,8 @@ export interface operations {
                      *     }
                      */
                     "application/json": {
-                        /** @description True when the contact currently follows the customer. */
-                        isSubscribed: boolean;
+                        /** @description True when the contact currently follows the customer. An array, in request order, when the contact was sent as an array. */
+                        isSubscribed: boolean | boolean[];
                     };
                 };
             };
@@ -3626,7 +3623,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        /** @description The fan contact to check. Supply exactly one of an email or a phone number in E.164 format. */
+        /** @description The fan contact to check. Supply exactly one of an email or a phone number in E.164 format, or an array of up to 500 of either. Any invalid entry rejects the whole request. */
         requestBody: {
             content: {
                 /**
@@ -3635,23 +3632,20 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /**
-                     * Format: email
-                     * @description Email address of the fan to check.
-                     */
-                    email: string;
+                    /** @description Email address of the fan to check. Send one as a string, or up to 500 as an array. */
+                    email: string | string[];
                     /** @description Must be null or omitted when 'email' is supplied. */
                     phone?: null;
                 } | {
                     /** @description Must be null or omitted when 'phone' is supplied. */
                     email?: null;
-                    /** @description E.164 phone number including the national code, for example +12025550100. */
-                    phone: string;
+                    /** @description E.164 phone number of the fan to check, including the national code, for example +12025550100. Send one as a string, or up to 500 as an array. */
+                    phone: string | string[];
                 };
             };
         };
         responses: {
-            /** @description Whether the contact previously subscribed to the customer and has since unsubscribed. */
+            /** @description Whether each contact previously subscribed to the customer and has since unsubscribed. Contacts are answered by their position in the request, never echoed back. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3663,8 +3657,8 @@ export interface operations {
                      *     }
                      */
                     "application/json": {
-                        /** @description True when the contact was subscribed to the customer at some point and no longer follows them. */
-                        isUnsubscribed: boolean;
+                        /** @description True when the contact was subscribed to the customer at some point and no longer follows them. An array, in request order, when the contact was sent as an array. */
+                        isUnsubscribed: boolean | boolean[];
                     };
                 };
             };
@@ -4050,7 +4044,7 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @description Defaults to false. When true, nothing is created or sent: the request is validated like a real one, without the phishing screen or building the email, and the response shows the cost estimate, with a null id. A dry run doesn't use the Idempotency-Key. */
+                    /** @description Defaults to false. When true, nothing is created or sent: the request is validated like a real one, and the response shows the cost estimate, with a null id. A dry run doesn't use the Idempotency-Key. */
                     dryRun?: boolean;
                     /**
                      * SegmentMessageEmail
@@ -4511,7 +4505,7 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @description Defaults to false. When true, nothing is created or sent: the request is validated like a real one, without the phishing screen or building the email, and the response shows the cost estimate, with a null id. A dry run doesn't use the Idempotency-Key. */
+                    /** @description Defaults to false. When true, nothing is created or sent: the request is validated like a real one, and the response shows the cost estimate, with a null id. A dry run doesn't use the Idempotency-Key. */
                     dryRun?: boolean;
                     /**
                      * SegmentMessageEmail

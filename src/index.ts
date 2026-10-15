@@ -62,6 +62,7 @@ export type { RequestOptions } from "./core/request-options.js";
 export type {
   ChannelCreditUsage,
   Contact,
+  ContactBatch,
   Conversion,
   ConversionAction,
   ConversionCount,
