@@ -162,6 +162,11 @@ describe("request aliases", () => {
       phone: string;
       smsMarketingConsent: false;
     }>().not.toMatchTypeOf<SubscribeFanInput>();
+    expectTypeOf<{
+      email: string;
+      emailMarketingConsent: true;
+      smsMarketingConsent: false;
+    }>().toMatchTypeOf<SubscribeFanInput>();
     expectTypeOf<{ dropId: string }>().not.toMatchTypeOf<SubscribeFanInput>();
   });
 

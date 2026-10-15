@@ -18,6 +18,34 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
   ? Omit<T, K>
   : never;
 
+// A consent flag can only be `true` for a contact that's given: subscribing
+// opts that contact in, so `false` there would be overridden. For a contact
+// that isn't given, 0.9.0 allowed any value, so that's kept.
+type ConsentFlag<Fan, Channel extends "email" | "phone"> =
+  Fan extends Record<Channel, string> ? true : boolean | null;
+
+type WithDeprecatedConsent<Fan> = Fan extends unknown
+  ? Fan & {
+      /**
+       * @deprecated Ignored and not sent. The fan's sign-up time is the time
+       * of the call.
+       */
+      consentGrantedAt?: string | Date | null;
+      /**
+       * @deprecated Not sent. Subscribing an email always opts it in to email
+       * marketing, so `false` next to an `email` throws a
+       * `LayloConfigurationError`.
+       */
+      emailMarketingConsent?: ConsentFlag<Fan, "email">;
+      /**
+       * @deprecated Not sent. Subscribing a phone always opts it in to SMS
+       * marketing, so `false` next to a `phone` throws a
+       * `LayloConfigurationError`.
+       */
+      smsMarketingConsent?: ConsentFlag<Fan, "phone">;
+    }
+  : never;
+
 /**
  * A fan to subscribe: an `email`, an E.164 `phone`, or both, and optionally a
  * `dropId` to RSVP them to. `consentGrantedAt`, `emailMarketingConsent`, and
@@ -25,26 +53,12 @@ type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
  * compiles, but the SDK doesn't send them.
  * @see https://developers.laylo.com/api-reference/fans/fans.subscriptions.create
  */
-export type SubscribeFanInput = DistributiveOmit<
-  SubscribeFanRequest,
-  "consentGrantedAt" | "emailMarketingConsent" | "smsMarketingConsent"
-> & {
-  /**
-   * @deprecated Ignored and not sent. The fan's sign-up time is the time of
-   * the call.
-   */
-  consentGrantedAt?: string | Date | null;
-  /**
-   * @deprecated Not sent. Subscribing an email always opts it in to email
-   * marketing, so `false` throws a `LayloConfigurationError`.
-   */
-  emailMarketingConsent?: true;
-  /**
-   * @deprecated Not sent. Subscribing a phone always opts it in to SMS
-   * marketing, so `false` throws a `LayloConfigurationError`.
-   */
-  smsMarketingConsent?: true;
-};
+export type SubscribeFanInput = WithDeprecatedConsent<
+  DistributiveOmit<
+    SubscribeFanRequest,
+    "consentGrantedAt" | "emailMarketingConsent" | "smsMarketingConsent"
+  >
+>;
 
 /**
  * Filters for counting the fans in a segment. Identical to the API's query
@@ -108,13 +122,13 @@ const CONSENT_FLAG_CHANNELS = {
   smsMarketingConsent: "phone",
 } as const;
 
-// Typed as `true`, but a JavaScript caller can still pass the fan's real
-// "no", and subscribing would override it.
+// A JavaScript caller can still pass the fan's real "no" next to that
+// contact, and subscribing would override it.
 const assertNoDeclinedConsent = (fan: Record<string, unknown>) => {
   for (const [flag, channel] of Object.entries(CONSENT_FLAG_CHANNELS)) {
-    if (fan[flag] === false) {
+    if (fan[flag] === false && isGiven(fan[channel])) {
       throw new LayloConfigurationError(
-        `${flag} is false, but fans.subscribe opts every contact it's given in to marketing, so it would subscribe a fan who declined. Leave the ${channel} out for a fan who didn't consent. ${flag} is deprecated and no longer sent, so remove it once that's done.`,
+        `${flag} is false, but fans.subscribe opts every contact it's given in to marketing, so it would subscribe a ${channel} whose owner declined. Leave the ${channel} out for a fan who didn't consent. ${flag} is deprecated and no longer sent, so remove it once that's done.`,
       );
     }
   }

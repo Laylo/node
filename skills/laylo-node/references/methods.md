@@ -232,9 +232,9 @@ If only one subscribes, the other comes back in `rejected` with its `channel`,
 
 The fan's sign-up time is the time of the call. `consentGrantedAt`,
 `emailMarketingConsent`, and `smsMarketingConsent` are deprecated: they're
-still accepted so older code compiles, but they aren't sent. Passing either
-flag as `false` throws `LayloConfigurationError`, since subscribing would opt
-the fan in anyway.
+still accepted so older code compiles, but they aren't sent. Passing a flag
+as `false` next to its contact throws `LayloConfigurationError`, since
+subscribing would opt that contact in anyway.
 `dropId` also RSVPs the fan. It must be one of the customer's drops, or the
 call throws `NotFoundError` and writes nothing. Subscribing an existing fan
 refreshes their record and clears any earlier unsubscribe.

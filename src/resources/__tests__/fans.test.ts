@@ -410,6 +410,21 @@ describe("Fans", () => {
       expect(calls).toHaveLength(0);
     });
 
+    it("allows smsMarketingConsent: false for an email-only fan", async () => {
+      const { context, apiCalls } = fakeContext(
+        [json(200, { emailFanId: "fan_123", subscribed: true })],
+        { apiKey: "customer-key-1" },
+      );
+
+      await new Fans(context).subscribe({
+        email: "fan@example.invalid",
+        emailMarketingConsent: true,
+        smsMarketingConsent: false,
+      });
+
+      expect(bodyOf(apiCalls()[0])).toEqual({ email: "fan@example.invalid" });
+    });
+
     it("rejects a fan with neither email nor phone before any request", async () => {
       const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
 
