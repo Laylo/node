@@ -3270,6 +3270,11 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
+                    /**
+                     * @deprecated
+                     * @description Deprecated and ignored. The fan's sign-up time is the time of the request.
+                     */
+                    consentGrantedAt?: string | null;
                     /** @description Optional drop to RSVP the fan to as part of subscribing. Must be one of the customer's drops (see GET /v1/drops); otherwise the request fails with 404 and nothing is written. If no dropId is provided, the fan is subscribed to the customer's profile instead. */
                     dropId?: string | null;
                     /**
@@ -3277,16 +3282,46 @@ export interface operations {
                      * @description Fan email address to subscribe.
                      */
                     email: string;
+                    /**
+                     * @deprecated
+                     * @description Deprecated and ignored.
+                     */
+                    emailMarketingConsent?: boolean | null;
                     /** @description Must be null or omitted when only 'email' is supplied. */
                     phone?: null;
+                    /**
+                     * @deprecated
+                     * @description Deprecated and ignored.
+                     */
+                    smsMarketingConsent?: boolean | null;
                 } | {
+                    /**
+                     * @deprecated
+                     * @description Deprecated and ignored. The fan's sign-up time is the time of the request.
+                     */
+                    consentGrantedAt?: string | null;
                     /** @description Optional drop to RSVP the fan to as part of subscribing. Must be one of the customer's drops (see GET /v1/drops); otherwise the request fails with 404 and nothing is written. If no dropId is provided, the fan is subscribed to the customer's profile instead. */
                     dropId?: string | null;
                     /** @description Must be null or omitted when only 'phone' is supplied. */
                     email?: null;
+                    /**
+                     * @deprecated
+                     * @description Deprecated and ignored.
+                     */
+                    emailMarketingConsent?: boolean | null;
                     /** @description E.164 phone number including the national code, for example +12025550100. */
                     phone: string;
+                    /**
+                     * @deprecated
+                     * @description Deprecated and ignored.
+                     */
+                    smsMarketingConsent?: boolean | null;
                 } | {
+                    /**
+                     * @deprecated
+                     * @description Deprecated and ignored. The fan's sign-up time is the time of the request.
+                     */
+                    consentGrantedAt?: string | null;
                     /** @description Optional drop to RSVP the fan to as part of subscribing. Must be one of the customer's drops (see GET /v1/drops); otherwise the request fails with 404 and nothing is written. If no dropId is provided, the fan is subscribed to the customer's profile instead. */
                     dropId?: string | null;
                     /**
@@ -3294,8 +3329,18 @@ export interface operations {
                      * @description Fan email address to subscribe.
                      */
                     email: string;
+                    /**
+                     * @deprecated
+                     * @description Deprecated and ignored.
+                     */
+                    emailMarketingConsent?: boolean | null;
                     /** @description E.164 phone number including the national code, for example +12025550100. */
                     phone: string;
+                    /**
+                     * @deprecated
+                     * @description Deprecated and ignored.
+                     */
+                    smsMarketingConsent?: boolean | null;
                 };
             };
         };

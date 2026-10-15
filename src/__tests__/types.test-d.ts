@@ -134,7 +134,7 @@ describe("request aliases", () => {
     }>().not.toMatchTypeOf<SegmentFilters>();
   });
 
-  test("SubscribeFanRequest takes an email, a phone, or both, with no consent fields", () => {
+  test("SubscribeFanRequest takes an email, a phone, or both", () => {
     expectTypeOf<{ email: string }>().toMatchTypeOf<SubscribeFanRequest>();
     expectTypeOf<{
       phone: string;
@@ -147,7 +147,7 @@ describe("request aliases", () => {
     expectTypeOf<{ dropId: string }>().not.toMatchTypeOf<SubscribeFanRequest>();
   });
 
-  test("SubscribeFanInput still accepts the consent fields older callers pass", () => {
+  test("SubscribeFanInput still accepts the deprecated consent fields older callers pass", () => {
     expectTypeOf<{ email: string }>().toMatchTypeOf<SubscribeFanInput>();
     expectTypeOf<{
       email: string;

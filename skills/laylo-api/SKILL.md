@@ -29,7 +29,7 @@ are in [references/endpoints.md](references/endpoints.md).
 | `POST /v1/fans/subscribed`              | Does this email or phone currently subscribe?                   |
 | `POST /v1/fans/unsubscribed`            | Did this contact subscribe once and later unsubscribe?          |
 | `GET /v1/fans/segments`                 | How many fans match a segment (channel, drops, place, date)?    |
-| `POST /v1/fans/subscriptions`           | Subscribe a fan with a consent record, optionally RSVP (write)  |
+| `POST /v1/fans/subscriptions`           | Subscribe a fan by email and/or phone, optionally RSVP (write)  |
 | `POST /v1/messages/sms`                 | Text up to 200 subscribed phone numbers (write)                 |
 | `POST /v1/messages/segments`            | Text or email every fan in a segment, now (write)               |
 | `POST /v1/messages/segments/scheduled`  | Text or email a segment at a set local time (write)             |

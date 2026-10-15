@@ -231,8 +231,8 @@ If only one subscribes, the other comes back in `rejected` with its `channel`,
 `code`, and `message`.
 
 The fan's sign-up time is the time of the call. `consentGrantedAt`,
-`emailMarketingConsent`, and `smsMarketingConsent` are still accepted for
-older code but aren't sent.
+`emailMarketingConsent`, and `smsMarketingConsent` are deprecated: they're
+still accepted so older code compiles, but they aren't sent.
 `dropId` also RSVPs the fan. It must be one of the customer's drops, or the
 call throws `NotFoundError` and writes nothing. Subscribing an existing fan
 refreshes their record and clears any earlier unsubscribe.

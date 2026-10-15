@@ -264,7 +264,9 @@ same person. Each keeps its own id, returned as `emailFanId` and `phoneFanId`.
 If only one subscribes, the other comes back in `rejected` with its `channel`,
 `code`, and `message`.
 
-The fan's sign-up time is the time of the call.
+The fan's sign-up time is the time of the call. `consentGrantedAt`,
+`emailMarketingConsent`, and `smsMarketingConsent` are deprecated: the API
+still accepts them but ignores them, so don't send them.
 `dropId` is optional and also RSVPs the fan. An id that isn't one of the
 customer's drops returns 404 and writes nothing. Subscribing an existing fan
 refreshes their record and clears any earlier unsubscribe.

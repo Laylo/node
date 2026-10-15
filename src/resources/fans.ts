@@ -12,20 +12,31 @@ import type {
 } from "../types.js";
 import { APIResource, type ResourceContext } from "./base.js";
 
+// `Omit` over a union erases the email/phone discriminant; mapping over each
+// member keeps it.
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+  ? Omit<T, K>
+  : never;
+
 /**
  * A fan to subscribe: an `email`, an E.164 `phone`, or both, and optionally a
- * `dropId` to RSVP them to.
+ * `dropId` to RSVP them to. `consentGrantedAt`, `emailMarketingConsent`, and
+ * `smsMarketingConsent` are deprecated: they're accepted so older code still
+ * compiles, but the SDK doesn't send them.
  * @see https://developers.laylo.com/api-reference/fans/fans.subscriptions.create
  */
-export type SubscribeFanInput = SubscribeFanRequest & {
+export type SubscribeFanInput = DistributiveOmit<
+  SubscribeFanRequest,
+  "consentGrantedAt" | "emailMarketingConsent" | "smsMarketingConsent"
+> & {
   /**
-   * @deprecated The API no longer reads it, so the SDK doesn't send it. The
-   * fan's sign-up time is the time of the call.
+   * @deprecated Ignored and not sent. The fan's sign-up time is the time of
+   * the call.
    */
   consentGrantedAt?: string | Date | null;
-  /** @deprecated The API no longer reads it, so the SDK doesn't send it. */
+  /** @deprecated Ignored and not sent. */
   emailMarketingConsent?: boolean | null;
-  /** @deprecated The API no longer reads it, so the SDK doesn't send it. */
+  /** @deprecated Ignored and not sent. */
   smsMarketingConsent?: boolean | null;
 };
 

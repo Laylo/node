@@ -28,7 +28,7 @@ trailing `RequestOptions` (`apiKey`, `creatorId`, `signal`, `timeoutMs`,
 | `fans.isSubscribed(contact)`                 | Does this email or phone currently subscribe?                     |
 | `fans.isUnsubscribed(contact)`               | Did this contact subscribe once and later unsubscribe?            |
 | `fans.segments.count(filters)`               | How many fans match a segment (channel, drops, place, date)?      |
-| `fans.subscribe(fan)`                        | Subscribe a fan with a consent record, optionally RSVP (write)    |
+| `fans.subscribe(fan)`                        | Subscribe a fan by email and/or phone, optionally RSVP (write)    |
 | `messages.sms.send(sms)`                     | Text up to 200 subscribed phone numbers (write)                   |
 | `messages.segments.send(input)`              | Text or email every fan in a segment, now (write)                 |
 | `messages.segments.schedule(input)`          | Text or email a segment at a set local time (write)               |
