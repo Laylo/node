@@ -34,10 +34,16 @@ export type SubscribeFanInput = DistributiveOmit<
    * the call.
    */
   consentGrantedAt?: string | Date | null;
-  /** @deprecated Ignored and not sent. */
-  emailMarketingConsent?: boolean | null;
-  /** @deprecated Ignored and not sent. */
-  smsMarketingConsent?: boolean | null;
+  /**
+   * @deprecated Not sent. Subscribing an email always opts it in to email
+   * marketing, so `false` throws a `LayloConfigurationError`.
+   */
+  emailMarketingConsent?: true;
+  /**
+   * @deprecated Not sent. Subscribing a phone always opts it in to SMS
+   * marketing, so `false` throws a `LayloConfigurationError`.
+   */
+  smsMarketingConsent?: true;
 };
 
 /**
@@ -86,6 +92,29 @@ const assertAtLeastOneChannel = (fan: {
     if (typeof value === "string" && value.trim() === "") {
       throw new LayloConfigurationError(
         `A fan's ${field} must not be blank. Leave it out instead.`,
+      );
+    }
+  }
+};
+
+const DEPRECATED_CONSENT_FIELDS: readonly string[] = [
+  "consentGrantedAt",
+  "emailMarketingConsent",
+  "smsMarketingConsent",
+];
+
+const CONSENT_FLAG_CHANNELS = {
+  emailMarketingConsent: "email",
+  smsMarketingConsent: "phone",
+} as const;
+
+// Typed as `true`, but a JavaScript caller can still pass the fan's real
+// "no", and subscribing would override it.
+const assertNoDeclinedConsent = (fan: Record<string, unknown>) => {
+  for (const [flag, channel] of Object.entries(CONSENT_FLAG_CHANNELS)) {
+    if (fan[flag] === false) {
+      throw new LayloConfigurationError(
+        `${flag} is false, but fans.subscribe opts every contact it's given in to marketing, so it would subscribe a fan who declined. Leave the ${channel} out for a fan who didn't consent. ${flag} is deprecated and no longer sent, so remove it once that's done.`,
       );
     }
   }
@@ -240,7 +269,10 @@ export class Fans extends APIResource {
    * the time of the call. Pass `dropId` to also RSVP them to one of the
    * customer's drops; an unknown drop fails with `NotFoundError` and writes
    * nothing. Subscribing an already-subscribed fan only refreshes their
-   * record, and clears any earlier unsubscribe.
+   * record, and clears any earlier unsubscribe. A lone phone that opted out
+   * by text fails with `ConflictError`, and a contact Laylo declines with a
+   * `LayloAPIError` of status `422`; given both contacts, either case comes
+   * back in `rejected` instead.
    *
    * This is a write, so a `5xx` response is not retried automatically.
    * @param fan The contact, and optionally a drop to RSVP to.
@@ -263,11 +295,17 @@ export class Fans extends APIResource {
     options?: RequestOptions,
   ): Promise<SubscribeFanResponse> {
     assertAtLeastOneChannel(fan);
+    assertNoDeclinedConsent(fan);
+    const body = Object.fromEntries(
+      Object.entries(fan).filter(
+        ([field]) => !DEPRECATED_CONSENT_FIELDS.includes(field),
+      ),
+    );
     return this.request<SubscribeFanResponse>(
       {
         method: "POST",
         path: "/v1/fans/subscriptions",
-        body: { email: fan.email, phone: fan.phone, dropId: fan.dropId },
+        body,
       },
       options,
     );

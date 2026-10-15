@@ -395,6 +395,21 @@ describe("Fans", () => {
       });
     });
 
+    it.each([
+      ["emailMarketingConsent", { email: "fan@example.invalid" }],
+      ["smsMarketingConsent", { phone: "+12025550100" }],
+    ])("refuses %s: false before any request", async (flag, contact) => {
+      const { context, calls } = fakeContext([], {
+        apiKey: "customer-key-1",
+      });
+
+      const fan = { ...contact, [flag]: false } as unknown as SubscribeFanInput;
+      await expect(new Fans(context).subscribe(fan)).rejects.toThrow(
+        new RegExp(`^${flag} is false`),
+      );
+      expect(calls).toHaveLength(0);
+    });
+
     it("rejects a fan with neither email nor phone before any request", async () => {
       const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
 
