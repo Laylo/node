@@ -117,6 +117,9 @@ const DEPRECATED_CONSENT_FIELDS: readonly string[] = [
   "smsMarketingConsent",
 ];
 
+const isSentField = ([field]: [string, unknown]) =>
+  !DEPRECATED_CONSENT_FIELDS.includes(field);
+
 const CONSENT_FLAG_CHANNELS = {
   emailMarketingConsent: "email",
   smsMarketingConsent: "phone",
@@ -310,11 +313,7 @@ export class Fans extends APIResource {
   ): Promise<SubscribeFanResponse> {
     assertAtLeastOneChannel(fan);
     assertNoDeclinedConsent(fan);
-    const body = Object.fromEntries(
-      Object.entries(fan).filter(
-        ([field]) => !DEPRECATED_CONSENT_FIELDS.includes(field),
-      ),
-    );
+    const body = Object.fromEntries(Object.entries(fan).filter(isSentField));
     return this.request<SubscribeFanResponse>(
       {
         method: "POST",
