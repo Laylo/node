@@ -63,9 +63,9 @@ call you haven't seen here. The ones that are easiest to get wrong:
 - `conversions.counts.list` takes `action`, `startDate`, `endDate`, and
   resolves to `{ startDate, endDate, counts: [{ action, total, series }] }`.
 - `fans.isSubscribed` and `fans.isUnsubscribed` resolve to a plain `boolean`.
-- `fans.subscribe` takes `email` + `emailMarketingConsent: true`, `phone` +
-  `smsMarketingConsent: true`, or both, plus `consentGrantedAt` and an
-  optional `dropId`. Given both, the two records are linked as the same person and each keeps its own id.
+- `fans.subscribe` takes `email`, `phone`, or both, and an optional `dropId`.
+  Given both, the two records are linked as the same person and each keeps its
+  own id; if only one subscribes, the other comes back in `rejected`.
 - `messages.sms.send` takes `message` and `to` (one E.164 number or an array
   of up to 200), and resolves to `{ queued, skipped: [{ index, reason }] }`.
 - `messages.segments.send` takes `message`, `segment` (the count's filters,
@@ -270,8 +270,7 @@ access token, so creating them is cheap.
   dry run first and tell them the estimated recipients and cost, along with
   its `disclaimer`. Reads can run freely.
 - **Consent must be real.** Only call `fans.subscribe` for someone who actually
-  consented to marketing on that channel, with `consentGrantedAt` set to when
-  they did. Subscribing a fan also clears an earlier unsubscribe, so never use
+  consented to marketing on that channel. Subscribing a fan also clears an earlier unsubscribe, so never use
   it to re-add someone who opted out unless they opted in again.
 - **Use one customer per call.** Never pass both `apiKey` and `creatorId`.
 

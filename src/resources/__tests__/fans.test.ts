@@ -355,8 +355,6 @@ describe("Fans", () => {
 
       const result = await new Fans(context).subscribe({
         email: "fan@example.invalid",
-        emailMarketingConsent: true,
-        consentGrantedAt: "2026-08-25T12:30:00-07:00",
       });
 
       expect(result).toEqual(subscribed);
@@ -370,14 +368,10 @@ describe("Fans", () => {
         "Bearer integrator-token",
       );
       expect(call && headersOf(call).get("x-api-key")).toBe("customer-key-1");
-      expect(bodyOf(call)).toEqual({
-        email: "fan@example.invalid",
-        emailMarketingConsent: true,
-        consentGrantedAt: "2026-08-25T12:30:00-07:00",
-      });
+      expect(bodyOf(call)).toEqual({ email: "fan@example.invalid" });
     });
 
-    it("serializes a Date consentGrantedAt as an ISO string and passes dropId through", async () => {
+    it("drops the deprecated consent fields and passes dropId through", async () => {
       const withRsvp: SubscribeFanResponse = {
         phoneFanId: "fan_456",
         rsvp: { dropId: "drop_123", status: "confirmed" },
@@ -390,31 +384,15 @@ describe("Fans", () => {
       const result = await new Fans(context).subscribe({
         phone: "+12025550100",
         smsMarketingConsent: true,
-        consentGrantedAt: new Date("2026-08-25T19:30:00.000Z"),
+        consentGrantedAt: new Date("not a date"),
         dropId: "drop_123",
       });
 
       expect(result.rsvp).toEqual({ dropId: "drop_123", status: "confirmed" });
-      const [call] = apiCalls();
-      expect(bodyOf(call)).toEqual({
+      expect(bodyOf(apiCalls()[0])).toEqual({
         phone: "+12025550100",
-        smsMarketingConsent: true,
-        consentGrantedAt: "2026-08-25T19:30:00.000Z",
         dropId: "drop_123",
       });
-    });
-
-    it("rejects an invalid Date consentGrantedAt before any request", async () => {
-      const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
-
-      await expect(
-        new Fans(context).subscribe({
-          email: "fan@example.invalid",
-          emailMarketingConsent: true,
-          consentGrantedAt: new Date("not a date"),
-        }),
-      ).rejects.toThrow(/consentGrantedAt/);
-      expect(calls).toHaveLength(0);
     });
 
     it("rejects a fan with neither email nor phone before any request", async () => {
@@ -422,8 +400,7 @@ describe("Fans", () => {
 
       await expect(
         new Fans(context).subscribe({
-          emailMarketingConsent: true,
-          consentGrantedAt: "2026-08-25T12:30:00Z",
+          dropId: "drop_123",
         } as unknown as SubscribeFanInput),
       ).rejects.toThrow(LayloConfigurationError);
       expect(calls).toHaveLength(0);
@@ -441,20 +418,38 @@ describe("Fans", () => {
 
       const result = await new Fans(context).subscribe({
         email: "fan@example.invalid",
-        emailMarketingConsent: true,
         phone: "+12025550100",
-        smsMarketingConsent: true,
-        consentGrantedAt: "2026-08-25T12:30:00Z",
       });
 
       expect(bodyOf(apiCalls()[0])).toEqual({
         email: "fan@example.invalid",
-        emailMarketingConsent: true,
         phone: "+12025550100",
-        smsMarketingConsent: true,
-        consentGrantedAt: "2026-08-25T12:30:00Z",
       });
       expect(result).toEqual(both);
+    });
+
+    it("returns the contact rejected on a partial success", async () => {
+      const partial: SubscribeFanResponse = {
+        emailFanId: "fan_123",
+        rejected: [
+          {
+            channel: "phone",
+            code: "CONFLICT",
+            message: "This phone number opted out by text",
+          },
+        ],
+        subscribed: true,
+      };
+      const { context } = fakeContext([json(200, partial)], {
+        apiKey: "customer-key-1",
+      });
+
+      const result = await new Fans(context).subscribe({
+        email: "fan@example.invalid",
+        phone: "+12025550100",
+      });
+
+      expect(result).toEqual(partial);
     });
 
     it("rejects a blank contact next to a real one before any request", async () => {
@@ -463,10 +458,7 @@ describe("Fans", () => {
       await expect(
         new Fans(context).subscribe({
           email: "fan@example.invalid",
-          emailMarketingConsent: true,
           phone: "  ",
-          smsMarketingConsent: true,
-          consentGrantedAt: "2026-08-25T12:30:00Z",
         }),
       ).rejects.toThrow(/phone must not be blank/);
       expect(calls).toHaveLength(0);
@@ -485,8 +477,6 @@ describe("Fans", () => {
       await expect(
         new Fans(context).subscribe({
           phone: 12025550100,
-          smsMarketingConsent: true,
-          consentGrantedAt: "2026-08-25T12:30:00Z",
         } as unknown as SubscribeFanInput),
       ).rejects.toBeInstanceOf(BadRequestError);
       expect(apiCalls()).toHaveLength(1);
@@ -500,45 +490,12 @@ describe("Fans", () => {
       await new Fans(context).subscribe({
         email: "fan@example.invalid",
         phone: null,
-        emailMarketingConsent: true,
-        consentGrantedAt: "2026-08-25T12:30:00Z",
       });
 
-      const [call] = apiCalls();
-      expect(bodyOf(call)).toEqual({
+      expect(bodyOf(apiCalls()[0])).toEqual({
         email: "fan@example.invalid",
         phone: null,
-        emailMarketingConsent: true,
-        consentGrantedAt: "2026-08-25T12:30:00Z",
       });
-    });
-
-    it("surfaces a 400 for missing consent as BadRequestError with the server message intact", async () => {
-      const { context } = fakeContext(
-        [
-          json(400, {
-            error: {
-              code: "BAD_REQUEST",
-              message:
-                "Subscribing an email requires 'emailMarketingConsent' to be true",
-            },
-          }),
-        ],
-        { apiKey: "customer-key-1" },
-      );
-
-      const failure: unknown = await new Fans(context)
-        .subscribe({
-          email: "fan@example.invalid",
-          emailMarketingConsent: false,
-          consentGrantedAt: "2026-08-25T12:30:00Z",
-        } as unknown as SubscribeFanInput)
-        .catch((error: unknown) => error);
-
-      expect(failure).toBeInstanceOf(BadRequestError);
-      expect((failure as BadRequestError).message).toBe(
-        "Subscribing an email requires 'emailMarketingConsent' to be true",
-      );
     });
 
     it("surfaces an unknown dropId as NotFoundError", async () => {
@@ -554,8 +511,6 @@ describe("Fans", () => {
       const failure: unknown = await new Fans(context)
         .subscribe({
           email: "fan@example.invalid",
-          emailMarketingConsent: true,
-          consentGrantedAt: "2026-08-25T12:30:00Z",
           dropId: "drop_missing",
         })
         .catch((error: unknown) => error);
@@ -575,11 +530,7 @@ describe("Fans", () => {
       );
 
       const failure: unknown = await new Fans(context)
-        .subscribe({
-          email: "fan@example.invalid",
-          emailMarketingConsent: true,
-          consentGrantedAt: "2026-08-25T12:30:00Z",
-        })
+        .subscribe({ email: "fan@example.invalid" })
         .catch((error: unknown) => error);
 
       expect(failure).toBeInstanceOf(ServerError);

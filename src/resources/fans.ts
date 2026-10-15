@@ -1,10 +1,6 @@
 import { LayloConfigurationError } from "../core/errors.js";
 import type { RequestOptions } from "../core/request-options.js";
-import {
-  isoSignUpBounds,
-  isoTimestamp,
-  type WithDateSignUpBounds,
-} from "../core/time.js";
+import { isoSignUpBounds, type WithDateSignUpBounds } from "../core/time.js";
 import type {
   Contact,
   SegmentCountResponse,
@@ -16,29 +12,21 @@ import type {
 } from "../types.js";
 import { APIResource, type ResourceContext } from "./base.js";
 
-// `Omit` over a union erases the email/phone discriminant; mapping over each
-// member keeps it.
-type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
-  ? Omit<T, K>
-  : never;
-
 /**
- * A fan to subscribe. Identical to the API's request body except
- * `consentGrantedAt` also accepts a `Date`, which is sent as its ISO 8601
- * string. Gives `email` (with `emailMarketingConsent: true`), `phone` (with
- * `smsMarketingConsent: true`), or both.
+ * A fan to subscribe: an `email`, an E.164 `phone`, or both, and optionally a
+ * `dropId` to RSVP them to.
  * @see https://developers.laylo.com/api-reference/fans/fans.subscriptions.create
  */
-export type SubscribeFanInput = DistributiveOmit<
-  SubscribeFanRequest,
-  "consentGrantedAt"
-> & {
+export type SubscribeFanInput = SubscribeFanRequest & {
   /**
-   * When the fan granted marketing consent: a `Date`, or an ISO 8601 string
-   * with an explicit UTC offset. Recorded as the sign-up time; must not be in
-   * the future.
+   * @deprecated The API no longer reads it, so the SDK doesn't send it. The
+   * fan's sign-up time is the time of the call.
    */
-  consentGrantedAt: string | Date;
+  consentGrantedAt?: string | Date | null;
+  /** @deprecated The API no longer reads it, so the SDK doesn't send it. */
+  emailMarketingConsent?: boolean | null;
+  /** @deprecated The API no longer reads it, so the SDK doesn't send it. */
+  smsMarketingConsent?: boolean | null;
 };
 
 /**
@@ -234,28 +222,25 @@ export class Fans extends APIResource {
   }
 
   /**
-   * Subscribes a fan to the customer, recording their marketing consent for
-   * each channel given. The fan is an email address with
-   * `emailMarketingConsent: true`, an E.164 phone number with
-   * `smsMarketingConsent: true`, or both. Given both, each is subscribed and
-   * the two records are linked as the same person, each keeping its own id.
-   * `consentGrantedAt` is when they consented
-   * and becomes their sign-up time. Pass `dropId` to also RSVP them to one of
-   * the customer's drops; an unknown drop fails with `NotFoundError` and
-   * writes nothing. Subscribing an already-subscribed fan only refreshes their
+   * Subscribes a fan to the customer. The fan is an email address, an E.164
+   * phone number, or both. Given both, each is subscribed and the two records
+   * are linked as the same person, each keeping its own id; if only one
+   * subscribes, the other comes back in `rejected`. The fan's sign-up time is
+   * the time of the call. Pass `dropId` to also RSVP them to one of the
+   * customer's drops; an unknown drop fails with `NotFoundError` and writes
+   * nothing. Subscribing an already-subscribed fan only refreshes their
    * record, and clears any earlier unsubscribe.
    *
    * This is a write, so a `5xx` response is not retried automatically.
-   * @param fan The contact, their consent, and optionally a drop to RSVP to.
+   * @param fan The contact, and optionally a drop to RSVP to.
    * @param options Per-call overrides.
-   * @returns `emailFanId` and `phoneFanId` for the contacts given, the
-   * subscription state, and the RSVP when a `dropId` was given.
+   * @returns `emailFanId` and `phoneFanId` for the contacts subscribed, any
+   * contact `rejected` on a partial success, and the RSVP when a `dropId` was
+   * given.
    * @example
    * ```ts
    * const { emailFanId, rsvp } = await laylo.fans.subscribe({
    *   email: "fan@example.com",
-   *   emailMarketingConsent: true,
-   *   consentGrantedAt: new Date(),
    *   dropId: "drop_123",
    * });
    * ```
@@ -267,15 +252,11 @@ export class Fans extends APIResource {
     options?: RequestOptions,
   ): Promise<SubscribeFanResponse> {
     assertAtLeastOneChannel(fan);
-    const consentGrantedAt = isoTimestamp(
-      fan.consentGrantedAt,
-      "consentGrantedAt",
-    );
     return this.request<SubscribeFanResponse>(
       {
         method: "POST",
         path: "/v1/fans/subscriptions",
-        body: { ...fan, consentGrantedAt },
+        body: { email: fan.email, phone: fan.phone, dropId: fan.dropId },
       },
       options,
     );

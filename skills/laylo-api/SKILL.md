@@ -62,9 +62,10 @@ haven't seen here. The ones that are easiest to get wrong:
   Response: `{ startDate, endDate, counts: [{ action, total, series }] }`.
 - `POST /v1/fans/subscribed` returns `{ "isSubscribed": true }`, and
   `POST /v1/fans/unsubscribed` returns `{ "isUnsubscribed": false }`.
-- `POST /v1/fans/subscriptions` takes `email` + `emailMarketingConsent: true`,
-  `phone` + `smsMarketingConsent: true`, or both, plus `consentGrantedAt` and
-  an optional `dropId`. Given both, the two records are linked as the same person and each keeps its own id.
+- `POST /v1/fans/subscriptions` takes `email`, `phone`, or both, and an
+  optional `dropId`. Given both, the two records are linked as the same person
+  and each keeps its own id; if only one subscribes, the other comes back in
+  `rejected`.
 - `POST /v1/messages/sms` takes `message` and `to` (one E.164 number or an
   array of up to 200), and returns `{ "queued": 1, "skipped": [{ "index": 1,
 "reason": "not_subscribed" }] }`.
@@ -296,8 +297,7 @@ Common mappings:
   sending any of them to a live account. Reads,
   including the two `POST` subscription checks, can run freely.
 - **Consent must be real.** Only subscribe someone who actually consented to
-  marketing on that channel, with `consentGrantedAt` set to when they did.
-  Subscribing a fan also clears an earlier unsubscribe, so never use it to
+  marketing on that channel. Subscribing a fan also clears an earlier unsubscribe, so never use it to
   re-add someone who opted out unless they opted in again.
 - **Send one customer header.** Never send both `X-Api-Key` and
   `X-Creator-Id`.

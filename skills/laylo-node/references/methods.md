@@ -220,32 +220,19 @@ One of:
 
 ```ts
 type SubscribeFanInput =
-  | {
-      email: string;
-      emailMarketingConsent: true;
-      consentGrantedAt: Date | string;
-      dropId?: string;
-    }
-  | {
-      phone: string;
-      smsMarketingConsent: true;
-      consentGrantedAt: Date | string;
-      dropId?: string;
-    }
-  | {
-      email: string;
-      emailMarketingConsent: true;
-      phone: string;
-      smsMarketingConsent: true;
-      consentGrantedAt: Date | string;
-      dropId?: string;
-    };
+  | { email: string; dropId?: string }
+  | { phone: string; dropId?: string }
+  | { email: string; phone: string; dropId?: string };
 ```
 
 With both, each channel is subscribed and the two records are linked as the
 same person. Each keeps its own id, returned as `emailFanId` and `phoneFanId`.
+If only one subscribes, the other comes back in `rejected` with its `channel`,
+`code`, and `message`.
 
-`consentGrantedAt` becomes the sign-up time and can't be in the future.
+The fan's sign-up time is the time of the call. `consentGrantedAt`,
+`emailMarketingConsent`, and `smsMarketingConsent` are still accepted for
+older code but aren't sent.
 `dropId` also RSVPs the fan. It must be one of the customer's drops, or the
 call throws `NotFoundError` and writes nothing. Subscribing an existing fan
 refreshes their record and clears any earlier unsubscribe.

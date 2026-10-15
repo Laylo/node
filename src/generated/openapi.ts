@@ -3260,88 +3260,47 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        /** @description A fan contact and an explicit marketing-consent record for that channel. Consent is required to subscribe a fan. Send both email and phone to subscribe both and link them as one fan. Add dropId to also RSVP the fan to one of the customer's drops. */
+        /** @description A fan contact to subscribe. Send both email and phone to subscribe both and link them as one fan. Add dropId to also RSVP the fan to one of the customer's drops. Contacts are not run through Laylo RealFan verification. */
         requestBody: {
             content: {
                 /**
                  * @example {
-                 *       "consentGrantedAt": "2026-08-25T12:30:00-07:00",
                  *       "dropId": "drop_123",
-                 *       "email": "fan@example.com",
-                 *       "emailMarketingConsent": true
+                 *       "email": "fan@example.com"
                  *     }
                  */
                 "application/json": {
-                    /**
-                     * Format: date-time
-                     * @description When the fan granted marketing consent, in ISO 8601 with an explicit UTC offset. Recorded as the sign-up time and must not be in the future.
-                     */
-                    consentGrantedAt: string;
-                    /** @description Optional drop to RSVP the fan to as part of subscribing. Must be one of the customer's drops (see GET /v1/drops); otherwise the request fails with 404 and nothing is written. */
+                    /** @description Optional drop to RSVP the fan to as part of subscribing. Must be one of the customer's drops (see GET /v1/drops); otherwise the request fails with 404 and nothing is written. If no dropId is provided, the fan is subscribed to the customer's profile instead. */
                     dropId?: string | null;
                     /**
                      * Format: email
                      * @description Fan email address to subscribe.
                      */
                     email: string;
-                    /**
-                     * @description Must be true: the fan consented to email marketing.
-                     * @constant
-                     */
-                    emailMarketingConsent: true;
-                    /** @description Must be null or omitted when 'email' is supplied. */
+                    /** @description Must be null or omitted when only 'email' is supplied. */
                     phone?: null;
-                    /** @description Ignored for an email subscription. */
-                    smsMarketingConsent?: boolean | null;
                 } | {
-                    /**
-                     * Format: date-time
-                     * @description When the fan granted marketing consent, in ISO 8601 with an explicit UTC offset. Recorded as the sign-up time and must not be in the future.
-                     */
-                    consentGrantedAt: string;
-                    /** @description Optional drop to RSVP the fan to as part of subscribing. Must be one of the customer's drops (see GET /v1/drops); otherwise the request fails with 404 and nothing is written. */
+                    /** @description Optional drop to RSVP the fan to as part of subscribing. Must be one of the customer's drops (see GET /v1/drops); otherwise the request fails with 404 and nothing is written. If no dropId is provided, the fan is subscribed to the customer's profile instead. */
                     dropId?: string | null;
-                    /** @description Must be null or omitted when 'phone' is supplied. */
+                    /** @description Must be null or omitted when only 'phone' is supplied. */
                     email?: null;
-                    /** @description Ignored for an SMS subscription. */
-                    emailMarketingConsent?: boolean | null;
                     /** @description E.164 phone number including the national code, for example +12025550100. */
                     phone: string;
-                    /**
-                     * @description Must be true: the fan consented to SMS marketing.
-                     * @constant
-                     */
-                    smsMarketingConsent: true;
                 } | {
-                    /**
-                     * Format: date-time
-                     * @description When the fan granted marketing consent, in ISO 8601 with an explicit UTC offset. Recorded as the sign-up time and must not be in the future.
-                     */
-                    consentGrantedAt: string;
-                    /** @description Optional drop to RSVP the fan to as part of subscribing. Must be one of the customer's drops (see GET /v1/drops); otherwise the request fails with 404 and nothing is written. */
+                    /** @description Optional drop to RSVP the fan to as part of subscribing. Must be one of the customer's drops (see GET /v1/drops); otherwise the request fails with 404 and nothing is written. If no dropId is provided, the fan is subscribed to the customer's profile instead. */
                     dropId?: string | null;
                     /**
                      * Format: email
                      * @description Fan email address to subscribe.
                      */
                     email: string;
-                    /**
-                     * @description Must be true: the fan consented to email marketing.
-                     * @constant
-                     */
-                    emailMarketingConsent: true;
                     /** @description E.164 phone number including the national code, for example +12025550100. */
                     phone: string;
-                    /**
-                     * @description Must be true: the fan consented to SMS marketing.
-                     * @constant
-                     */
-                    smsMarketingConsent: true;
                 };
             };
         };
         responses: {
-            /** @description The resulting subscription state. emailFanId and phoneFanId are present for the contacts supplied. rsvp is present only when dropId was supplied. */
+            /** @description The resulting subscription state. emailFanId and phoneFanId are present for each contact that was subscribed. When email and phone are both sent and only one subscribes, the other is listed in rejected. rsvp is present only when dropId was supplied. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3358,10 +3317,25 @@ export interface operations {
                      *     }
                      */
                     "application/json": {
-                        /** @description Opaque Laylo fan identifier for the email subscribed. Present only when 'email' was supplied. */
+                        /** @description Opaque Laylo fan identifier for the email subscribed. Present only when 'email' was supplied and subscribed. */
                         emailFanId?: string;
-                        /** @description Opaque Laylo fan identifier for the phone number subscribed. Present only when 'phone' was supplied. */
+                        /** @description Opaque Laylo fan identifier for the phone number subscribed. Present only when 'phone' was supplied and subscribed. */
                         phoneFanId?: string;
+                        /** @description Contacts that could not be subscribed when another contact in the same request was. Present only on a partial success; when no contact subscribes, the request fails instead. */
+                        rejected?: {
+                            /**
+                             * @description Which contact was not subscribed.
+                             * @enum {string}
+                             */
+                            channel: "email" | "phone";
+                            /**
+                             * @description CONFLICT for a phone that opted out by text, UNPROCESSABLE_ENTITY when Laylo declines the contact, INTERNAL_ERROR when the contact can be retried on its own.
+                             * @enum {string}
+                             */
+                            code: "CONFLICT" | "UNPROCESSABLE_ENTITY" | "INTERNAL_ERROR";
+                            /** @description Human-readable reason. */
+                            message: string;
+                        }[];
                         /** @description The RSVP recorded for dropId, when one was supplied. */
                         rsvp?: {
                             /** @description Opaque Laylo drop identifier. */
@@ -3484,6 +3458,54 @@ export interface operations {
                      *       "error": {
                      *         "code": "METHOD_NOT_ALLOWED",
                      *         "message": "Method not allowed"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The request conflicts with the current resource state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "CONFLICT",
+                     *         "message": "Resource state conflicts with this request"
+                     *       }
+                     *     }
+                     */
+                    "application/json": {
+                        error: {
+                            code: string;
+                            message: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description The request is well formed but can't be processed as sent, such as an Idempotency-Key reused with a different request. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "code": "UNPROCESSABLE_ENTITY",
+                     *         "message": "Idempotency-Key reused with a different request"
                      *       }
                      *     }
                      */
