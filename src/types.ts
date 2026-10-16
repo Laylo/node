@@ -52,14 +52,10 @@ export type ConversionSubject = TrackedConversion["user"];
 
 type ContactCheckRequest = RequestJson<operations["fans.subscribed.check"]>;
 
-// One contact keeps the string form of a channel; a batch keeps the array
-// form, read-only because the SDK never writes to it.
 type Channel<Field, Batch extends boolean> = Batch extends true
   ? Readonly<Extract<Field, unknown[]>>
   : Extract<Field, string>;
 
-// Narrows the given channel of each union member, keeping the other
-// channel's `null` slot.
 type ContactWith<Batch extends boolean> =
   ContactCheckRequest extends infer Member
     ? Member extends { email: unknown }
