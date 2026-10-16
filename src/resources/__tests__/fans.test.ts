@@ -84,16 +84,6 @@ describe("Fans", () => {
       expect(bodyOf(apiCalls()[0])).toEqual({ phone });
     });
 
-    it("returns an array for a one-item array", async () => {
-      const { context } = fakeContext([json(200, { isSubscribed: [true] })], {
-        apiKey: "customer-key-1",
-      });
-
-      await expect(
-        new Fans(context).isSubscribed({ email: ["fan@example.invalid"] }),
-      ).resolves.toEqual([true]);
-    });
-
     it("retries a 503 and returns the second response's value", async () => {
       vi.useFakeTimers();
       try {

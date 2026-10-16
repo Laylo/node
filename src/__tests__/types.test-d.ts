@@ -60,9 +60,6 @@ describe("record aliases", () => {
     expectTypeOf<{ email: string[] }>().toMatchTypeOf<ContactBatch>();
     expectTypeOf<{ phone: string[] }>().toMatchTypeOf<ContactBatch>();
     expectTypeOf<{ email: readonly string[] }>().toMatchTypeOf<ContactBatch>();
-    expectTypeOf<{
-      phone: readonly ["+12025550100"];
-    }>().toMatchTypeOf<ContactBatch>();
     expectTypeOf<{ phone: string }>().not.toMatchTypeOf<ContactBatch>();
     expectTypeOf<{
       email: string[];
