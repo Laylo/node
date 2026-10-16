@@ -20,11 +20,13 @@ import type {
   SegmentLocation,
   SubscribeFanRequest,
   SubscribeFanResponse,
+  SubscriptionBatchCheckResponse,
   SubscriptionCheckResponse,
   TokenResponse,
   TrackConversionRequest,
   TrackConversionResponse,
   TrackedConversion,
+  UnsubscriptionBatchCheckResponse,
   UnsubscriptionCheckResponse,
   VerifyKeyResponse,
 } from "../types.js";
@@ -57,6 +59,10 @@ describe("record aliases", () => {
   test("ContactBatch takes an array on exactly one channel", () => {
     expectTypeOf<{ email: string[] }>().toMatchTypeOf<ContactBatch>();
     expectTypeOf<{ phone: string[] }>().toMatchTypeOf<ContactBatch>();
+    expectTypeOf<{ email: readonly string[] }>().toMatchTypeOf<ContactBatch>();
+    expectTypeOf<{
+      phone: readonly ["+12025550100"];
+    }>().toMatchTypeOf<ContactBatch>();
     expectTypeOf<{ phone: string }>().not.toMatchTypeOf<ContactBatch>();
     expectTypeOf<{
       email: string[];
@@ -217,10 +223,16 @@ describe("response aliases", () => {
 
   test("subscription check responses", () => {
     expectTypeOf<SubscriptionCheckResponse>().toEqualTypeOf<{
-      isSubscribed: boolean | boolean[];
+      isSubscribed: boolean;
     }>();
     expectTypeOf<UnsubscriptionCheckResponse>().toEqualTypeOf<{
-      isUnsubscribed: boolean | boolean[];
+      isUnsubscribed: boolean;
+    }>();
+    expectTypeOf<SubscriptionBatchCheckResponse>().toEqualTypeOf<{
+      isSubscribed: boolean[];
+    }>();
+    expectTypeOf<UnsubscriptionBatchCheckResponse>().toEqualTypeOf<{
+      isUnsubscribed: boolean[];
     }>();
   });
 

@@ -97,11 +97,13 @@ export type {
   SkippedRecipient,
   SubscribeFanRequest,
   SubscribeFanResponse,
+  SubscriptionBatchCheckResponse,
   SubscriptionCheckResponse,
   TokenResponse,
   TrackConversionRequest,
   TrackConversionResponse,
   TrackedConversion,
+  UnsubscriptionBatchCheckResponse,
   UnsubscriptionCheckResponse,
   VerifyKeyResponse,
 } from "./types.js";

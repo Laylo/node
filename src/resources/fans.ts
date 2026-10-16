@@ -1,3 +1,4 @@
+import { assertBatchSize } from "../core/batch.js";
 import { LayloConfigurationError } from "../core/errors.js";
 import type { RequestOptions } from "../core/request-options.js";
 import { isoSignUpBounds, type WithDateSignUpBounds } from "../core/time.js";
@@ -8,7 +9,9 @@ import type {
   SegmentFilters,
   SubscribeFanRequest,
   SubscribeFanResponse,
+  SubscriptionBatchCheckResponse,
   SubscriptionCheckResponse,
+  UnsubscriptionBatchCheckResponse,
   UnsubscriptionCheckResponse,
 } from "../types.js";
 import { APIResource, type ResourceContext } from "./base.js";
@@ -76,10 +79,9 @@ const isGiven = (value: unknown) => value !== undefined && value !== null;
 const MAX_BATCH_CONTACTS = 500;
 
 // Enforced for JS callers; TS callers already get this from the union types.
-// A batch's entries are left for the API to validate, which names the index.
 const assertExactlyOneChannel = (contact: {
-  email?: string | string[] | null | undefined;
-  phone?: string | string[] | null | undefined;
+  email?: string | readonly string[] | null | undefined;
+  phone?: string | readonly string[] | null | undefined;
 }) => {
   const { email, phone } = contact ?? {};
   if (isGiven(email) === isGiven(phone)) {
@@ -87,19 +89,15 @@ const assertExactlyOneChannel = (contact: {
       "A contact must carry exactly one of email or phone — pass { email } or { phone }, not both and not neither.",
     );
   }
-  const [field, value] = isGiven(email) ? ["email", email] : ["phone", phone];
-  if (!Array.isArray(value)) {
-    return;
-  }
-  if (value.length === 0) {
-    throw new LayloConfigurationError(
-      `${field} must contain at least one contact`,
-    );
-  }
-  if (value.length > MAX_BATCH_CONTACTS) {
-    throw new LayloConfigurationError(
-      `${field} must contain at most ${String(MAX_BATCH_CONTACTS)} contacts, received ${String(value.length)}`,
-    );
+};
+
+// Only the batch's size is checked; the API validates each entry and names
+// the index of a bad one.
+const assertContactBatchSize = (contact: Contact | ContactBatch) => {
+  const field = isGiven(contact.email) ? "email" : "phone";
+  const values = contact[field];
+  if (Array.isArray(values)) {
+    assertBatchSize(field, values, MAX_BATCH_CONTACTS, "contact");
   }
 };
 
@@ -276,6 +274,17 @@ export class Fans extends APIResource {
     options?: RequestOptions,
   ): Promise<boolean[]>;
   /**
+   * Checks one contact or a batch when the caller holds either form. Resolves
+   * to a `boolean` for one contact and a `boolean[]` for a batch.
+   * @param contact One contact, or a batch on one channel.
+   * @param options Per-call overrides.
+   * @returns One answer, or one per contact in request order.
+   */
+  async isSubscribed(
+    contact: Contact | ContactBatch,
+    options?: RequestOptions,
+  ): Promise<boolean | boolean[]>;
+  /**
    * @param contact One contact, or a batch on one channel.
    * @param options Per-call overrides.
    * @returns One answer, or one per contact in request order.
@@ -285,7 +294,10 @@ export class Fans extends APIResource {
     options?: RequestOptions,
   ): Promise<boolean | boolean[]> {
     assertExactlyOneChannel(contact);
-    const { isSubscribed } = await this.request<SubscriptionCheckResponse>(
+    assertContactBatchSize(contact);
+    const { isSubscribed } = await this.request<
+      SubscriptionCheckResponse | SubscriptionBatchCheckResponse
+    >(
       {
         method: "POST",
         path: "/v1/fans/subscribed",
@@ -339,6 +351,17 @@ export class Fans extends APIResource {
     options?: RequestOptions,
   ): Promise<boolean[]>;
   /**
+   * Checks one contact or a batch when the caller holds either form. Resolves
+   * to a `boolean` for one contact and a `boolean[]` for a batch.
+   * @param contact One contact, or a batch on one channel.
+   * @param options Per-call overrides.
+   * @returns One answer, or one per contact in request order.
+   */
+  async isUnsubscribed(
+    contact: Contact | ContactBatch,
+    options?: RequestOptions,
+  ): Promise<boolean | boolean[]>;
+  /**
    * @param contact One contact, or a batch on one channel.
    * @param options Per-call overrides.
    * @returns One answer, or one per contact in request order.
@@ -348,7 +371,10 @@ export class Fans extends APIResource {
     options?: RequestOptions,
   ): Promise<boolean | boolean[]> {
     assertExactlyOneChannel(contact);
-    const { isUnsubscribed } = await this.request<UnsubscriptionCheckResponse>(
+    assertContactBatchSize(contact);
+    const { isUnsubscribed } = await this.request<
+      UnsubscriptionCheckResponse | UnsubscriptionBatchCheckResponse
+    >(
       {
         method: "POST",
         path: "/v1/fans/unsubscribed",

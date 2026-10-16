@@ -6,7 +6,11 @@ import {
   NotFoundError,
   ServerError,
 } from "../../core/errors.js";
-import type { Contact, SubscribeFanResponse } from "../../types.js";
+import type {
+  Contact,
+  ContactBatch,
+  SubscribeFanResponse,
+} from "../../types.js";
 import { Fans, type CountFansInput, type SubscribeFanInput } from "../fans.js";
 import { bodyOf, fakeContext, headersOf, json } from "./harness.js";
 
@@ -61,6 +65,10 @@ describe("Fans", () => {
       expectTypeOf(
         new Fans(context).isSubscribed({ email: ["fan@example.invalid"] }),
       ).resolves.toEqualTypeOf<boolean[]>();
+      expectTypeOf(
+        new Fans(context).isSubscribed({ email: "x" } as
+          Contact | ContactBatch),
+      ).resolves.toEqualTypeOf<boolean | boolean[]>();
     });
 
     it("sends an array as-is and returns the answers in order", async () => {
@@ -137,6 +145,11 @@ describe("Fans", () => {
       expectTypeOf(
         new Fans(context).isUnsubscribed({ phone: ["+12025550100"] }),
       ).resolves.toEqualTypeOf<boolean[]>();
+      expectTypeOf(
+        new Fans(context).isUnsubscribed({
+          phone: ["+12025550100"] as string | string[],
+        }),
+      ).resolves.toEqualTypeOf<boolean | boolean[]>();
     });
 
     it("sends an array as-is and returns the answers in order", async () => {

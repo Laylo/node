@@ -52,29 +52,36 @@ export type ConversionSubject = TrackedConversion["user"];
 
 type ContactCheckRequest = RequestJson<operations["fans.subscribed.check"]>;
 
-// Narrows the given channel of each union member to string or string[],
-// keeping the other channel's `null` slot.
-type ContactWith<Value> = ContactCheckRequest extends infer Member
-  ? Member extends { email: unknown }
-    ? { email: Extract<Member["email"], Value>; phone?: null }
-    : Member extends { phone: unknown }
-      ? { email?: null; phone: Extract<Member["phone"], Value> }
-      : never
-  : never;
+// One contact keeps the string form of a channel; a batch keeps the array
+// form, read-only because the SDK never writes to it.
+type Channel<Field, Batch extends boolean> = Batch extends true
+  ? Readonly<Extract<Field, unknown[]>>
+  : Extract<Field, string>;
+
+// Narrows the given channel of each union member, keeping the other
+// channel's `null` slot.
+type ContactWith<Batch extends boolean> =
+  ContactCheckRequest extends infer Member
+    ? Member extends { email: unknown }
+      ? { email: Channel<Member["email"], Batch>; phone?: null }
+      : Member extends { phone: unknown }
+        ? { email?: null; phone: Channel<Member["phone"], Batch> }
+        : never
+    : never;
 
 /**
  * A single contact channel: exactly one of an email address or an E.164
  * phone number.
  * @see https://developers.laylo.com/api-reference/fans/fans.subscribed.check
  */
-export type Contact = ContactWith<string>;
+export type Contact = ContactWith<false>;
 
 /**
  * A batch of contacts on one channel: exactly one of an array of 1 to 500
  * email addresses or an array of 1 to 500 E.164 phone numbers.
  * @see https://developers.laylo.com/api-reference/fans/fans.subscribed.check
  */
-export type ContactBatch = ContactWith<string[]>;
+export type ContactBatch = ContactWith<true>;
 
 /**
  * Request body for tracking a conversion event.
@@ -113,23 +120,45 @@ export type TrackConversionResponse = SuccessJson<
   operations["conversions.track"]
 >;
 
-/**
- * Response reporting whether a contact currently subscribes to the customer:
- * a boolean for one contact, or booleans in request order for a batch.
- * @see https://developers.laylo.com/api-reference/fans/fans.subscribed.check
- */
-export type SubscriptionCheckResponse = SuccessJson<
-  operations["fans.subscribed.check"]
+type SubscriptionCheckJson = SuccessJson<operations["fans.subscribed.check"]>;
+
+type UnsubscriptionCheckJson = SuccessJson<
+  operations["fans.unsubscribed.check"]
 >;
 
 /**
- * Response reporting whether a contact unsubscribed from the customer: a
- * boolean for one contact, or booleans in request order for a batch.
+ * Response reporting whether a contact currently subscribes to the customer.
+ * @see https://developers.laylo.com/api-reference/fans/fans.subscribed.check
+ */
+export type SubscriptionCheckResponse = {
+  isSubscribed: Extract<SubscriptionCheckJson["isSubscribed"], boolean>;
+};
+
+/**
+ * Response reporting whether each contact in a batch currently subscribes to
+ * the customer, in request order.
+ * @see https://developers.laylo.com/api-reference/fans/fans.subscribed.check
+ */
+export type SubscriptionBatchCheckResponse = {
+  isSubscribed: Extract<SubscriptionCheckJson["isSubscribed"], boolean[]>;
+};
+
+/**
+ * Response reporting whether a contact unsubscribed from the customer.
  * @see https://developers.laylo.com/api-reference/fans/fans.unsubscribed.check
  */
-export type UnsubscriptionCheckResponse = SuccessJson<
-  operations["fans.unsubscribed.check"]
->;
+export type UnsubscriptionCheckResponse = {
+  isUnsubscribed: Extract<UnsubscriptionCheckJson["isUnsubscribed"], boolean>;
+};
+
+/**
+ * Response reporting whether each contact in a batch unsubscribed from the
+ * customer, in request order.
+ * @see https://developers.laylo.com/api-reference/fans/fans.unsubscribed.check
+ */
+export type UnsubscriptionBatchCheckResponse = {
+  isUnsubscribed: Extract<UnsubscriptionCheckJson["isUnsubscribed"], boolean[]>;
+};
 
 type QueryOf<Operation> = Operation extends {
   parameters: { query?: infer Query };
