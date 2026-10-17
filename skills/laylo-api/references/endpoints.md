@@ -202,6 +202,13 @@ Body: exactly one of `{ "email": "…" }` or `{ "phone": "+12025550100" }`.
 { "isUnsubscribed": false }
 ```
 
+To check several contacts at once, send either field as an array of 1 to 500,
+such as `{ "phone": ["+12025550100", "+12025550101"] }`. The answer is then an
+array in request order, `{ "isSubscribed": [true, false] }`, even for a
+one-item array; contacts are never echoed back. Any invalid entry rejects the
+whole request with a 400 naming its index, such as `phone[3]`, and so does an
+empty array or one longer than 500.
+
 `isUnsubscribed` is true only for a contact who subscribed at some point and
 has since opted out. Both checks are reads and are safe to retry.
 

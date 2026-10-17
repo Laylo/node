@@ -62,7 +62,9 @@ call you haven't seen here. The ones that are easiest to get wrong:
   (inclusive), `signedUpBefore` (exclusive). It resolves to a plain `number`.
 - `conversions.counts.list` takes `action`, `startDate`, `endDate`, and
   resolves to `{ startDate, endDate, counts: [{ action, total, series }] }`.
-- `fans.isSubscribed` and `fans.isUnsubscribed` resolve to a plain `boolean`.
+- `fans.isSubscribed` and `fans.isUnsubscribed` resolve to a plain `boolean`
+  for one contact. Given an array of up to 500 (`{ phone: [...] }` or
+  `{ email: [...] }`), they resolve to a `boolean[]` in the same order.
 - `fans.subscribe` takes `email`, `phone`, or both, and an optional `dropId`.
   Given both, the two records are linked as the same person and each keeps its
   own id; if only one subscribes, the other comes back in `rejected`.
@@ -299,6 +301,7 @@ access token, so creating them is cheap.
   be named on the call.
 - With only an API key, requests are capped at 20 a minute per account by default (Laylo can raise the limit on a
   specific key, which then gets its own budget). A
-  script that loops over many calls (one `fans.isSubscribed` per contact, say)
-  will hit it; space the calls out, or prefer one aggregate call such as
-  `fans.segments.count` where it answers the question.
+  script that loops over many calls will hit it; space the calls out, or
+  prefer one call that covers many, such as `fans.isSubscribed` with an array
+  of up to 500 contacts or `fans.segments.count`, where it answers the
+  question.

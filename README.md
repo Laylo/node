@@ -429,7 +429,9 @@ is the one exception — it only accepts `signal`).
 
 - [`fans.isSubscribed(contact, options?)`](https://developers.laylo.com/api-reference/fans/fans.subscribed.check) —
   checks whether a contact (an email or an E.164 phone number) currently
-  subscribes to the customer.
+  subscribes to the customer. Pass an array of up to 500 emails or phone
+  numbers to check them in one request; it resolves to a `boolean[]` in the
+  same order.
 
   ```ts
   import Laylo from "@laylo.com/node";
@@ -442,11 +444,16 @@ is the one exception — it only accepts `signal`).
   });
 
   const isSubscribed = await laylo.fans.isSubscribed({ phone: "+12025550100" });
+
+  const phones = ["+12025550100", "+12025550101"];
+  const answers = await laylo.fans.isSubscribed({ phone: phones });
+  const subscribed = phones.filter((_, index) => answers[index]);
   ```
 
 - [`fans.isUnsubscribed(contact, options?)`](https://developers.laylo.com/api-reference/fans/fans.unsubscribed.check) —
   checks whether a contact subscribed at some point and has since
-  unsubscribed.
+  unsubscribed. Like `isSubscribed`, it takes an array of up to 500 emails or
+  phone numbers and resolves to a `boolean[]` in the same order.
 
   ```ts
   import Laylo from "@laylo.com/node";

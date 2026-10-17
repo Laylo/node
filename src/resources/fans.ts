@@ -1,13 +1,17 @@
+import { assertBatchSize } from "../core/batch.js";
 import { LayloConfigurationError } from "../core/errors.js";
 import type { RequestOptions } from "../core/request-options.js";
 import { isoSignUpBounds, type WithDateSignUpBounds } from "../core/time.js";
 import type {
   Contact,
+  ContactBatch,
   SegmentCountResponse,
   SegmentFilters,
   SubscribeFanRequest,
   SubscribeFanResponse,
+  SubscriptionBatchCheckResponse,
   SubscriptionCheckResponse,
+  UnsubscriptionBatchCheckResponse,
   UnsubscriptionCheckResponse,
 } from "../types.js";
 import { APIResource, type ResourceContext } from "./base.js";
@@ -72,16 +76,28 @@ export type CountFansInput = WithDateSignUpBounds<SegmentFilters>;
 // means "not given" just like undefined.
 const isGiven = (value: unknown) => value !== undefined && value !== null;
 
+const MAX_BATCH_CONTACTS = 500;
+
 // Enforced for JS callers; TS callers already get this from the union types.
 const assertExactlyOneChannel = (contact: {
-  email?: string | null | undefined;
-  phone?: string | null | undefined;
+  email?: string | readonly string[] | null | undefined;
+  phone?: string | readonly string[] | null | undefined;
 }) => {
   const { email, phone } = contact ?? {};
   if (isGiven(email) === isGiven(phone)) {
     throw new LayloConfigurationError(
       "A contact must carry exactly one of email or phone — pass { email } or { phone }, not both and not neither.",
     );
+  }
+};
+
+// Only the batch's size is checked; the API validates each entry and names
+// the index of a bad one.
+const assertContactBatchSize = (contact: Contact | ContactBatch) => {
+  const field = isGiven(contact.email) ? "email" : "phone";
+  const values = contact[field];
+  if (Array.isArray(values)) {
+    assertBatchSize(field, values, MAX_BATCH_CONTACTS, "contact");
   }
 };
 
@@ -233,9 +249,55 @@ export class Fans extends APIResource {
   async isSubscribed(
     contact: Contact,
     options?: RequestOptions,
-  ): Promise<boolean> {
+  ): Promise<boolean>;
+  /**
+   * Checks up to 500 contacts on one channel in a single request: an array of
+   * email addresses or an array of E.164 phone numbers. The answers come back
+   * in the same order, one per contact. An invalid entry fails the whole call
+   * with `BadRequestError` naming its index. An empty array or more than 500
+   * throws `LayloConfigurationError` before anything is sent.
+   * @param contacts The emails or phones to check.
+   * @param options Per-call overrides.
+   * @returns Whether each contact currently follows the customer, in request
+   * order.
+   * @example
+   * ```ts
+   * const phones = ["+12025550100", "+12025550101"];
+   * const answers = await laylo.fans.isSubscribed({ phone: phones });
+   * const subscribed = phones.filter((_, index) => answers[index]);
+   * ```
+   * @see https://developers.laylo.com/api-reference/fans/fans.subscribed.check
+   * @see https://developers.laylo.com/guides/subscriptions
+   */
+  async isSubscribed(
+    contacts: ContactBatch,
+    options?: RequestOptions,
+  ): Promise<boolean[]>;
+  /**
+   * Checks one contact or a batch when the caller holds either form. Resolves
+   * to a `boolean` for one contact and a `boolean[]` for a batch.
+   * @param contact One contact, or a batch on one channel.
+   * @param options Per-call overrides.
+   * @returns One answer, or one per contact in request order.
+   */
+  async isSubscribed(
+    contact: Contact | ContactBatch,
+    options?: RequestOptions,
+  ): Promise<boolean | boolean[]>;
+  /**
+   * @param contact One contact, or a batch on one channel.
+   * @param options Per-call overrides.
+   * @returns One answer, or one per contact in request order.
+   */
+  async isSubscribed(
+    contact: Contact | ContactBatch,
+    options?: RequestOptions,
+  ): Promise<boolean | boolean[]> {
     assertExactlyOneChannel(contact);
-    const { isSubscribed } = await this.request<SubscriptionCheckResponse>(
+    assertContactBatchSize(contact);
+    const { isSubscribed } = await this.request<
+      SubscriptionCheckResponse | SubscriptionBatchCheckResponse
+    >(
       {
         method: "POST",
         path: "/v1/fans/subscribed",
@@ -264,9 +326,55 @@ export class Fans extends APIResource {
   async isUnsubscribed(
     contact: Contact,
     options?: RequestOptions,
-  ): Promise<boolean> {
+  ): Promise<boolean>;
+  /**
+   * Checks up to 500 contacts on one channel in a single request: an array of
+   * email addresses or an array of E.164 phone numbers. The answers come back
+   * in the same order, one per contact. An invalid entry fails the whole call
+   * with `BadRequestError` naming its index. An empty array or more than 500
+   * throws `LayloConfigurationError` before anything is sent.
+   * @param contacts The emails or phones to check.
+   * @param options Per-call overrides.
+   * @returns Whether each contact unsubscribed from the customer, in request
+   * order.
+   * @example
+   * ```ts
+   * const emails = ["fan@example.com", "another@example.com"];
+   * const answers = await laylo.fans.isUnsubscribed({ email: emails });
+   * const unsubscribed = emails.filter((_, index) => answers[index]);
+   * ```
+   * @see https://developers.laylo.com/api-reference/fans/fans.unsubscribed.check
+   * @see https://developers.laylo.com/guides/unsubscribes
+   */
+  async isUnsubscribed(
+    contacts: ContactBatch,
+    options?: RequestOptions,
+  ): Promise<boolean[]>;
+  /**
+   * Checks one contact or a batch when the caller holds either form. Resolves
+   * to a `boolean` for one contact and a `boolean[]` for a batch.
+   * @param contact One contact, or a batch on one channel.
+   * @param options Per-call overrides.
+   * @returns One answer, or one per contact in request order.
+   */
+  async isUnsubscribed(
+    contact: Contact | ContactBatch,
+    options?: RequestOptions,
+  ): Promise<boolean | boolean[]>;
+  /**
+   * @param contact One contact, or a batch on one channel.
+   * @param options Per-call overrides.
+   * @returns One answer, or one per contact in request order.
+   */
+  async isUnsubscribed(
+    contact: Contact | ContactBatch,
+    options?: RequestOptions,
+  ): Promise<boolean | boolean[]> {
     assertExactlyOneChannel(contact);
-    const { isUnsubscribed } = await this.request<UnsubscriptionCheckResponse>(
+    assertContactBatchSize(contact);
+    const { isUnsubscribed } = await this.request<
+      UnsubscriptionCheckResponse | UnsubscriptionBatchCheckResponse
+    >(
       {
         method: "POST",
         path: "/v1/fans/unsubscribed",

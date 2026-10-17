@@ -62,6 +62,7 @@ export type { RequestOptions } from "./core/request-options.js";
 export type {
   ChannelCreditUsage,
   Contact,
+  ContactBatch,
   Conversion,
   ConversionAction,
   ConversionCount,
@@ -96,11 +97,13 @@ export type {
   SkippedRecipient,
   SubscribeFanRequest,
   SubscribeFanResponse,
+  SubscriptionBatchCheckResponse,
   SubscriptionCheckResponse,
   TokenResponse,
   TrackConversionRequest,
   TrackConversionResponse,
   TrackedConversion,
+  UnsubscriptionBatchCheckResponse,
   UnsubscriptionCheckResponse,
   VerifyKeyResponse,
 } from "./types.js";

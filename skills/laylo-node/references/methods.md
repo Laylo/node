@@ -184,7 +184,12 @@ event with contact fields replaced by `hasEmail` and `hasPhone` flags.
 ## fans.isSubscribed(contact) / fans.isUnsubscribed(contact)
 
 `contact` is exactly one of `{ email }` or `{ phone }` (E.164). Each returns a
-`boolean`. `isUnsubscribed` is true only for a contact who subscribed at some
+`boolean`. Either field can instead be an array of 1 to 500 contacts on that
+channel, and the call returns a `boolean[]` with one answer per contact in
+request order (a one-item array still returns an array). Any invalid entry
+fails the whole call with `BadRequestError` naming its index, such as
+`phone[3]`. An empty array or more than 500 throws `LayloConfigurationError`
+before anything is sent. `isUnsubscribed` is true only for a contact who subscribed at some
 point and has since opted out. A contact who never subscribed is false for
 both.
 

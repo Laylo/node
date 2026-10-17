@@ -1,3 +1,4 @@
+import { assertBatchSize } from "../core/batch.js";
 import { LayloConfigurationError } from "../core/errors.js";
 import type { RequestOptions } from "../core/request-options.js";
 import { isoSignUpBounds, type WithDateSignUpBounds } from "../core/time.js";
@@ -15,24 +16,6 @@ import { APIResource, type ResourceContext } from "./base.js";
 const MAX_SMS_RECIPIENTS = 200;
 
 const isGiven = (value: unknown) => value !== undefined && value !== null;
-
-// The API refuses these too; checking here saves a round trip that would
-// only come back as a 400.
-const assertRecipientCount = (to: SendSmsRequest["to"]) => {
-  if (!Array.isArray(to)) {
-    return;
-  }
-  if (to.length === 0) {
-    throw new LayloConfigurationError(
-      "to must contain at least one phone number",
-    );
-  }
-  if (to.length > MAX_SMS_RECIPIENTS) {
-    throw new LayloConfigurationError(
-      `to must contain at most ${String(MAX_SMS_RECIPIENTS)} phone numbers, received ${String(to.length)}`,
-    );
-  }
-};
 
 /**
  * SMS sends, exposed as `laylo.messages.sms`.
@@ -70,7 +53,9 @@ export class SmsMessages extends APIResource {
     sms: SendSmsRequest,
     options?: RequestOptions,
   ): Promise<SendSmsResponse> {
-    assertRecipientCount(sms?.to);
+    if (Array.isArray(sms?.to)) {
+      assertBatchSize("to", sms.to, MAX_SMS_RECIPIENTS, "phone number");
+    }
     return this.request<SendSmsResponse>(
       {
         method: "POST",

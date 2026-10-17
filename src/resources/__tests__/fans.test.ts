@@ -6,7 +6,11 @@ import {
   NotFoundError,
   ServerError,
 } from "../../core/errors.js";
-import type { Contact, SubscribeFanResponse } from "../../types.js";
+import type {
+  Contact,
+  ContactBatch,
+  SubscribeFanResponse,
+} from "../../types.js";
 import { Fans, type CountFansInput, type SubscribeFanInput } from "../fans.js";
 import { bodyOf, fakeContext, headersOf, json } from "./harness.js";
 
@@ -52,12 +56,32 @@ describe("Fans", () => {
       });
     });
 
-    it("resolves to a boolean", () => {
+    it("resolves to a boolean, or booleans for an array", () => {
       const { context } = fakeContext([], { apiKey: "customer-key-1" });
 
       expectTypeOf(
         new Fans(context).isSubscribed({ email: "fan@example.invalid" }),
       ).resolves.toEqualTypeOf<boolean>();
+      expectTypeOf(
+        new Fans(context).isSubscribed({ email: ["fan@example.invalid"] }),
+      ).resolves.toEqualTypeOf<boolean[]>();
+      expectTypeOf(
+        new Fans(context).isSubscribed({ email: "x" } as
+          Contact | ContactBatch),
+      ).resolves.toEqualTypeOf<boolean | boolean[]>();
+    });
+
+    it("sends an array as-is and returns the answers in order", async () => {
+      const { context, apiCalls } = fakeContext(
+        [json(200, { isSubscribed: [true, false] })],
+        { apiKey: "customer-key-1" },
+      );
+      const phone = ["+12025550100", "+12025550101"];
+
+      const answers = await new Fans(context).isSubscribed({ phone });
+
+      expect(answers).toEqual([true, false]);
+      expect(bodyOf(apiCalls()[0])).toEqual({ phone });
     });
 
     it("retries a 503 and returns the second response's value", async () => {
@@ -102,12 +126,33 @@ describe("Fans", () => {
       });
     });
 
-    it("resolves to a boolean", () => {
+    it("resolves to a boolean, or booleans for an array", () => {
       const { context } = fakeContext([], { apiKey: "customer-key-1" });
 
       expectTypeOf(
         new Fans(context).isUnsubscribed({ phone: "+12025550100" }),
       ).resolves.toEqualTypeOf<boolean>();
+      expectTypeOf(
+        new Fans(context).isUnsubscribed({ phone: ["+12025550100"] }),
+      ).resolves.toEqualTypeOf<boolean[]>();
+      expectTypeOf(
+        new Fans(context).isUnsubscribed({
+          phone: ["+12025550100"] as string | string[],
+        }),
+      ).resolves.toEqualTypeOf<boolean | boolean[]>();
+    });
+
+    it("sends an array as-is and returns the answers in order", async () => {
+      const { context, apiCalls } = fakeContext(
+        [json(200, { isUnsubscribed: [false, true] })],
+        { apiKey: "customer-key-1" },
+      );
+      const email = ["fan@example.invalid", "other@example.invalid"];
+
+      const answers = await new Fans(context).isUnsubscribed({ email });
+
+      expect(answers).toEqual([false, true]);
+      expect(bodyOf(apiCalls()[0])).toEqual({ email });
     });
   });
 
@@ -130,6 +175,28 @@ describe("Fans", () => {
           phone: "+12025550100",
         } as unknown as Contact),
       ).rejects.toThrow(/exactly one/i);
+      expect(calls).toHaveLength(0);
+    });
+
+    it("rejects an empty array before any request", async () => {
+      const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
+
+      await expect(
+        new Fans(context).isSubscribed({ phone: [] }),
+      ).rejects.toThrow(/phone must contain at least one/);
+      expect(calls).toHaveLength(0);
+    });
+
+    it("rejects more than 500 contacts before any request", async () => {
+      const { context, calls } = fakeContext([], { apiKey: "customer-key-1" });
+      const email = Array.from(
+        { length: 501 },
+        (_, index) => `fan${String(index)}@example.invalid`,
+      );
+
+      await expect(new Fans(context).isUnsubscribed({ email })).rejects.toThrow(
+        /at most 500 contacts, received 501/,
+      );
       expect(calls).toHaveLength(0);
     });
 

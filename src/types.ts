@@ -50,12 +50,34 @@ export type TrackedConversion = SuccessJson<
  */
 export type ConversionSubject = TrackedConversion["user"];
 
+type ContactCheckRequest = RequestJson<operations["fans.subscribed.check"]>;
+
+type Channel<Field, Batch extends boolean> = Batch extends true
+  ? Readonly<Extract<Field, unknown[]>>
+  : Extract<Field, string>;
+
+type ContactWith<Batch extends boolean> =
+  ContactCheckRequest extends infer Member
+    ? Member extends { email: unknown }
+      ? { email: Channel<Member["email"], Batch>; phone?: null }
+      : Member extends { phone: unknown }
+        ? { email?: null; phone: Channel<Member["phone"], Batch> }
+        : never
+    : never;
+
 /**
  * A single contact channel: exactly one of an email address or an E.164
  * phone number.
  * @see https://developers.laylo.com/api-reference/fans/fans.subscribed.check
  */
-export type Contact = RequestJson<operations["fans.subscribed.check"]>;
+export type Contact = ContactWith<false>;
+
+/**
+ * A batch of contacts on one channel: exactly one of an array of 1 to 500
+ * email addresses or an array of 1 to 500 E.164 phone numbers.
+ * @see https://developers.laylo.com/api-reference/fans/fans.subscribed.check
+ */
+export type ContactBatch = ContactWith<true>;
 
 /**
  * Request body for tracking a conversion event.
@@ -94,21 +116,45 @@ export type TrackConversionResponse = SuccessJson<
   operations["conversions.track"]
 >;
 
+type SubscriptionCheckJson = SuccessJson<operations["fans.subscribed.check"]>;
+
+type UnsubscriptionCheckJson = SuccessJson<
+  operations["fans.unsubscribed.check"]
+>;
+
 /**
  * Response reporting whether a contact currently subscribes to the customer.
  * @see https://developers.laylo.com/api-reference/fans/fans.subscribed.check
  */
-export type SubscriptionCheckResponse = SuccessJson<
-  operations["fans.subscribed.check"]
->;
+export type SubscriptionCheckResponse = {
+  isSubscribed: Extract<SubscriptionCheckJson["isSubscribed"], boolean>;
+};
+
+/**
+ * Response reporting whether each contact in a batch currently subscribes to
+ * the customer, in request order.
+ * @see https://developers.laylo.com/api-reference/fans/fans.subscribed.check
+ */
+export type SubscriptionBatchCheckResponse = {
+  isSubscribed: Extract<SubscriptionCheckJson["isSubscribed"], boolean[]>;
+};
 
 /**
  * Response reporting whether a contact unsubscribed from the customer.
  * @see https://developers.laylo.com/api-reference/fans/fans.unsubscribed.check
  */
-export type UnsubscriptionCheckResponse = SuccessJson<
-  operations["fans.unsubscribed.check"]
->;
+export type UnsubscriptionCheckResponse = {
+  isUnsubscribed: Extract<UnsubscriptionCheckJson["isUnsubscribed"], boolean>;
+};
+
+/**
+ * Response reporting whether each contact in a batch unsubscribed from the
+ * customer, in request order.
+ * @see https://developers.laylo.com/api-reference/fans/fans.unsubscribed.check
+ */
+export type UnsubscriptionBatchCheckResponse = {
+  isUnsubscribed: Extract<UnsubscriptionCheckJson["isUnsubscribed"], boolean[]>;
+};
 
 type QueryOf<Operation> = Operation extends {
   parameters: { query?: infer Query };
